@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://google-docs-dor.onrender.com';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://google-docs-dor.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
