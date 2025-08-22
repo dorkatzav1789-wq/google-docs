@@ -75,7 +75,15 @@ export interface WorkHours {
   hourly_rate: number;
   daily_total: number;
   notes?: string;
-  created_at: string;
+
+  // כשמחזירים מ-Supabase עם join:
+  employees?: {
+    name: string;
+    hourly_rate?: number;
+  } | null;
+
+  // fallback אם תחזירו שם עובד בצורה שטוחה
+  employee_name?: string | null;
 }
 
 export interface MonthlyReport {
