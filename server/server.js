@@ -202,33 +202,49 @@ app.post('/api/parse-quote', async (req, res) => {
 app.post('/api/export-pdf', async (req, res) => {
   try {
     const { quoteId } = req.body;
+
     const quote = await dbFunctions.getQuoteById(quoteId);
     const items = await dbFunctions.getQuoteItems(quoteId);
     if (!quote) return res.status(404).json({ error: 'הצעת מחיר לא נמצאה' });
 
     const html = generateQuoteHTML(quote, items);
 
+    // 🚀 הגדרות יציבות ל-Render
     const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: true, // או "new" אם אתה על Puppeteer 22+
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process',
+      ],
+      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });
+
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    // פחות רגיש לתלויות רשת פנימיות
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+
     const pdf = await page.pdf({
       format: 'A4',
       margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
-      printBackground: true
+      printBackground: true,
     });
+
     await browser.close();
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="quote-${quoteId}.pdf"`);
-    res.send(pdf);
+    res.end(pdf); // עדיף ל-binary
   } catch (error) {
-    console.error('שגיאה בייצוא PDF:', error);
-    res.status(500).json({ error: error.message });
+    console.error('שגיאה בייצוא PDF:', error?.message, error?.stack);
+    res.status(500).json({ error: error?.message || 'שגיאה בייצוא PDF' });
   }
 });
+
 
 // ------- generateQuoteHTML (כמו שהיה אצלך) -------
 function generateQuoteHTML(quote, items) {
