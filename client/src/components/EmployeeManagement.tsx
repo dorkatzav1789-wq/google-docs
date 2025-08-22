@@ -18,9 +18,16 @@ export const EmployeeManagement: React.FC = () => {
   const loadEmployees = async () => {
     try {
       const data = await employeesAPI.getAll();
-      setEmployees(data);
+      // נרמול: אם לא קיבלנו מערך – נהפוך למערך ריק
+      const normalized = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.data)
+              ? (data as any).data
+              : [];
+      setEmployees(normalized);
     } catch (error) {
       console.error('Error loading employees:', error);
+      setEmployees([]); // שלא ייפול ב-render
     }
   };
 
@@ -82,15 +89,22 @@ export const EmployeeManagement: React.FC = () => {
 
       {/* רשימת עובדים */}
       <div className="grid gap-4">
-        {employees.map(employee => (
-          <div key={employee.id} className="p-4 border rounded">
-            <h4 className="font-semibold">{employee.name}</h4>
-            <p>טלפון: {employee.phone || 'לא צוין'}</p>
-            <p>אימייל: {employee.email || 'לא צוין'}</p>
-            <p>שכר לשעה: ₪{employee.hourly_rate}</p>
-          </div>
-        ))}
+        {Array.isArray(employees) && employees.length > 0 ? (
+            employees.map((employee) => (
+                <div key={employee.id} className="p-4 border rounded">
+                  <h4 className="font-semibold">{employee.name}</h4>
+                  <p>טלפון: {employee.phone || 'לא צוין'}</p>
+                  <p>אימייל: {employee.email || 'לא צוין'}</p>
+                  <p>שכר לשעה: ₪{employee.hourly_rate}</p>
+                </div>
+            ))
+        ) : (
+            <div className="p-4 border rounded text-gray-600">
+              אין עובדים להצגה כרגע
+            </div>
+        )}
       </div>
+
     </div>
   );
 };
