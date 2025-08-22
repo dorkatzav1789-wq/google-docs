@@ -198,10 +198,14 @@ app.post('/api/parse-quote', async (req, res) => {
   }
 });
 
-// ייצוא PDF (השארתי כפי שהיה)
+// ייצוא PDF
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
+
 app.post('/api/export-pdf', async (req, res) => {
   try {
     const { quoteId } = req.body;
+    if (!quoteId) return res.status(400).json({ error: 'quoteId is required' });
 
     const quote = await dbFunctions.getQuoteById(quoteId);
     const items = await dbFunctions.getQuoteItems(quoteId);
@@ -209,41 +213,33 @@ app.post('/api/export-pdf', async (req, res) => {
 
     const html = generateQuoteHTML(quote, items);
 
-    // 🚀 הגדרות יציבות ל-Render
     const browser = await puppeteer.launch({
-      headless: true, // או "new" אם אתה על Puppeteer 22+
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-zygote',
-        '--single-process',
-      ],
-      // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,      // בדרך־כלל true בענן
     });
 
     const page = await browser.newPage();
-
-    // פחות רגיש לתלויות רשת פנימיות
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.emulateMediaType('screen');
 
     const pdf = await page.pdf({
       format: 'A4',
-      margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
       printBackground: true,
+      margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
     });
 
     await browser.close();
-
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="quote-${quoteId}.pdf"`);
-    res.end(pdf); // עדיף ל-binary
-  } catch (error) {
-    console.error('שגיאה בייצוא PDF:', error?.message, error?.stack);
-    res.status(500).json({ error: error?.message || 'שגיאה בייצוא PDF' });
+    res.send(pdf);
+  } catch (err) {
+    console.error('שגיאה בייצוא PDF:', err?.message, err?.stack);
+    res.status(500).json({ error: 'PDF export failed' });
   }
 });
+
 
 
 // ------- generateQuoteHTML (כמו שהיה אצלך) -------
