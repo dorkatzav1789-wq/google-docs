@@ -244,15 +244,191 @@ app.post('/api/export-pdf', async (req, res) => {
 
 // ------- generateQuoteHTML (כמו שהיה אצלך) -------
 function generateQuoteHTML(quote, items) {
-  const formatCurrency = (amount) => `₪${amount.toLocaleString()}`;
+  const formatCurrency = (n) =>
+      typeof n === 'number' ? `₪${n.toLocaleString('he-IL')}` : '-';
+
   const formatDate = (dateString) => {
     if (!dateString) return 'לא צוין';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('he-IL');
+    const d = new Date(dateString);
+    return d.toLocaleDateString('he-IL');
   };
-  // ... (נשאר כמו בקובץ שלך, קיצרתי כאן לחיסכון במקום)
-  return `<!DOCTYPE html> ... `;
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>הצעת מחיר #${quote.id ?? ''}</title>
+  <style>
+    body {
+      font-family: Arial, "Segoe UI", Tahoma, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #fff;
+      color: #111827; /* gray-900 */
+      direction: rtl;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #3b82f6; /* blue-500 */
+      padding-bottom: 12px;
+    }
+    .header h1 {
+      margin: 0 0 4px 0;
+      color: #1e40af; /* blue-800 */
+      font-size: 26px;
+    }
+    .quote-info {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+    .info-col {
+      flex: 1;
+      padding: 14px;
+      background: #f9fafb; /* gray-50 */
+      border: 1px solid #e5e7eb; /* gray-200 */
+      border-radius: 8px;
+    }
+    .section-title {
+      font-weight: 700;
+      color: #374151; /* gray-700 */
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    .row { margin: 6px 0; }
+    .label { font-weight: 700; color: #6b7280; /* gray-500 */ }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 10px 0;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #d1d5db; /* gray-300 */
+      padding: 10px 8px;
+      text-align: right;
+      vertical-align: top;
+    }
+    thead th {
+      background: #f3f4f6; /* gray-100 */
+      color: #374151; /* gray-700 */
+      font-weight: 700;
+    }
+    .summary {
+      margin-top: 20px;
+      border-top: 2px solid #e5e7eb; /* gray-200 */
+      padding-top: 12px;
+      font-size: 15px;
+    }
+    .sum-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 6px 0;
+    }
+    .total {
+      font-weight: 800;
+      font-size: 18px;
+      border-top: 1px solid #d1d5db;
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+    .footer {
+      margin-top: 26px;
+      text-align: center;
+      color: #6b7280; /* gray-500 */
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>הצעת מחיר</h1>
+    <div>מספר הצעה: ${quote.id ?? ''}</div>
+  </div>
+
+  <div class="quote-info">
+    <div class="info-col">
+      <div class="section-title">פרטי האירוע</div>
+      <div class="row"><span class="label">שם האירוע:</span> ${quote.event_name ?? ''}</div>
+      <div class="row"><span class="label">תאריך:</span> ${formatDate(quote.event_date)}</div>
+      ${quote.event_hours ? `<div class="row"><span class="label">שעות:</span> ${quote.event_hours}</div>` : ''}
+      ${quote.special_notes ? `<div class="row"><span class="label">הערות:</span> ${quote.special_notes}</div>` : ''}
+    </div>
+
+    <div class="info-col">
+      <div class="section-title">פרטי לקוח</div>
+      <div class="row"><span class="label">שם:</span> ${quote.client_name ?? ''}</div>
+      ${quote.client_company ? `<div class="row"><span class="label">חברה:</span> ${quote.client_company}</div>` : ''}
+      ${quote.client_phone ? `<div class="row"><span class="label">טלפון:</span> ${quote.client_phone}</div>` : ''}
+      ${quote.client_company_id ? `<div class="row"><span class="label">ח.פ / ע.מ:</span> ${quote.client_company_id}</div>` : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>שם הפריט</th>
+        <th>תיאור</th>
+        <th>מחיר יחידה</th>
+        <th>כמות</th>
+        <th>הנחה</th>
+        <th>סה"כ</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map(i => `
+        <tr>
+          <td>${i.name ?? ''}</td>
+          <td>${i.description ?? ''}</td>
+          <td>${formatCurrency(i.unit_price)}</td>
+          <td>${i.quantity ?? 0}</td>
+          <td>${i.discount && i.discount > 0 ? `-${formatCurrency(i.discount)}` : '-'}</td>
+          <td>${formatCurrency(i.total)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="summary">
+    <div class="sum-row">
+      <span>סה"כ לפני הנחה:</span>
+      <span>${formatCurrency(quote.total_before_discount)}</span>
+    </div>
+
+    ${quote.discount_percent && quote.discount_percent > 0 ? `
+      <div class="sum-row">
+        <span>הנחה (${quote.discount_percent}%):</span>
+        <span>-${formatCurrency(quote.discount_amount)}</span>
+      </div>
+      <div class="sum-row">
+        <span>סה"כ אחרי הנחה:</span>
+        <span>${formatCurrency(quote.total_after_discount)}</span>
+      </div>
+    ` : ''}
+
+    <div class="sum-row">
+      <span>מע"מ (18%):</span>
+      <span>+${formatCurrency(quote.vat_amount)}</span>
+    </div>
+
+    <div class="sum-row total">
+      <span>סה"כ כולל מע"מ:</span>
+      <span>${formatCurrency(quote.final_total)}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>נוצר ב: ${formatDate(quote.created_at)}</div>
+    <div>הצעה זו תקפה ל-30 ימים</div>
+  </div>
+</body>
+</html>`;
 }
+
 
 // Serve React app
 app.get('/', (req, res) => {
