@@ -423,7 +423,6 @@ function generateQuoteHTML(quote, items) {
 
   <div class="footer">
     <div>נוצר ב: ${formatDate(quote.created_at)}</div>
-    <div>הצעה זו תקפה ל-30 ימים</div>
   </div>
 </body>
 </html>`;
