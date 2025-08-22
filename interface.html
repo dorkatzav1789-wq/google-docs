@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+
+<html>
+
+  <head>
+
+      <base target="_top">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+      <title>עוזר הצעות מחיר</title>
+
+      <style>
+      :root { 
+        --primary-color: #007aff; 
+        --success-color: #34c759; 
+        --danger-color: #ff3b30; 
+        --light-gray: #f8f9fa; 
+        --border-color: #e9ecef; 
+        --text-color: #212529; 
+        --secondary-text-color: #6c757d; 
+        --card-bg-color: #ffffff;
+        --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        --shadow-hover: 0 4px 16px rgba(0,0,0,0.15);
+      }
+
+      html, body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        color: var(--text-color); 
+        margin: 0; 
+        padding: 0; 
+        min-height: 100vh;
+      }
+
+      .container { 
+        padding: 20px; 
+        max-width: 800px; 
+        margin: 0 auto; 
+      }
+
+      .card { 
+        background-color: var(--card-bg-color); 
+        border: 1px solid var(--border-color); 
+        border-radius: 16px; 
+        padding: 24px; 
+        margin-bottom: 24px; 
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+      }
+
+      .card:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-2px);
+      }
+
+      .error, .clarification-box { 
+        padding: 16px; 
+        border-radius: 12px; 
+        direction: rtl; 
+        margin-bottom: 16px;
+      }
+
+      .error { 
+        color: #721c24; 
+        background-color: #f8d7da; 
+        border: 1px solid #f5c6cb; 
+      }
+
+      .clarification-box { 
+        background-color: #fff3cd; 
+        border: 1px solid #ffeaa7; 
+      }
+
+      h4 { 
+        margin-top: 0; 
+        font-size: 24px; 
+        color: var(--text-color);
+        margin-bottom: 20px;
+        font-weight: 700;
+      }
+
+      .input-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 20px; 
+      }
+
+      .input-group { 
+        margin-bottom: 20px; 
+      }
+
+      .input-group label { 
+        display: block; 
+        font-weight: 600; 
+        margin-bottom: 8px; 
+        font-size: 14px; 
+        color: var(--text-color);
+      }
+
+      input, select, textarea {
+        width: calc(100% - 24px); 
+        padding: 12px 16px; 
+        border-radius: 12px; 
+        border: 2px solid var(--border-color); 
+        font-size: 16px; 
+        -webkit-appearance: none;
+        transition: all 0.3s ease;
+        background-color: #ffffff;
+      }
+
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        transform: translateY(-1px);
+      }
+
+      textarea { 
+        height: 150px; 
+        resize: vertical; 
+        grid-column: 1 / -1; 
+      }
+
+      button { 
+        width: 100%; 
+        padding: 16px; 
+        border: none; 
+        cursor: pointer; 
+        border-radius: 12px; 
+        font-size: 18px; 
+        font-weight: 600; 
+        margin-top: 12px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 8px; 
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow);
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      #generateBtn, #learnBtn { 
+        background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%); 
+        color: white; 
+      }
+
+      #exportBtn, #savePdfBtn { 
+        background: linear-gradient(135deg, var(--success-color) 0%, #28a745 100%); 
+        color: white; 
+      }
+
+      #controls-panel { 
+        display: none; 
+        grid-template-columns: 1fr 1fr 1fr; 
+        gap: 12px; 
+        margin-top: 20px; 
+      }
+
+      .discount-btn { 
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
+        color: var(--text-color); 
+        font-size: 14px; 
+        padding: 14px; 
+        border: 1px solid var(--border-color);
+      }
+
+      #resetBtn { 
+        background: linear-gradient(135deg, #ffebec 0%, #f8d7da 100%); 
+        color: var(--danger-color); 
+        font-size: 14px; 
+        padding: 14px; 
+        grid-column: 1 / -1; 
+        border: 1px solid #f5c6cb;
+      }
+
+      button:disabled { 
+        background: #e9ecef; 
+        color: #6c757d; 
+        cursor: not-allowed; 
+        transform: none !important;
+        box-shadow: none !important;
+      }
+
+      #output, #export-status { 
+        margin-top: 24px; 
+        width: 100%; 
+        overflow-x: auto; 
+      }
+
+      #output:empty { 
+        display: none; 
+      }
+
+      #loader { 
+        padding: 60px; 
+        text-align: center; 
+        background: rgba(255,255,255,0.9);
+        border-radius: 16px;
+        backdrop-filter: blur(10px);
+      }
+
+      .spinner { 
+        width: 50px; 
+        height: 50px; 
+        border: 4px solid var(--border-color); 
+        border-top-color: var(--primary-color); 
+        border-radius: 50%; 
+        animation: spin 1s linear infinite; 
+        margin: 0 auto 20px; 
+      }
+
+      @keyframes spin { 
+        to { transform: rotate(360deg); } 
+      }
+
+      /* שיפור לטבלה */
+      #quote-container table {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+      }
+
+      #quote-container th {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 16px 12px;
+        font-weight: 700;
+      }
+
+      #quote-container td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      /* אנימציה להופעת הכרטיסים */
+      .card {
+        animation: fadeInUp 0.6s ease-out;
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+
+    </head>
+
+  <body>
+
+    <div class="container">
+
+        <div id="loader"><div class="spinner"></div><p>טוען נתונים...</p></div>
+
+        <div id="app-body" style="display:none;">
+
+          <div class="card">
+
+            <h4>פרטי לקוח ואירוע</h4>
+
+            <div class="input-group" style="grid-column: 1 / -1;"><label for="clientSelector">בחר לקוח קיים (אופציונלי)</label><select id="clientSelector" onchange="onClientSelect()"></select></div>
+
+            <div class="input-grid">
+
+              <div class="input-group"><label for="companyName">שם החברה</label><input type="text" id="companyName"></div>
+
+              <div class="input-group"><label for="clientName">שם איש קשר</label><input type="text" id="clientName"></div>
+
+              <div class="input-group"><label for="phone">מספר טלפון</label><input type="tel" id="phone"></div>
+
+              <div class="input-group"><label for="companyId">ח"פ</label><input type="text" id="companyId"></div>
+
+              <div class="input-group"><label for="eventName">שם האירוע</label><input type="text" id="eventName"></div>
+
+              <div class="input-group"><label for="eventDate">תאריך האירוע</label><input type="date" id="eventDate"></div>
+
+              <div class="input-group" style="grid-column: 1 / -1;"><label for="eventHours">שעות האירוע</label><input type="text" id="eventHours" placeholder="לדוגמה: 09:00-17:00"></div>
+
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <h4>פרטי ההצעה</h4>
+
+            <div class="input-group"><label for="specialNotes">הערות מיוחדות (יופיעו ב-PDF)</label><textarea id="specialNotes" style="height: 60px;"></textarea></div>
+
+            <textarea id="prompt" placeholder="3 אלחוטי 900|&#10;מסך מלא עם הנחה 500"></textarea>
+
+            <button id="generateBtn" onclick="generateQuote()">🚀 צור הצעה</button>
+            <button id="testBtn" onclick="testConnection()" style="background-color: #007AFF; color: white; margin-top: 10px;">🔧 בדוק חיבור</button>
+
+          </div>
+
+          <div id="output"></div>
+
+          <div class="card" id="controls-card" style="display:none; padding:15px;"><div id="controls-panel"><button class="discount-btn" onclick="applyDiscount(5)">+5%</button><button class="discount-btn" onclick="applyDiscount(10)">+10%</button><button class="discount-btn" onclick="applyDiscount(0)">בטל</button><button id="resetBtn" onclick="resetAll()">🔄 אפס</button></div></div>
+
+                  <div class="card" id="export-card" style="display:none;">
+
+            <button id="exportBtn" onclick="exportToTemplate()">1. צור מסמך Google Doc</button>
+
+            <button id="savePdfBtn" onclick="saveAsPdf()" disabled>2. שמור כ-PDF</button>
+
+            <button id="previewBtn" onclick="previewQuote()" style="background-color: #5856d6; color: white;">👁️ תצוגה מקדימה</button>
+            <button id="quickPdfBtn" onclick="quickExportPdf()" style="background-color: #ff9500; color: white;">🚀 ייצוא מהיר ל-PDF</button>
+
+            <div id="export-status"></div>
+
+        </div>
+
+        </div>
+
+      </div>
+
+
+
+    <script>
+
+  let priceListMap = new Map(), aliasMap = new Map(), existingClients = [], lastQuoteData = {};
+
+  let officialItemNames = [], lastGeneratedDocId = null;
+
+  let searchTermsRegex = null;
+
+
+
+  document.addEventListener("DOMContentLoaded", () => { google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(onFailure).getInitialData(); });
+
+
+
+  function onDataLoaded(data) {
+
+    priceListMap = new Map(data.priceList.map(row => [row[0], { description: row[1], price: parseFloat(row[2]) || 0 }]));
+
+    aliasMap = new Map(data.aliases.map(row => [row[0], row[1]]));
+
+    existingClients = data.clients;
+
+    officialItemNames = Array.from(priceListMap.keys()).sort();
+
+    const escapeRegex = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+    const allTerms = [...priceListMap.keys(), ...aliasMap.keys()];
+
+    allTerms.sort((a, b) => b.length - a.length);
+
+    if (allTerms.length > 0) searchTermsRegex = new RegExp(allTerms.map(escapeRegex).join('|'), 'g');
+
+    const clientSelector = document.getElementById('clientSelector');
+
+    clientSelector.innerHTML = '<option value="-1">-- לקוח חדש --</option>';
+
+    existingClients.forEach((client, index) => {
+
+      const option = document.createElement('option');
+
+      option.value = index;
+
+      option.textContent = client.company || client.name;
+
+      clientSelector.appendChild(option);
+
+    });
+
+    document.getElementById('loader').style.display = 'none';
+
+    document.getElementById('app-body').style.display = 'block';
+
+  }
+
+
+
+  function onClientSelect() {
+
+    const selectedIndex = document.getElementById('clientSelector').value;
+
+    const nameInput = document.getElementById('clientName'), phoneInput = document.getElementById('phone'), companyInput = document.getElementById('companyName'), idInput = document.getElementById('companyId');
+
+    if (selectedIndex < 0) { nameInput.value = ''; phoneInput.value = ''; companyInput.value = ''; idInput.value = ''; return; }
+
+    const client = existingClients[selectedIndex];
+
+    nameInput.value = client.name || ''; phoneInput.value = client.phone || ''; companyInput.value = client.company || ''; idInput.value = client.id || '';
+
+  }
+
+
+
+  function generateQuote() {
+
+    try {
+
+      const userInput = document.getElementById('prompt').value;
+
+      if (!userInput) return;
+
+      const { requestedItems, unrecognizedLine } = parseItemLines(userInput);
+
+      if (unrecognizedLine) { promptForClarification(unrecognizedLine); return; }
+
+      const overallDiscount = extractOverallDiscount(userInput);
+
+      lastQuoteData = { items: requestedItems, discount: overallDiscount };
+
+      renderQuote();
+
+    } catch (e) { alert("אירעה שגיאת JavaScript: " + e.message); }
+
+  }
+
+
+
+  function renderQuote() {
+
+    const outputDiv = document.getElementById('output');
+
+    if (lastQuoteData.items.length === 0 && lastQuoteData.discount === 0) {
+
+      outputDiv.innerHTML = "<div class='card' style='text-align:center;'><p>לא זוהו פריטים בבקשה.</p></div>";
+
+      document.getElementById('controls-card').style.display = 'none';
+
+      document.getElementById('export-card').style.display = 'none';
+
+      return;
+
+    }
+
+    outputDiv.innerHTML = buildHtmlTable(lastQuoteData.items, lastQuoteData.discount);
+
+    document.getElementById('controls-card').style.display = 'block';
+
+    document.getElementById('export-card').style.display = 'block';
+
+    document.getElementById('savePdfBtn').disabled = true;
+
+    document.getElementById('export-status').innerHTML = '';
+
+  }
+
+
+
+  function applyDiscount(percentage) { lastQuoteData.discount = percentage; renderQuote(); }
+
+
+
+  function resetAll() {
+
+    ['prompt', 'companyName', 'clientName', 'phone', 'companyId', 'eventName', 'eventDate', 'eventHours', 'specialNotes'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
+
+    document.getElementById('clientSelector').value = -1;
+
+    document.getElementById('output').innerHTML = '';
+
+    document.getElementById('controls-card').style.display = 'none';
+
+    document.getElementById('export-card').style.display = 'none';
+
+    document.getElementById('export-status').innerHTML = '';
+
+    lastQuoteData = {};
+
+  }
+
+
+
+  function exportToTemplate() {
+
+    const exportBtn = document.getElementById('exportBtn'), exportStatusDiv = document.getElementById('export-status');
+
+    exportBtn.disabled = true;
+
+    exportBtn.innerText = '1. יוצר מסמך...';
+
+    exportStatusDiv.innerHTML = '';
+
+    const exportData = {
+
+      clientDetails: { clientName: document.getElementById('clientName').value, phone: document.getElementById('phone').value, companyName: document.getElementById('companyName').value, companyId: document.getElementById('companyId').value },
+
+      eventDetails: { eventName: document.getElementById('eventName').value, eventDate: document.getElementById('eventDate').value, eventHours: document.getElementById('eventHours').value },
+
+      quote: lastQuoteData,
+
+      specialNotes: document.getElementById('specialNotes').value
+
+    };
+
+    google.script.run.withSuccessHandler(onTemplateExportSuccess).withFailureHandler(onExportFailure).exportToTemplate(exportData);
+
+  }
+
+
+
+  function onTemplateExportSuccess(response) {
+
+    const exportBtn = document.getElementById('exportBtn'), savePdfBtn = document.getElementById('savePdfBtn'), exportStatusDiv = document.getElementById('export-status');
+
+    if (response.status === 'SUCCESS') {
+
+      exportBtn.innerText = '✅ מסמך נוצר!';
+
+      exportStatusDiv.innerHTML = `<p style="font-weight:bold; color:green;">שלב 1 הושלם. <a href="${response.docUrl}" target="_blank">פתח את המסמך</a> ובדוק אותו.</p>`;
+
+      lastGeneratedDocId = response.docId;
+
+      savePdfBtn.disabled = false;
+
+    } else {
+
+      exportStatusDiv.innerHTML = `<p class="error">${response.message}</p>`;
+
+    }
+
+    setTimeout(() => { exportBtn.disabled = false; exportBtn.innerText = "1. צור מסמך Google Doc"; }, 4000);
+
+  }
+
+
+
+  function saveAsPdf() {
+
+    const savePdfBtn = document.getElementById('savePdfBtn'), exportStatusDiv = document.getElementById('export-status');
+
+    if (!lastGeneratedDocId) { exportStatusDiv.innerHTML = `<p class="error">יש ליצור מסמך Google Doc תחילה.</p>`; return; }
+
+    savePdfBtn.disabled = true;
+
+    savePdfBtn.innerText = '2. שומר PDF...';
+
+    google.script.run.withSuccessHandler(onPdfSaveSuccess).withFailureHandler(onExportFailure).saveAsPdf(lastGeneratedDocId);
+
+  }
+
+
+
+  function onPdfSaveSuccess(response) {
+
+    const savePdfBtn = document.getElementById('savePdfBtn'), exportStatusDiv = document.getElementById('export-status');
+
+    if (response.status === 'SUCCESS') {
+
+      savePdfBtn.innerText = '✅ PDF נשמר!';
+
+      exportStatusDiv.innerHTML += `<p style="font-weight:bold; color:green;">שלב 2 הושלם. <a href="${response.pdfUrl}" target="_blank">פתח את קובץ ה-PDF</a>.</p>`;
+
+    } else {
+
+      exportStatusDiv.innerHTML += `<p class="error">${response.message}</p>`;
+
+    }
+
+    setTimeout(() => { savePdfBtn.disabled = false; savePdfBtn.innerText = "2. שמור כ-PDF"; }, 4000);
+
+  }
+
+
+
+  function onExportFailure(error) {
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    exportStatusDiv.innerHTML = `<p class="error">${error.message}</p>`;
+
+    document.getElementById('exportBtn').disabled = false;
+
+    document.getElementById('savePdfBtn').disabled = true;
+
+  }
+
+  function quickExportPdf() {
+
+    const quickPdfBtn = document.getElementById('quickPdfBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    quickPdfBtn.disabled = true;
+
+    quickPdfBtn.innerText = '🚀 יוצר PDF...';
+
+    exportStatusDiv.innerHTML = '<p>יוצר מסמך ו-PDF במקביל...</p>';
+
+    
+
+    const exportData = {
+
+      clientDetails: { clientName: document.getElementById('clientName').value, phone: document.getElementById('phone').value, companyName: document.getElementById('companyName').value, companyId: document.getElementById('companyId').value },
+
+      eventDetails: { eventName: document.getElementById('eventName').value, eventDate: document.getElementById('eventDate').value, eventHours: document.getElementById('eventHours').value },
+
+      quote: lastQuoteData,
+
+      specialNotes: document.getElementById('specialNotes').value
+
+    };
+
+    
+
+    google.script.run.withSuccessHandler(onQuickPdfSuccess).withFailureHandler(onQuickPdfFailure).quickExportToPdf(exportData);
+
+  }
+
+  function onQuickPdfSuccess(response) {
+
+    const quickPdfBtn = document.getElementById('quickPdfBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    
+
+    if (response.status === 'SUCCESS') {
+
+      quickPdfBtn.innerText = '✅ PDF נוצר!';
+
+      exportStatusDiv.innerHTML = `<p style="font-weight:bold; color:green;">✅ PDF נוצר בהצלחה!</p><p><a href="${response.pdfUrl}" target="_blank">פתח את קובץ ה-PDF</a></p>`;
+
+    } else {
+
+      exportStatusDiv.innerHTML = `<p class="error">${response.message}</p>`;
+
+    }
+
+    setTimeout(() => { 
+
+      quickPdfBtn.disabled = false; 
+
+      quickPdfBtn.innerText = "🚀 ייצוא מהיר ל-PDF"; 
+
+    }, 4000);
+
+  }
+
+  function onQuickPdfFailure(error) {
+
+    const quickPdfBtn = document.getElementById('quickPdfBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    exportStatusDiv.innerHTML = `<p class="error">${error.message}</p>`;
+
+    quickPdfBtn.disabled = false;
+
+    quickPdfBtn.innerText = "🚀 ייצוא מהיר ל-PDF";
+
+  }
+
+  function previewQuote() {
+
+    const previewBtn = document.getElementById('previewBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    previewBtn.disabled = true;
+
+    previewBtn.innerText = '👁️ יוצר תצוגה מקדימה...';
+
+    exportStatusDiv.innerHTML = '<p>יוצר תצוגה מקדימה של המסמך...</p>';
+
+    
+
+    const exportData = {
+
+      clientDetails: { clientName: document.getElementById('clientName').value, phone: document.getElementById('phone').value, companyName: document.getElementById('companyName').value, companyId: document.getElementById('companyId').value },
+
+      eventDetails: { eventName: document.getElementById('eventName').value, eventDate: document.getElementById('eventDate').value, eventHours: document.getElementById('eventHours').value },
+
+      quote: lastQuoteData,
+
+      specialNotes: document.getElementById('specialNotes').value
+
+    };
+
+    
+
+    google.script.run.withSuccessHandler(onPreviewSuccess).withFailureHandler(onPreviewFailure).previewDocument(exportData);
+
+  }
+
+  function onPreviewSuccess(response) {
+
+    const previewBtn = document.getElementById('previewBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    
+
+    if (response.status === 'SUCCESS') {
+
+      previewBtn.innerText = '✅ תצוגה מקדימה נוצרה!';
+
+      exportStatusDiv.innerHTML = `<p style="font-weight:bold; color:green;">✅ תצוגה מקדימה נוצרה!</p><p><a href="${response.docUrl}" target="_blank">פתח את המסמך לתצוגה מקדימה</a></p><p><small>הערה: זהו מסמך זמני לצפייה בלבד. כדי ליצור מסמך קבוע, השתמש בכפתורי הייצוא.</small></p>`;
+
+    } else {
+
+      exportStatusDiv.innerHTML = `<p class="error">${response.message}</p>`;
+
+    }
+
+    setTimeout(() => { 
+
+      previewBtn.disabled = false; 
+
+      previewBtn.innerText = "👁️ תצוגה מקדימה"; 
+
+    }, 4000);
+
+  }
+
+  function onPreviewFailure(error) {
+
+    const previewBtn = document.getElementById('previewBtn');
+
+    const exportStatusDiv = document.getElementById('export-status');
+
+    exportStatusDiv.innerHTML = `<p class="error">${error.message}</p>`;
+
+    previewBtn.disabled = false;
+
+    previewBtn.innerText = "👁️ תצוגה מקדימה";
+
+  }
+
+  // פונקציית בדיקת חיבור
+  function testConnection() {
+    const testBtn = document.getElementById('testBtn');
+    const outputDiv = document.getElementById('output');
+    
+    testBtn.disabled = true;
+    testBtn.innerText = '🔄 בודק...';
+    
+    outputDiv.innerHTML = '<div class="loader">בודק חיבור למערכת...</div>';
+    
+    google.script.run
+      .withSuccessHandler(onTestSuccess)
+      .withFailureHandler(onTestFailure)
+      .testFunction();
+  }
+
+  function onTestSuccess(result) {
+    const testBtn = document.getElementById('testBtn');
+    const outputDiv = document.getElementById('output');
+    
+    testBtn.disabled = false;
+    testBtn.innerText = '🔧 בדוק חיבור';
+    
+    if (result.status === 'SUCCESS') {
+      outputDiv.innerHTML = `<div class="card" style="background-color: #d4edda; border-color: #c3e6cb; color: #155724;"><h3>✅ החיבור תקין!</h3><p>${result.message}</p><p>המערכת מוכנה לשימוש.</p></div>`;
+    } else {
+      outputDiv.innerHTML = `<div class="card" style="background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;"><h3>❌ יש בעיה</h3><p>${result.message}</p></div>`;
+    }
+  }
+
+  function onTestFailure(error) {
+    const testBtn = document.getElementById('testBtn');
+    const outputDiv = document.getElementById('output');
+    
+    testBtn.disabled = false;
+    testBtn.innerText = '🔧 בדוק חיבור';
+    
+    outputDiv.innerHTML = `<div class="card" style="background-color: #f8d7da; border-color: #f5c6cb; color: #721c24;"><h3>❌ שגיאת חיבור</h3><p>${error.message}</p><p>יתכן שהמערכת לא מוגדרת כ-Google Apps Script או שיש בעיה בהרשאות.</p></div>`;
+  }
+
+
+
+  // All other parsing and building functions remain the same
+
+  function parseItemLines(text) { const lines = text.split('\n').filter(line => line.trim() !== '' && !isCommand(line)); const requestedItems = []; for (const line of lines) { if (!searchTermsRegex) break; const matches = (line.match(searchTermsRegex) || []); const bestMatch = matches[0]; if (bestMatch) { const officialName = aliasMap.get(bestMatch) || bestMatch; const itemData = priceListMap.get(officialName); if (itemData) { const quantity = extractQuantity(line); let totalDiscount = extractItemDiscount(line); if (totalDiscount === 0) { const newUnitPrice = extractFinalPrice(line); if (newUnitPrice !== null) { const perUnitDiscount = (itemData.price || 0) - newUnitPrice; totalDiscount = (perUnitDiscount > 0) ? perUnitDiscount * quantity : 0; } } const newItem = { name: officialName, description: String(itemData.description || ''), unitPrice: itemData.price || 0, quantity: quantity, discount: totalDiscount }; requestedItems.push(newItem); } else { return { requestedItems: [], unrecognizedLine: line }; } } else { return { requestedItems: [], unrecognizedLine: line }; } } return { requestedItems, unrecognizedLine: null }; }
+
+  function isCommand(line) { return /הנחה כללית|הנחה על הכל|הנחה סופית/i.test(line); }
+
+  function extractOverallDiscount(text) { const regex = /(?:הנחה כללית|הנחה על הכל|הנחה סופית)\s*(\d+)\s*%|(\d+)\s*%\s*(?:הנחה כללית|הנחה על הכל|הנחה סופית)/i; const match = text.match(regex); return match ? parseFloat(match[1] || match[2]) || 0 : 0; }
+
+  function extractQuantity(line) { const regex = /^\s*(\d+)/; const match = line.match(regex); return match ? parseInt(match[1], 10) || 1 : 1; }
+
+  function extractItemDiscount(line) { const regex = /הנחה\s*(\d+\.?\d*)/i; const match = line.match(regex); return match ? parseFloat(match[1]) || 0 : 0; }
+
+  function extractFinalPrice(line) { const regex = /(\d+\.?\d*)\|\s*$/; const match = line.match(regex); return match ? parseFloat(match[1]) : null; }
+
+  function buildHtmlTable(items, overallDiscountPercent) { const tableRows = items.map(item => { const itemTotal = ((item.unitPrice || 0) * (item.quantity || 1)) - (item.discount || 0); return `<tr><td style="padding:8px;border-bottom: 1px solid #eee;">${item.name}</td><td style="padding:8px;border-bottom: 1px solid #eee;">${item.description}</td><td style="padding:8px;border-bottom: 1px solid #eee;">${(item.unitPrice || 0).toLocaleString()} ₪</td><td style="padding:8px;border-bottom: 1px solid #eee;">${item.quantity || 1}</td><td style="padding:8px;border-bottom: 1px solid #eee;">${(item.discount || 0).toLocaleString()} ₪</td><td style="padding:8px;border-bottom: 1px solid #eee; font-weight:bold;">${itemTotal.toLocaleString()} ₪</td></tr>`; }).join(''); const subtotal = items.reduce((acc, item) => acc + (((item.unitPrice || 0) * (item.quantity || 1)) - (item.discount || 0)), 0); const formatCurrency = (num) => num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); let footerRows = []; const vatDisplay = (0.18 * 100).toFixed(0); if (overallDiscountPercent > 0) { const discountAmount = subtotal * (overallDiscountPercent / 100); const subtotalAfterDiscount = subtotal - discountAmount; const vatAmount = subtotalAfterDiscount * 0.18; const finalTotal = subtotalAfterDiscount + vatAmount; footerRows = [`<tr><td colspan="5">סה"כ לפני הנחה</td><td>${subtotal.toLocaleString()} ₪</td></tr>`, `<tr style="color: green;"><td colspan="5">הנחה ${overallDiscountPercent}% על היתרה</td><td>-${formatCurrency(discountAmount)} ₪</td></tr>`, `<tr style="font-weight:bold;"><td colspan="5">סה"כ לאחר הנחה</td><td>${subtotalAfterDiscount.toLocaleString()} ₪</td></tr>`, `<tr><td colspan="5">מע"מ (${vatDisplay}%)</td><td>${formatCurrency(vatAmount)} ₪</td></tr>`, `<tr style="font-weight:bold; background-color:#f2f2f2;"><td colspan="5">סה"כ כולל מע"מ</td><td>${formatCurrency(finalTotal)} ₪</td></tr>`]; } else { const vatAmount = subtotal * 0.18; const finalTotal = subtotal + vatAmount; footerRows = [`<tr style="font-weight:bold;"><td colspan="5">סה"כ לפני מע"מ</td><td>${subtotal.toLocaleString()} ₪</td></tr>`, `<tr><td colspan="5">מע"מ (${vatDisplay}%)</td><td>${formatCurrency(vatAmount)} ₪</td></tr>`, `<tr style="font-weight:bold; background-color:#f2f2f2;"><td colspan="5">סה"כ כולל מע"מ</td><td>${formatCurrency(finalTotal)} ₪</td></tr>`]; } return `<div id="quote-container" class="card"><table cellpadding="0" cellspacing="0" style="width:100%; border-collapse: collapse; text-align: right; background-color:white; font-size:14px;"><thead><tr style="background-color:#e9ecef; font-weight:600;"><th style="padding:10px;">שם הפריט</th><th style="padding:10px;">תיאור</th><th style="padding:10px;">מחיר יחידה</th><th style="padding:10px;">כמות</th><th style="padding:10px;">הנחה</th><th style="padding:10px;">סהכ</th></tr></thead><tbody>${tableRows}</tbody><tfoot style="font-weight:bold; text-align:right;">${footerRows.join('')}</tfoot></table></div>`;}
+
+  function onFailure(error) { document.getElementById('loader').innerHTML = `<p class="error">שגיאה חמורה בטעינת נתונים: ${error.message}</p>`; }
+
+  function promptForClarification(unrecognizedLine) { const outputDiv = document.getElementById('output'); let optionsHtml = officialItemNames.map(name => `<option value="${name}">${name}</option>`).join(''); outputDiv.innerHTML = `<div class="card clarification-box"><h4>שאלה...</h4><p>לא זוהה הפריט: "<b>${unrecognizedLine}</b>"</p><p>בחר לאיזה פריט מהמחירון התכוונת:</p><select id="officialNameSelect"><option value="">בחר פריט...</option>${optionsHtml}</select><button id="learnBtn" onclick="submitClarification('${unrecognizedLine}')">שמור והמשך</button></div>`; document.getElementById('controls-card').style.display = 'none'; document.getElementById('export-card').style.display = 'none'; }
+
+  function submitClarification(alias) { const selectedOfficialName = document.getElementById('officialNameSelect').value; if (!selectedOfficialName) { alert('יש לבחור פריט מהרשימה.'); return; } document.getElementById('loader').style.display = 'block'; document.getElementById('app-body').style.display = 'none'; google.script.run.withSuccessHandler(onDataRefreshed).withFailureHandler(onFailure).learnAlias(alias, selectedOfficialName); }
+
+  function onDataRefreshed() { google.script.run.withSuccessHandler(onDataLoaded).withFailureHandler(onFailure).getInitialData(); }
+
+  // --- USER PREFERENCES ---
+  function saveUserPreferences(preferences) {
+    try {
+      const cache = CacheService.getScriptCache();
+      cache.put('userPreferences', JSON.stringify(preferences), 86400); // Cache for 24 hours
+      return { status: 'SUCCESS' };
+    } catch (e) {
+      return { status: 'ERROR', message: e.message };
+    }
+  }
+
+  function getUserPreferences() {
+    try {
+      const cache = CacheService.getScriptCache();
+      const cached = cache.get('userPreferences');
+      return cached ? JSON.parse(cached) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+</script>
+
+  </body>
+
+</html>
