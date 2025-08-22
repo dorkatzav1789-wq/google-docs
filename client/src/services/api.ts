@@ -43,4 +43,21 @@ export const quotesAPI = {
       api.delete(`/quotes/${id}`).then(res => res.data),
 };
 
+export const employeesAPI = {
+  getAll: () => axios.get('/api/employees').then(res => res.data),
+  create: (employee: any) => axios.post('/api/employees', employee).then(res => res.data),
+  update: (id: number, employee: any) => axios.put(`/api/employees/${id}`, employee).then(res => res.data),
+};
+
+export const workHoursAPI = {
+  create: (workHours: any) => axios.post('/api/work-hours', workHours).then(res => res.data),
+  getByEmployee: (employeeId: number, startDate: string, endDate: string) => 
+    axios.get(`/api/work-hours/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`).then(res => res.data),
+};
+
+export const reportsAPI = {
+  getMonthly: (year: number, month: number) => 
+    axios.get(`/api/reports/monthly/${year}/${month}`).then(res => res.data),
+};
+
 export default api;

@@ -4,6 +4,9 @@ import QuoteForm from './components/QuoteForm';
 import QuotesList from './components/QuotesList';
 import QuoteDetails from './components/QuoteDetails';
 import NewClientForm from './components/NewClientForm';
+import { EmployeeManagement } from './components/EmployeeManagement';
+import { WorkHoursTracker } from './components/WorkHoursTracker';
+import { MonthlyReport } from './components/MonthlyReport';
 
 interface Quote {
   id: number;
@@ -23,7 +26,7 @@ interface Client {
   company_id: string;
 }
 
-type Page = 'quotes' | 'new-quote' | 'quote-details' | 'new-client';
+type Page = 'quotes' | 'new-quote' | 'quote-details' | 'new-client' | 'employees' | 'work-hours' | 'reports';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('quotes');
@@ -132,7 +135,33 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>מנהל הצעות מחיר</h1>
+        <h1>מערכת ניהול הצעות מחיר ושעות עבודה</h1>
+        <nav className="main-nav">
+          <button 
+            onClick={() => setCurrentPage('quotes')}
+            className={`nav-btn ${currentPage === 'quotes' ? 'active' : ''}`}
+          >
+            הצעות מחיר
+          </button>
+          <button 
+            onClick={() => setCurrentPage('employees')}
+            className={`nav-btn ${currentPage === 'employees' ? 'active' : ''}`}
+          >
+            ניהול עובדים
+          </button>
+          <button 
+            onClick={() => setCurrentPage('work-hours')}
+            className={`nav-btn ${currentPage === 'work-hours' ? 'active' : ''}`}
+          >
+            שעות עבודה
+          </button>
+          <button 
+            onClick={() => setCurrentPage('reports')}
+            className={`nav-btn ${currentPage === 'reports' ? 'active' : ''}`}
+          >
+            דוחות
+          </button>
+        </nav>
         <div className="header-buttons">
           <button 
             onClick={handleNewQuote}
@@ -150,12 +179,26 @@ function App() {
       </header>
 
       <main className="App-main">
-        <div className="quotes-container">
-          <h2>הצעות מחיר קיימות</h2>
-          <QuotesList 
-            onQuoteSelect={handleQuoteSelect}
-          />
-        </div>
+        {currentPage === 'quotes' && (
+          <div className="quotes-container">
+            <h2>הצעות מחיר קיימות</h2>
+            <QuotesList 
+              onQuoteSelect={handleQuoteSelect}
+            />
+          </div>
+        )}
+        
+        {currentPage === 'employees' && (
+          <EmployeeManagement />
+        )}
+        
+        {currentPage === 'work-hours' && (
+          <WorkHoursTracker />
+        )}
+        
+        {currentPage === 'reports' && (
+          <MonthlyReport />
+        )}
       </main>
     </div>
   );

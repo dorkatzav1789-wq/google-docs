@@ -427,6 +427,208 @@ function generateQuoteHTML(quote, items) {
 </body>
 </html>`;
 }
+// ===== HTML generator for Monthly Work Hours PDF =====
+function renderMonthlyReportHTML(report, year, month) {
+  const safe = (v) => (v ?? '').toString();
+  const fmtNum = (n) =>
+      Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 });
+  const fmtNis = (n) =>
+      '₪' + Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 });
+
+  // אם לא הגיע summary מהשרת – נחשב כאן גיבוי
+  const totalHours =
+      report?.summary?.total_hours ??
+      (report?.work_hours || []).reduce((s, wh) => s + Number(wh.hours_worked || 0), 0);
+
+  const totalAmount =
+      report?.summary?.total_amount ??
+      (report?.work_hours || []).reduce((s, wh) => s + Number(wh.daily_total || 0), 0);
+
+  const employeeCount =
+      report?.summary?.employee_count ??
+      new Set((report?.work_hours || []).map((wh) => wh.employees?.name || wh.employee_id)).size;
+
+  const rows = (report?.work_hours || [])
+      .map(
+          (wh) => `
+        <tr>
+          <td>${safe(wh.employees?.name || 'לא ידוע')}</td>
+          <td>${safe(wh.work_date)}</td>
+          <td>${fmtNum(wh.hours_worked)}</td>
+          <td>${fmtNis(wh.hourly_rate)}</td>
+          <td>${fmtNis(wh.daily_total)}</td>
+          <td>${safe(wh.notes || '-')}</td>
+        </tr>
+      `
+      )
+      .join('');
+
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8" />
+  <title>דוח שעות עבודה - ${month}/${year}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, "Segoe UI", Tahoma, sans-serif; margin: 20px; color: #111827; background: #fff; }
+    .header { text-align: center; margin-bottom: 24px; border-bottom: 2px solid #3b82f6; padding-bottom: 12px; }
+    .header h1 { margin: 0; color: #1e40af; font-size: 26px; }
+    .header h2 { margin: 6px 0 0; color: #374151; font-size: 18px; }
+
+    .summary { display: flex; gap: 16px; margin: 18px 0 8px; }
+    .card { flex: 1; border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 8px; padding: 12px; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; color: #374151; }
+    .card .val { font-size: 18px; font-weight: 700; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: right; vertical-align: top; }
+    thead th { background: #f3f4f6; color: #374151; font-weight: 700; }
+
+    .footer { margin-top: 24px; text-align: center; color: #6b7280; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>דוח שעות עבודה</h1>
+    <h2>חודש ${month}/${year}</h2>
+  </div>
+
+  <div class="summary">
+    <div class="card">
+      <h3>סה"כ שעות</h3>
+      <div class="val">${fmtNum(totalHours)}</div>
+    </div>
+    <div class="card">
+      <h3>סה"כ תשלום</h3>
+      <div class="val">${fmtNis(totalAmount)}</div>
+    </div>
+    <div class="card">
+      <h3>מספר עובדים</h3>
+      <div class="val">${fmtNum(employeeCount)}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>עובד</th>
+        <th>תאריך</th>
+        <th>שעות</th>
+        <th>שכר לשעה</th>
+        <th>סה"כ ליום</th>
+        <th>הערות</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows || `<tr><td colspan="6" style="text-align:center;color:#6b7280;">אין נתונים לחודש שנבחר</td></tr>`}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    נוצר אוטומטית על־ידי מערכת הדוחות
+  </div>
+</body>
+</html>`;
+}
+
+
+// ===== Employee routes =====
+app.get('/api/employees', async (req, res) => {
+  try {
+    const employees = await dbFunctions.getAllEmployees();
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/employees', async (req, res) => {
+  try {
+    const employee = await dbFunctions.addEmployee(req.body);
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/employees/:id', async (req, res) => {
+  try {
+    const employee = await dbFunctions.updateEmployee(req.params.id, req.body);
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== Work hours routes =====
+app.post('/api/work-hours', async (req, res) => {
+  try {
+    const workHours = await dbFunctions.addWorkHours(req.body);
+    res.json(workHours);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/work-hours/employee/:id', async (req, res) => {
+  try {
+    let { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const end   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth()+1, 1));
+      startDate = start.toISOString().slice(0,10);
+      endDate   = end.toISOString().slice(0,10);
+    }
+    const workHours = await dbFunctions.getWorkHoursByEmployee(
+        req.params.id, startDate, endDate
+    );
+    res.json(workHours);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+app.get('/api/reports/monthly/:year/:month', async (req, res) => {
+  try {
+    const report = await dbFunctions.getMonthlyReport(
+      parseInt(req.params.year), 
+      parseInt(req.params.month)
+    );
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+app.get('/api/reports/monthly/:year/:month/pdf', async (req, res) => {
+  try {
+    const year  = Number(req.params.year);
+    const month = Number(req.params.month);
+
+    const report = await dbFunctions.getMonthlyReport(year, month);
+    const html = renderMonthlyReportHTML(report, year, month); // פונקציה שיוצרת HTML
+
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.emulateMediaType('screen');
+    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top:'15mm', right:'15mm', bottom:'15mm', left:'15mm' } });
+    await browser.close();
+
+    res.setHeader('Content-Type','application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="work-hours-${year}-${month}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error('monthly pdf error:', err);
+    res.status(500).json({ error: 'PDF export failed' });
+  }
+});
 
 
 // Serve React app

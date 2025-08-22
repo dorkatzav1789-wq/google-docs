@@ -283,7 +283,118 @@ const dbFunctions = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // ===== פונקציות לעובדים =====
+  addEmployee: async (employeeData) => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([employeeData])
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getAllEmployees: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  updateEmployee: async (id, employeeData) => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .update(employeeData)
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ===== פונקציות לשעות עבודה =====
+  addWorkHours: async (workHoursData) => {
+    try {
+      const { data, error } = await supabase
+        .from('work_hours')
+        .insert([workHoursData])
+        .select();
+      
+      if (error) throw error;
+      return data[0];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getWorkHoursByEmployee: async (employeeId, startDate, endDate) => {
+    try {
+      const { data, error } = await supabase
+        .from('work_hours')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .gte('work_date', startDate)
+        .lte('work_date', endDate)
+        .order('work_date');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMonthlyReport: async (year, month) => {
+    try {
+      const { data, error } = await supabase
+        .from('work_hours')
+        .select(`
+          *,
+          employees(name, hourly_rate)
+        `)
+        .eq('EXTRACT(YEAR FROM work_date)', year)
+        .eq('EXTRACT(MONTH FROM work_date)', month)
+        .order('work_date');
+      
+      if (error) throw error;
+      
+      // עיבוד הנתונים לסיכום
+      const workHours = data || [];
+      const employees = [...new Set(workHours.map(wh => wh.employees))];
+      
+      const summary = {
+        total_hours: workHours.reduce((sum, wh) => sum + parseFloat(wh.hours_worked), 0),
+        total_amount: workHours.reduce((sum, wh) => sum + parseFloat(wh.daily_total), 0),
+        employee_count: employees.length
+      };
+
+      return {
+        work_hours: workHours,
+        employees: employees,
+        summary: summary
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
 module.exports = { supabase, dbFunctions };
+

@@ -57,6 +57,30 @@ CREATE TABLE IF NOT EXISTS quote_items (
   total DECIMAL(10,2) NOT NULL
 );
 
+-- טבלת עובדים
+CREATE TABLE IF NOT EXISTS employees (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT,
+  email TEXT,
+  hourly_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- טבלת שעות עבודה יומיות
+CREATE TABLE IF NOT EXISTS work_hours (
+  id BIGSERIAL PRIMARY KEY,
+  employee_id BIGINT REFERENCES employees(id) ON DELETE CASCADE,
+  work_date DATE NOT NULL,
+  hours_worked DECIMAL(4,2) NOT NULL, -- עד 99.99 שעות
+  hourly_rate DECIMAL(10,2) NOT NULL, -- השכר לשעה באותו יום
+  daily_total DECIMAL(10,2) NOT NULL, -- שעות * שכר לשעה
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(employee_id, work_date) -- מניעת כפילות תאריכים לעובד
+);
+
 -- יצירת אינדקסים לביצועים טובים יותר
 CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);
 CREATE INDEX IF NOT EXISTS idx_aliases_alias ON aliases(alias);
@@ -65,6 +89,10 @@ CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
 CREATE INDEX IF NOT EXISTS idx_quotes_client_id ON quotes(client_id);
 CREATE INDEX IF NOT EXISTS idx_quotes_created_at ON quotes(created_at);
 CREATE INDEX IF NOT EXISTS idx_quote_items_quote_id ON quote_items(quote_id);
+CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);
+CREATE INDEX IF NOT EXISTS idx_work_hours_employee_id ON work_hours(employee_id);
+CREATE INDEX IF NOT EXISTS idx_work_hours_work_date ON work_hours(work_date);
+CREATE INDEX IF NOT EXISTS idx_work_hours_month_year ON work_hours(EXTRACT(YEAR FROM work_date), EXTRACT(MONTH FROM work_date));
 
 -- הגדרת RLS (Row Level Security) - אופציונלי
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
@@ -72,6 +100,8 @@ ALTER TABLE aliases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quote_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE work_hours ENABLE ROW LEVEL SECURITY;
 
 -- מדיניות גישה ציבורית (לצורך הדגמה - ניתן לשנות בהמשך)
 CREATE POLICY "Allow public read access" ON items FOR SELECT USING (true);
@@ -79,15 +109,21 @@ CREATE POLICY "Allow public read access" ON aliases FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON clients FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON quotes FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON quote_items FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON employees FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON work_hours FOR SELECT USING (true);
 
 CREATE POLICY "Allow public insert access" ON items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON aliases FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON clients FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON quotes FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON quote_items FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public insert access" ON employees FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public insert access" ON work_hours FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow public update access" ON items FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON aliases FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON clients FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON quotes FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON quote_items FOR UPDATE USING (true);
+CREATE POLICY "Allow public update access" ON employees FOR UPDATE USING (true);
+CREATE POLICY "Allow public update access" ON work_hours FOR UPDATE USING (true);

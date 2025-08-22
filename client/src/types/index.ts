@@ -57,3 +57,34 @@ export interface QuoteWithItems {
   items: QuoteItem[];
 }
 
+export interface Employee {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  hourly_rate: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WorkHours {
+  id: number;
+  employee_id: number;
+  work_date: string;
+  hours_worked: number;
+  hourly_rate: number;
+  daily_total: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface MonthlyReport {
+  work_hours: WorkHours[];
+  employees: Employee[];
+  summary: {
+    total_hours: number;
+    total_amount: number;
+    employee_count: number;
+  };
+}
+

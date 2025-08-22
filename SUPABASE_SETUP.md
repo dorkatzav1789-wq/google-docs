@@ -105,3 +105,4 @@ npm run dev
 2. להוסיף Real-time subscriptions
 3. להוסיף Storage לשמירת קבצי PDF
 4. להוסיף Edge Functions ללוגיקה מורכבת
+

@@ -34,3 +34,4 @@ async function testSupabaseConnection() {
 
 // הרצת הבדיקה
 testSupabaseConnection();
+
