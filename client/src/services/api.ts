@@ -55,9 +55,15 @@ export const workHoursAPI = {
     axios.get(`/api/work-hours/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`).then(res => res.data),
 };
 
+// Reports API
 export const reportsAPI = {
-  getMonthly: (year: number, month: number) => 
-    axios.get(`/api/reports/monthly/${year}/${month}`).then(res => res.data),
+  getMonthly: (year: number, month: number) =>
+      api.get(`/reports/monthly/${year}/${month}`).then(res => res.data),
+
+  exportMonthlyPdf: (year: number, month: number): Promise<Blob> =>
+      api.get(`/reports/monthly/${year}/${month}/pdf`, { responseType: 'blob' })
+          .then(res => res.data),
 };
+
 
 export default api;
