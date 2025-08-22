@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const puppeteer = require('puppeteer');
 const { dbFunctions } = require('./supabase-database');
 const { initializeDatabase } = require('./initData');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -199,8 +200,7 @@ app.post('/api/parse-quote', async (req, res) => {
 });
 
 // ייצוא PDF
-const chromium = require('@sparticuz/chromium');
-const puppeteer = require('puppeteer-core');
+
 
 app.post('/api/export-pdf', async (req, res) => {
   try {
