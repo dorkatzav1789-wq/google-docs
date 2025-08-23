@@ -286,15 +286,34 @@ const dbFunctions = {
   },
 
   // ===== פונקציות לעובדים =====
+// dbFunctions.addEmployee
   addEmployee: async (employeeData) => {
     try {
+      // שולף first_name/last_name, ובונה name לתאימות
+      const first = (employeeData.first_name || '').trim();
+      const last  = (employeeData.last_name  || '').trim();
+      const full  = (employeeData.name && employeeData.name.trim())
+          ? employeeData.name.trim()
+          : `${first} ${last}`.trim();
+
+      const insertObj = {
+        first_name: first || null,
+        last_name:  last  || null,
+        name:       full || null,              // לשמירת תאימות מול מקומות שמשתמשים ב-name
+        phone:      employeeData.phone ?? null,
+        email:      employeeData.email ?? null,
+        hourly_rate: Number(employeeData.hourly_rate) || 0,
+        is_active:  employeeData.is_active ?? true,
+      };
+
       const { data, error } = await supabase
-        .from('employees')
-        .insert([employeeData])
-        .select();
-      
+          .from('employees')
+          .insert([insertObj])
+          .select()
+          .single();
+
       if (error) throw error;
-      return data[0];
+      return data;
     } catch (error) {
       throw error;
     }
@@ -303,16 +322,18 @@ const dbFunctions = {
   getAllEmployees: async () => {
     try {
       const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .order('name');
-      
+          .from('employees')
+          .select('id, first_name, last_name, name, phone, email, hourly_rate, is_active, created_at')
+          .order('first_name', { ascending: true })
+          .order('last_name',  { ascending: true });
+
       if (error) throw error;
       return data || [];
     } catch (error) {
       throw error;
     }
   },
+
 
   updateEmployee: async (id, employeeData) => {
     try {

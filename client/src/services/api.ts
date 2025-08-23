@@ -53,10 +53,16 @@ export const quotesAPI = {
 
 };
 
+// יצירה
 export const employeesAPI = {
-  getAll: () => axios.get('/api/employees').then(res => res.data),
-  create: (employee: any) => axios.post('/api/employees', employee).then(res => res.data),
-  update: (id: number, employee: any) => axios.put(`/api/employees/${id}`, employee).then(res => res.data),
+  getAll: () => api.get('/employees').then(res => res.data),
+  create: (employee: {
+    first_name: string;
+    last_name: string;
+    phone?: string;
+    email?: string;
+    hourly_rate: number;
+  }) => api.post('/employees', employee).then(res => res.data),
 };
 
 export const workHoursAPI = {

@@ -59,7 +59,9 @@ export interface QuoteWithItems {
 
 export interface Employee {
   id: number;
-  name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  name?: string;
   phone?: string;
   email?: string;
   hourly_rate: number;

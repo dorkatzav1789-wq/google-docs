@@ -42,14 +42,14 @@ export const WorkHoursTracker: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const employee = employees.find(emp => emp.id === selectedEmployee);
+      const employee = employees.find((emp) => emp.id === selectedEmployee);
       if (!employee) {
         alert('לא נמצא עובד נבחר');
         return;
       }
 
       const hours = Number(workHours.hours_worked || 0);
-      const rate  = Number(employee.hourly_rate || 0);
+      const rate = Number(employee.hourly_rate || 0);
 
       const workHoursData = {
         employee_id: selectedEmployee,
@@ -57,7 +57,7 @@ export const WorkHoursTracker: React.FC = () => {
         hours_worked: hours,
         hourly_rate: rate,
         daily_total: hours * rate,
-        notes: workHours.notes
+        notes: workHours.notes,
       };
 
       await workHoursAPI.create(workHoursData);
@@ -65,7 +65,7 @@ export const WorkHoursTracker: React.FC = () => {
       setWorkHours({
         work_date: new Date().toISOString().split('T')[0],
         hours_worked: 0,
-        notes: ''
+        notes: '',
       });
       alert('שעות העבודה נוספו בהצלחה!');
     } catch (error) {
@@ -75,6 +75,11 @@ export const WorkHoursTracker: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const fullName = (emp: Employee) =>
+      (emp.first_name || emp.last_name)
+          ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+          : (emp.name ?? 'ללא שם');
 
   return (
       <div className="p-6">
@@ -97,7 +102,8 @@ export const WorkHoursTracker: React.FC = () => {
               <option value="">בחר עובד</option>
               {(employees ?? []).map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.name} (₪{Number(employee.hourly_rate || 0).toLocaleString('he-IL')}/שעה)
+                    {fullName(employee)} (₪
+                    {Number(employee.hourly_rate || 0).toLocaleString('he-IL')}/שעה)
                   </option>
               ))}
             </select>
@@ -105,7 +111,9 @@ export const WorkHoursTracker: React.FC = () => {
             <input
                 type="date"
                 value={workHours.work_date}
-                onChange={(e) => setWorkHours({ ...workHours, work_date: e.target.value })}
+                onChange={(e) =>
+                    setWorkHours({ ...workHours, work_date: e.target.value })
+                }
                 className="p-2 border rounded"
                 required
             />
