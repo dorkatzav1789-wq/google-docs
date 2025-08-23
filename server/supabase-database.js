@@ -288,35 +288,25 @@ const dbFunctions = {
   // ===== פונקציות לעובדים =====
 // dbFunctions.addEmployee
   addEmployee: async (employeeData) => {
-    try {
-      // שולף first_name/last_name, ובונה name לתאימות
-      const first = (employeeData.first_name || '').trim();
-      const last  = (employeeData.last_name  || '').trim();
-      const full  = (employeeData.name && employeeData.name.trim())
-          ? employeeData.name.trim()
-          : `${first} ${last}`.trim();
+    // שמור רק שדות שאתה יודע שקיימים בטבלה
+    const payload = {
+      name:        employeeData.name ?? null,
+      first_name:  employeeData.first_name ?? null,
+      last_name:   employeeData.last_name ?? null,
+      phone:       employeeData.phone ?? null,
+      email:       employeeData.email ?? null,
+      hourly_rate: employeeData.hourly_rate ?? 0,
+      // אל תשלב is_active אם אין עמודה כזו
+    };
 
-      const insertObj = {
-        first_name: first || null,
-        last_name:  last  || null,
-        name:       full || null,              // לשמירת תאימות מול מקומות שמשתמשים ב-name
-        phone:      employeeData.phone ?? null,
-        email:      employeeData.email ?? null,
-        hourly_rate: Number(employeeData.hourly_rate) || 0,
-        is_active:  employeeData.is_active ?? true,
-      };
+    const { data, error } = await supabase
+        .from('employees')
+        .insert([payload])
+        .select()
+        .single();
 
-      const { data, error } = await supabase
-          .from('employees')
-          .insert([insertObj])
-          .select()
-          .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      throw error;
-    }
+    if (error) throw error;
+    return data;
   },
 
   getAllEmployees: async () => {

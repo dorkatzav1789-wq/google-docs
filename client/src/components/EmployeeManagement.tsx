@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Employee } from '../types';
-import { employeesAPI } from '../services/api';
+import React, { useEffect, useState } from 'react';
+import type { Employee } from '../types';
+import { employeesAPI} from '../services/api';
 import { WorkHoursTracker } from './WorkHoursTracker';
 import { MonthlyReport } from './MonthlyReport';
 
@@ -8,50 +8,120 @@ type Tab = 'manage' | 'hours' | 'reports';
 
 const EmployeesPage: React.FC = () => {
   const [tab, setTab] = useState<Tab>('manage');
+
+  // ----- ניהול עובדים -----
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+
+  // עובד חדש
   const [newEmployee, setNewEmployee] = useState({
     first_name: '',
     last_name: '',
     phone: '',
     email: '',
     hourly_rate: 0,
+    is_active: true,
   });
 
+  // מצב עריכה לעובד קיים
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<Employee>>({});
+
   useEffect(() => {
-    if (tab === 'manage') loadEmployees();
+    if (tab === 'manage') {
+      void loadEmployees();
+    }
   }, [tab]);
 
   const loadEmployees = async () => {
     try {
+      setLoading(true);
       const data = await employeesAPI.getAll();
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error loading employees:', err);
       setEmployees([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // הוספת עובד חדש
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await employeesAPI.create(newEmployee);
+      setSaving(true);
+      await employeesAPI.create({
+        first_name: newEmployee.first_name.trim(),
+        last_name: newEmployee.last_name.trim(),
+        phone: newEmployee.phone.trim() || undefined,
+        email: newEmployee.email.trim() || undefined,
+        hourly_rate: Number(newEmployee.hourly_rate || 0),
+        is_active: newEmployee.is_active,
+      });
       setNewEmployee({
         first_name: '',
         last_name: '',
         phone: '',
         email: '',
         hourly_rate: 0,
+        is_active: true,
       });
-      loadEmployees();
+      await loadEmployees();
+      alert('העובד נוסף בהצלחה');
     } catch (err) {
       console.error('Error adding employee:', err);
+      alert('שגיאה בהוספת עובד');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // התחלת עריכה
+  const startEdit = (emp: Employee) => {
+    setEditingId(emp.id);
+    setEditDraft({
+      first_name: emp.first_name,
+      last_name: emp.last_name,
+      phone: emp.phone,
+      email: emp.email,
+      hourly_rate: emp.hourly_rate,
+      is_active: emp.is_active,
+    });
+  };
+
+  // ביטול עריכה
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft({});
+  };
+
+  // שמירת עריכה
+  const saveEdit = async (id: number) => {
+    try {
+      setSaving(true);
+      await employeesAPI.update(id, {
+        first_name: (editDraft.first_name ?? '').toString().trim(),
+        last_name: (editDraft.last_name ?? '').toString().trim(),
+        phone: (editDraft.phone ?? '').toString().trim() || null,
+        email: (editDraft.email ?? '').toString().trim() || null,
+        hourly_rate: Number(editDraft.hourly_rate ?? 0),
+        is_active: Boolean(editDraft.is_active),
+      });
+      await loadEmployees();
+      cancelEdit();
+      console.log('העובד עודכן בהצלחה');
+    } catch (err) {
+      console.error('Error updating employee:', err);
+      console.log('שגיאה בעדכון עובד');
+    } finally {
+      setSaving(false);
     }
   };
 
   const fullName = (emp: Employee) =>
-      (emp.first_name || emp.last_name)
-          ? `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
-          : (emp.name ?? 'ללא שם');
+      [emp.first_name, emp.last_name].filter(Boolean).join(' ') || '---';
 
   return (
       <div className="App">
@@ -85,6 +155,7 @@ const EmployeesPage: React.FC = () => {
           </div>
 
           <div className="card">
+            {/* לשונית ניהול עובדים */}
             {tab === 'manage' && (
                 <div className="p-6">
                   <h2 className="text-2xl font-bold mb-6">ניהול עובדים</h2>
@@ -95,10 +166,10 @@ const EmployeesPage: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <input
                           type="text"
-                          placeholder="שם"
+                          placeholder="שם פרטי"
                           value={newEmployee.first_name}
                           onChange={(e) =>
-                              setNewEmployee({ ...newEmployee, first_name: e.target.value })
+                              setNewEmployee((s) => ({ ...s, first_name: e.target.value }))
                           }
                           className="p-2 border rounded"
                           required
@@ -108,7 +179,7 @@ const EmployeesPage: React.FC = () => {
                           placeholder="שם משפחה"
                           value={newEmployee.last_name}
                           onChange={(e) =>
-                              setNewEmployee({ ...newEmployee, last_name: e.target.value })
+                              setNewEmployee((s) => ({ ...s, last_name: e.target.value }))
                           }
                           className="p-2 border rounded"
                           required
@@ -118,7 +189,7 @@ const EmployeesPage: React.FC = () => {
                           placeholder="טלפון"
                           value={newEmployee.phone}
                           onChange={(e) =>
-                              setNewEmployee({ ...newEmployee, phone: e.target.value })
+                              setNewEmployee((s) => ({ ...s, phone: e.target.value }))
                           }
                           className="p-2 border rounded"
                       />
@@ -127,7 +198,7 @@ const EmployeesPage: React.FC = () => {
                           placeholder="אימייל"
                           value={newEmployee.email}
                           onChange={(e) =>
-                              setNewEmployee({ ...newEmployee, email: e.target.value })
+                              setNewEmployee((s) => ({ ...s, email: e.target.value }))
                           }
                           className="p-2 border rounded"
                       />
@@ -137,32 +208,144 @@ const EmployeesPage: React.FC = () => {
                           placeholder="שכר לשעה"
                           value={newEmployee.hourly_rate}
                           onChange={(e) =>
-                              setNewEmployee({
-                                ...newEmployee,
+                              setNewEmployee((s) => ({
+                                ...s,
                                 hourly_rate: parseFloat(e.target.value) || 0,
-                              })
+                              }))
                           }
                           className="p-2 border rounded"
                           required
                       />
+                      <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={newEmployee.is_active}
+                            onChange={(e) =>
+                                setNewEmployee((s) => ({ ...s, is_active: e.target.checked }))
+                            }
+                        />
+                        פעיל
+                      </label>
                     </div>
                     <button
                         type="submit"
                         className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+                        disabled={saving}
                     >
-                      הוסף עובד
+                      {saving ? 'שומר...' : 'הוסף עובד'}
                     </button>
                   </form>
 
                   {/* רשימת עובדים */}
                   <div className="grid gap-4">
-                    {Array.isArray(employees) && employees.length > 0 ? (
-                        employees.map((employee) => (
-                            <div key={employee.id} className="p-4 border rounded">
-                              <h4 className="font-semibold">{fullName(employee)}</h4>
-                              <p>טלפון: {employee.phone || 'לא צוין'}</p>
-                              <p>אימייל: {employee.email || 'לא צוין'}</p>
-                              <p>שכר לשעה: ₪{employee.hourly_rate}</p>
+                    {loading ? (
+                        <div className="p-4 border rounded text-gray-600">טוען עובדים...</div>
+                    ) : employees.length > 0 ? (
+                        employees.map((emp) => (
+                            <div key={emp.id} className="p-4 border rounded text-right">
+                              {editingId === emp.id ? (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <input
+                                          type="text"
+                                          className="p-2 border rounded"
+                                          placeholder="שם פרטי"
+                                          value={(editDraft.first_name as string) ?? ''}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({ ...s, first_name: e.target.value }))
+                                          }
+                                      />
+                                      <input
+                                          type="text"
+                                          className="p-2 border rounded"
+                                          placeholder="שם משפחה"
+                                          value={(editDraft.last_name as string) ?? ''}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({ ...s, last_name: e.target.value }))
+                                          }
+                                      />
+                                      <input
+                                          type="tel"
+                                          className="p-2 border rounded"
+                                          placeholder="טלפון"
+                                          value={(editDraft.phone as string) ?? ''}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({ ...s, phone: e.target.value }))
+                                          }
+                                      />
+                                      <input
+                                          type="email"
+                                          className="p-2 border rounded"
+                                          placeholder="אימייל"
+                                          value={(editDraft.email as string) ?? ''}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({ ...s, email: e.target.value }))
+                                          }
+                                      />
+                                      <input
+                                          type="number"
+                                          step="0.01"
+                                          className="p-2 border rounded"
+                                          placeholder="שכר לשעה"
+                                          value={Number(editDraft.hourly_rate ?? 0)}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({
+                                                ...s,
+                                                hourly_rate: parseFloat(e.target.value) || 0,
+                                              }))
+                                          }
+                                      />
+                                      <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(editDraft.is_active)}
+                                            onChange={(e) =>
+                                                setEditDraft((s) => ({
+                                                  ...s,
+                                                  is_active: e.target.checked,
+                                                }))
+                                            }
+                                        />
+                                        פעיל
+                                      </label>
+                                    </div>
+
+                                    <div className="mt-3 flex gap-2 justify-start">
+                                      <button
+                                          className="px-3 py-2 bg-green-600 text-white rounded"
+                                          disabled={saving}
+                                          onClick={() => saveEdit(emp.id)}
+                                      >
+                                        שמור
+                                      </button>
+                                      <button
+                                          className="px-3 py-2 bg-gray-300 rounded"
+                                          onClick={cancelEdit}
+                                          type="button"
+                                      >
+                                        ביטול
+                                      </button>
+                                    </div>
+                                  </>
+                              ) : (
+                                  <>
+                                    <h4 className="font-semibold text-lg">{fullName(emp)}</h4>
+                                    <p>טלפון: {emp.phone || 'לא צוין'}</p>
+                                    <p>אימייל: {emp.email || 'לא צוין'}</p>
+                                    <p>שכר לשעה: ₪{Number(emp.hourly_rate || 0).toLocaleString('he-IL')}</p>
+                                    <p>סטטוס: {emp.is_active ? 'פעיל' : 'לא פעיל'}</p>
+
+                                    <div className="mt-3">
+                                      <button
+                                          className="px-3 py-2 bg-blue-600 text-white rounded"
+                                          onClick={() => startEdit(emp)}
+                                          type="button"
+                                      >
+                                        ערוך
+                                      </button>
+                                    </div>
+                                  </>
+                              )}
                             </div>
                         ))
                     ) : (
@@ -174,7 +357,10 @@ const EmployeesPage: React.FC = () => {
                 </div>
             )}
 
+            {/* לשונית רישום שעות */}
             {tab === 'hours' && <WorkHoursTracker />}
+
+            {/* לשונית דוח חודשי */}
             {tab === 'reports' && <MonthlyReport />}
           </div>
         </main>

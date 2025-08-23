@@ -561,12 +561,44 @@ app.get('/api/employees', async (req, res) => {
 
 app.post('/api/employees', async (req, res) => {
   try {
-    const employee = await dbFunctions.addEmployee(req.body);
+    const {
+      first_name = '',
+      last_name  = '',
+      name       = '',
+      phone      = null,
+      email      = null,
+      hourly_rate
+    } = req.body || {};
+
+    if (hourly_rate === undefined || hourly_rate === null || isNaN(Number(hourly_rate))) {
+      return res.status(400).json({ error: 'hourly_rate נדרש' });
+    }
+
+    const finalName = (name && name.trim()) || `${first_name} ${last_name}`.trim();
+
+    const payload = {
+      name: finalName || null,
+      first_name: first_name || null,
+      last_name:  last_name  || null,
+      phone: phone || null,
+      email: email || null,
+      hourly_rate: Number(hourly_rate) || 0
+      // שים לב: אל תוסיף כאן is_active אם אין כזה עמודה בטבלה
+    };
+
+    const employee = await dbFunctions.addEmployee(payload);
     res.json(employee);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('POST /api/employees error:', {
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code,
+    });
+    res.status(500).json({ error: error?.message || 'Server error' });
   }
 });
+
 
 app.put('/api/employees/:id', async (req, res) => {
   try {
