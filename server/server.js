@@ -20,22 +20,25 @@ initializeDatabase();
 // ===================== API ROUTES ===================== //
 
 // פריטים
-app.get('/api/items', async (req, res) => {
+app.post('/api/items', async (req, res) => {
   try {
-    const items = await dbFunctions.getAllItems();
-    res.json(items);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { name, description, price } = req.body;
+    if (!name || price == null) return res.status(400).json({ error: 'name & price required' });
+    const id = await dbFunctions.addItem(name, description || '', Number(price));
+    res.status(201).json({ id, name, description: description || '', price: Number(price) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
-
 // כינויים
-app.get('/api/aliases', async (req, res) => {
+app.post('/api/aliases', async (req, res) => {
   try {
-    const aliases = await dbFunctions.getAllAliases();
-    res.json(aliases);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const { alias, item_name, price_override } = req.body;
+    if (!alias || !item_name) return res.status(400).json({ error: 'alias & item_name required' });
+    const id = await dbFunctions.addAlias(alias, item_name, price_override ?? null);
+    res.status(201).json({ id, alias, item_name, price_override: price_override ?? null });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -142,59 +145,73 @@ app.get('/api/search/items', async (req, res) => {
 });
 
 // פרסור טקסט הצעת מחיר (השארתי את הלוגיקה שלך)
+// פרסור טקסט הצעת מחיר - מחזיר גם unknown
 app.post('/api/parse-quote', async (req, res) => {
   try {
     const { text } = req.body;
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
     const items = await dbFunctions.getAllItems();
     const aliases = await dbFunctions.getAllAliases();
 
-    const parsedItems = [];
+    const matched = [];
+    const unknown = [];
 
     for (const line of lines) {
-      const match = line.match(/^(\d+)\s+(.+?)\s+(\d+)\|?$/);
-      if (match) {
-        const [, quantity, itemText, price] = match;
+      // פורמט: כמות [טקסט פריט] מחיר|
+      const m = line.match(/^(\d+)\s+(.+?)\s+(\d+)\|?$/);
+      if (!m) {
+        unknown.push({ line, quantity: 1, raw_text: line, unit_price: null });
+        continue;
+      }
 
-        const alias = aliases.find(a =>
-            a.alias.toLowerCase() === itemText.toLowerCase() ||
-            itemText.toLowerCase().includes(a.alias.toLowerCase())
+      const [, qtyStr, itemText, priceStr] = m;
+      const quantity = parseInt(qtyStr, 10);
+      const typedTotal = parseInt(priceStr, 10);
+
+      const alias = aliases.find(a =>
+          a.alias.toLowerCase() === itemText.toLowerCase() ||
+          itemText.toLowerCase().includes(a.alias.toLowerCase())
+      );
+
+      let item = null;
+      let finalPrice = typedTotal;
+
+      if (alias) {
+        item = items.find(i => i.name === alias.item_name);
+        if (alias.price_override) finalPrice = alias.price_override;
+      } else {
+        item = items.find(i =>
+            i.name.toLowerCase().includes(itemText.toLowerCase()) ||
+            itemText.toLowerCase().includes(i.name.toLowerCase())
         );
+      }
 
-        let item;
-        let finalPrice = parseInt(price);
-
-        if (alias) {
-          item = items.find(i => i.name === alias.item_name);
-          if (alias.price_override) finalPrice = alias.price_override;
-        } else {
-          item = items.find(i =>
-              i.name.toLowerCase().includes(itemText.toLowerCase()) ||
-              itemText.toLowerCase().includes(i.name.toLowerCase())
-          );
-        }
-
-        if (item) {
-          const unitPrice = item.price;
-          const totalPrice = finalPrice;
-          const discount = (unitPrice * parseInt(quantity)) - totalPrice;
-
-          parsedItems.push({
-            name: item.name,
-            description: item.description,
-            unit_price: unitPrice,
-            quantity: parseInt(quantity),
-            discount: Math.max(0, discount),
-            total: totalPrice,
-            matched_text: itemText
-          });
-        }
+      if (item) {
+        const unitPrice = item.price;
+        const discount = (unitPrice * quantity) - finalPrice;
+        matched.push({
+          name: item.name,
+          description: item.description,
+          unit_price: unitPrice,
+          quantity,
+          discount: Math.max(0, discount),
+          total: finalPrice,
+          matched_text: itemText
+        });
+      } else {
+        unknown.push({
+          line,
+          quantity,
+          raw_text: itemText,
+          unit_price: typedTotal, // סכום כוללת/פר פריט? כאן נשמר כמחיר יעד לטבלה
+        });
       }
     }
 
-    res.json(parsedItems);
+    res.json({ items: matched, unknown });
   } catch (error) {
+    console.error('parse-quote error:', error);
     res.status(500).json({ error: error.message });
   }
 });

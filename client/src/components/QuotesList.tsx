@@ -80,8 +80,8 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
   return (
       <div className="w-full mx-auto p-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">הצעות קיימות</h1>
-          <p className="text-white/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
+          <h1 className="text-3xl font-bold text-black mb-2">הצעות קיימות</h1>
+          <p className="text-black/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
         </div>
 
         {quotes.length === 0 ? (

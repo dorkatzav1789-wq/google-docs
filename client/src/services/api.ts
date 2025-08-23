@@ -20,13 +20,21 @@ export const clientsAPI = {
 // Items API
 export const itemsAPI = {
   getAll: (): Promise<Item[]> => api.get('/items').then(res => res.data),
-  search: (query: string): Promise<Item[]> => 
-    api.get(`/search/items?q=${encodeURIComponent(query)}`).then(res => res.data),
+  search: (query: string): Promise<Item[]> =>
+      api.get(`/search/items?q=${encodeURIComponent(query)}`).then(res => res.data),
+  create: (payload: { name: string; description?: string; price: number; }): Promise<Item> =>
+      api.post('/items', payload).then(res => res.data),
 };
 
 // Aliases API
 export const aliasesAPI = {
   getAll: (): Promise<Alias[]> => api.get('/aliases').then(res => res.data),
+  create: (payload: { alias: string; item_name: string; price_override?: number | null }): Promise<Alias> =>
+      api.post('/aliases', payload).then(res => res.data),
+};
+type ParseQuoteResponse = {
+  items: QuoteItem[];
+  unknown: Array<{ line: string; quantity: number; raw_text: string; unit_price: number | null }>;
 };
 
 // Quotes API
@@ -35,12 +43,14 @@ export const quotesAPI = {
   getById: (id: number): Promise<QuoteWithItems> => api.get(`/quotes/${id}`).then(res => res.data),
   create: (quote: Quote, items: QuoteItem[]): Promise<{ id: number; message: string }> => 
     api.post('/quotes', { quote, items }).then(res => res.data),
-  parseText: (text: string): Promise<QuoteItem[]> => 
-    api.post('/parse-quote', { text }).then(res => res.data),
+  parseText: (text: string): Promise<ParseQuoteResponse> =>
+      api.post('/parse-quote', { text }).then(res => res.data),
   exportPDF: (quoteId: number): Promise<Blob> => 
     api.post('/export-pdf', { quoteId }, { responseType: 'blob' }).then(res => res.data),
   remove: (id: number): Promise<{ ok: boolean }> =>
       api.delete(`/quotes/${id}`).then(res => res.data),
+
+
 };
 
 export const employeesAPI = {
