@@ -176,7 +176,7 @@ export const MonthlyReport: React.FC = () => {
               report.work_hours.map((row) => (
                   <tr key={row.id}>
                     <td className="border p-2">
-                      {(row as any).employees?.name ?? (row as any).employee_name ?? `#${row.employee_id}`}
+                      {(row as any).employees?.first_name ?? (row as any).employee_name ?? `#${row.employee_id}`}
                     </td>
                     <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
