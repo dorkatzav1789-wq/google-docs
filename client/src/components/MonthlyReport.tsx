@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { MonthlyReport as MonthlyReportType } from '../types';
+import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
 import { reportsAPI } from '../services/api';
 
 export const MonthlyReport: React.FC = () => {
@@ -9,13 +9,57 @@ export const MonthlyReport: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
 
+  const normalizeReport = (data: any): MonthlyReportType => {
+    const work_hours: WorkHours[] = Array.isArray(data?.work_hours)
+        ? data.work_hours
+        : Array.isArray(data)
+            ? (data as WorkHours[])
+            : [];
+
+    // בונים employees אם לא הגיע מהשרת
+    let employees: Employee[] = Array.isArray(data?.employees) ? data.employees : [];
+    if (employees.length === 0 && work_hours.length > 0) {
+      const map = new Map<string | number, Employee>();
+      for (const wh of work_hours) {
+        const key = (wh as any).employees?.name ?? (wh as any).employee_name ?? wh.employee_id;
+        if (!map.has(key)) {
+          map.set(key, {
+            id: Number(wh.employee_id),
+            name: (wh as any).employees?.name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
+            phone: undefined,
+            email: undefined,
+            hourly_rate: Number((wh as any).employees?.hourly_rate ?? wh.hourly_rate ?? 0),
+            is_active: true,
+            created_at: '',
+          });
+        }
+      }
+      employees = Array.from(map.values());
+    }
+
+    const summary =
+        data?.summary ?? {
+          total_hours: work_hours.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
+          total_amount: work_hours.reduce((s, r) => s + Number(r.daily_total || 0), 0),
+          employee_count: employees.length,
+        };
+
+    return { work_hours, employees, summary };
+  };
+
   const loadReport = async () => {
     try {
       setLoading(true);
       const data = await reportsAPI.getMonthly(selectedYear, selectedMonth);
-      setReport(data);
+      setReport(normalizeReport(data));
     } catch (e) {
       console.error('Error loading report:', e);
+      // ✅ מוסיפים גם employees כדי להתאים ל-Type
+      setReport({
+        work_hours: [],
+        employees: [],
+        summary: { total_hours: 0, total_amount: 0, employee_count: 0 },
+      });
     } finally {
       setLoading(false);
     }
@@ -59,10 +103,9 @@ export const MonthlyReport: React.FC = () => {
           <h2 className="text-2xl font-bold">דוח חודשי - {selectedMonth}/{selectedYear}</h2>
 
           <div className="flex gap-4">
-            {/* שנה */}
             <select
                 value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
                 className="p-2 border rounded"
                 title="בחר שנה"
                 aria-label="בחר שנה"
@@ -72,10 +115,9 @@ export const MonthlyReport: React.FC = () => {
               ))}
             </select>
 
-            {/* חודש */}
             <select
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
                 className="p-2 border rounded"
                 title="בחר חודש"
                 aria-label="בחר חודש"
@@ -85,7 +127,6 @@ export const MonthlyReport: React.FC = () => {
               ))}
             </select>
 
-            {/* ייצוא PDF מהשרת */}
             <button
                 onClick={exportToPDF}
                 disabled={exporting}
@@ -135,9 +176,8 @@ export const MonthlyReport: React.FC = () => {
               report.work_hours.map((row) => (
                   <tr key={row.id}>
                     <td className="border p-2">
-                      {row.employees?.name ?? row.employee_name ?? `#${row.employee_id}`}
+                      {(row as any).employees?.name ?? (row as any).employee_name ?? `#${row.employee_id}`}
                     </td>
-
                     <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
                     <td className="border p-2">₪{fmt(row.hourly_rate)}</td>

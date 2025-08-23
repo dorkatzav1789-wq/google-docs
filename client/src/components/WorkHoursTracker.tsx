@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Employee, WorkHours } from '../types';
+import type { Employee } from '../types';
 import { employeesAPI, workHoursAPI } from '../services/api';
 
 export const WorkHoursTracker: React.FC = () => {
@@ -10,6 +10,8 @@ export const WorkHoursTracker: React.FC = () => {
     hours_worked: 0,
     notes: ''
   });
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     loadEmployees();
@@ -17,10 +19,20 @@ export const WorkHoursTracker: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
+      setLoading(true);
       const data = await employeesAPI.getAll();
-      setEmployees(data);
+      // נרמול תשובה — תמיד למערך
+      const normalized = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.data)
+              ? (data as any).data
+              : [];
+      setEmployees(normalized);
     } catch (error) {
       console.error('Error loading employees:', error);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,17 +41,27 @@ export const WorkHoursTracker: React.FC = () => {
     if (!selectedEmployee) return;
 
     try {
+      setSubmitting(true);
       const employee = employees.find(emp => emp.id === selectedEmployee);
+      if (!employee) {
+        alert('לא נמצא עובד נבחר');
+        return;
+      }
+
+      const hours = Number(workHours.hours_worked || 0);
+      const rate  = Number(employee.hourly_rate || 0);
+
       const workHoursData = {
         employee_id: selectedEmployee,
         work_date: workHours.work_date,
-        hours_worked: workHours.hours_worked,
-        hourly_rate: employee!.hourly_rate,
-        daily_total: workHours.hours_worked * employee!.hourly_rate,
+        hours_worked: hours,
+        hourly_rate: rate,
+        daily_total: hours * rate,
         notes: workHours.notes
       };
 
       await workHoursAPI.create(workHoursData);
+
       setWorkHours({
         work_date: new Date().toISOString().split('T')[0],
         hours_worked: 0,
@@ -49,64 +71,89 @@ export const WorkHoursTracker: React.FC = () => {
     } catch (error) {
       console.error('Error adding work hours:', error);
       alert('שגיאה בהוספת שעות העבודה');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">רישום שעות עבודה</h2>
-      
-      <form onSubmit={handleAddWorkHours} className="mb-8 p-4 border rounded">
-        <div className="grid grid-cols-2 gap-4">
-          <select
-            value={selectedEmployee || ''}
-            onChange={(e) => setSelectedEmployee(parseInt(e.target.value))}
-            className="p-2 border rounded"
-            required
-            title="בחר עובד"
-            aria-label="בחר עובד"
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6">רישום שעות עבודה</h2>
+
+        <form onSubmit={handleAddWorkHours} className="mb-8 p-4 border rounded">
+          <div className="grid grid-cols-2 gap-4">
+            <select
+                value={selectedEmployee ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSelectedEmployee(v ? parseInt(v, 10) : null);
+                }}
+                className="p-2 border rounded"
+                required
+                title="בחר עובד"
+                aria-label="בחר עובד"
+                disabled={loading}
+            >
+              <option value="">בחר עובד</option>
+              {(employees ?? []).map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name} (₪{Number(employee.hourly_rate || 0).toLocaleString('he-IL')}/שעה)
+                  </option>
+              ))}
+            </select>
+
+            <input
+                type="date"
+                value={workHours.work_date}
+                onChange={(e) => setWorkHours({ ...workHours, work_date: e.target.value })}
+                className="p-2 border rounded"
+                required
+            />
+
+            <input
+                type="number"
+                step="0.5"
+                min="0"
+                placeholder="שעות עבודה"
+                value={workHours.hours_worked}
+                onChange={(e) =>
+                    setWorkHours({
+                      ...workHours,
+                      hours_worked: Number.isNaN(parseFloat(e.target.value))
+                          ? 0
+                          : parseFloat(e.target.value),
+                    })
+                }
+                className="p-2 border rounded"
+                required
+            />
+
+            <input
+                type="text"
+                placeholder="הערות"
+                value={workHours.notes}
+                onChange={(e) => setWorkHours({ ...workHours, notes: e.target.value })}
+                className="p-2 border rounded"
+                title="הערות"
+                aria-label="הערות"
+            />
+          </div>
+
+          <button
+              type="submit"
+              className="mt-4 px-4 py-2 bg-green-500 text-white rounded"
+              disabled={submitting || loading}
           >
-            <option value="">בחר עובד</option>
-            {employees.map(employee => (
-              <option key={employee.id} value={employee.id}>
-                {employee.name} (₪{employee.hourly_rate}/שעה)
-              </option>
-            ))}
-          </select>
-          
-          <input
-            type="date"
-            value={workHours.work_date}
-            onChange={(e) => setWorkHours({...workHours, work_date: e.target.value})}
-            className="p-2 border rounded"
-            required
-          />
-          
-          <input
-            type="number"
-            step="0.5"
-            placeholder="שעות עבודה"
-            value={workHours.hours_worked}
-            onChange={(e) => setWorkHours({...workHours, hours_worked: parseFloat(e.target.value)})}
-            className="p-2 border rounded"
-            required
-          />
-          
-          <input
-            type="text"
-            placeholder="הערות"
-            value={workHours.notes}
-            onChange={(e) => setWorkHours({...workHours, notes: e.target.value})}
-            className="p-2 border rounded"
-            title="הערות"
-            aria-label="הערות"
-          />
-        </div>
-        
-        <button type="submit" className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
-          הוסף שעות עבודה
-        </button>
-      </form>
-    </div>
+            {submitting ? 'שומר...' : 'הוסף שעות עבודה'}
+          </button>
+        </form>
+
+        {loading && <div className="text-gray-500">טוען עובדים...</div>}
+        {!loading && (employees ?? []).length === 0 && (
+            <div className="text-gray-600">אין עובדים במערכת עדיין.</div>
+        )}
+      </div>
   );
 };
+
+export default WorkHoursTracker;

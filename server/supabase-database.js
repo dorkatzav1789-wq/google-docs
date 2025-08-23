@@ -361,40 +361,53 @@ const dbFunctions = {
     }
   },
 
+// ===== getMonthlyReport: בחירה לפי טווח תאריכים, לא EXTRACT =====
   getMonthlyReport: async (year, month) => {
     try {
+      const y = Number(year);
+      const m = Number(month);
+      const start = new Date(Date.UTC(y, m - 1, 1));
+      const end   = new Date(Date.UTC(y, m, 1));
+
+      const startStr = start.toISOString().slice(0, 10); // YYYY-MM-DD
+      const endStr   = end.toISOString().slice(0, 10);   // YYYY-MM-DD
+
+      // אם יש לכם foreign key employees(id) ומוגדר relationship בשם employees
       const { data, error } = await supabase
-        .from('work_hours')
-        .select(`
-          *,
-          employees(name, hourly_rate)
-        `)
-        .eq('EXTRACT(YEAR FROM work_date)', year)
-        .eq('EXTRACT(MONTH FROM work_date)', month)
-        .order('work_date');
-      
+          .from('work_hours')
+          .select(`
+        id,
+        employee_id,
+        work_date,
+        hours_worked,
+        hourly_rate,
+        daily_total,
+        notes,
+        employees(name, hourly_rate)
+      `)
+          .gte('work_date', startStr)
+          .lt('work_date', endStr)
+          .order('work_date');
+
       if (error) throw error;
-      
-      // עיבוד הנתונים לסיכום
-      const workHours = data || [];
-      const employees = [...new Set(workHours.map(wh => wh.employees))];
-      
-      const summary = {
-        total_hours: workHours.reduce((sum, wh) => sum + parseFloat(wh.hours_worked), 0),
-        total_amount: workHours.reduce((sum, wh) => sum + parseFloat(wh.daily_total), 0),
-        employee_count: employees.length
-      };
+
+      const workHours = Array.isArray(data) ? data : [];
+
+      const total_hours  = workHours.reduce((s, wh) => s + Number(wh.hours_worked || 0), 0);
+      const total_amount = workHours.reduce((s, wh) => s + Number(wh.daily_total  || 0), 0);
+      const employee_count = new Set(
+          workHours.map(wh => (wh.employees?.name || wh.employee_id))
+      ).size;
 
       return {
         work_hours: workHours,
-        employees: employees,
-        summary: summary
+        summary: { total_hours, total_amount, employee_count }
       };
-    } catch (error) {
-      throw error;
+    } catch (err) {
+      throw err;
     }
-  }
-};
+  },
+}
 
 module.exports = { supabase, dbFunctions };
 

@@ -85,7 +85,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                 disabled={loading || !text.trim()}
                 className="btn-primary"
             >
-              {loading ? 'מעבד...' : '➕ הוסף מהטקסט'}
+              {loading ? 'מעבד...' : '➕צור הצעת פריט חדש'}
             </button>
             <button onClick={addBlankItem} className="btn-secondary">
               ➕ הוסף שורה ריקה
