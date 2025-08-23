@@ -21,11 +21,11 @@ export const MonthlyReport: React.FC = () => {
     if (employees.length === 0 && work_hours.length > 0) {
       const map = new Map<string | number, Employee>();
       for (const wh of work_hours) {
-        const key = (wh as any).employees?.first_name ?? (wh as any).employee_name ?? wh.employee_id;
+        const key = (wh as any).employees?.name ?? (wh as any).employee_name ?? wh.employee_id;
         if (!map.has(key)) {
           map.set(key, {
             id: Number(wh.employee_id),
-            name: (wh as any).employees?.first_name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
+            name: (wh as any).employees?.name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
             phone: undefined,
             email: undefined,
             hourly_rate: Number((wh as any).employees?.hourly_rate ?? wh.hourly_rate ?? 0),
@@ -176,7 +176,7 @@ export const MonthlyReport: React.FC = () => {
               report.work_hours.map((row) => (
                   <tr key={row.id}>
                     <td className="border p-2">
-                      {(row as any).employees?.first_name ?? (row as any).employee_name ?? `#${row.employee_id}`}
+                      {(row as any).employees?.name ?? (row as any).employee_name ?? `#${row.employee_id}`}
                     </td>
                     <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
