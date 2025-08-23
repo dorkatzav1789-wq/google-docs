@@ -396,3 +396,32 @@ form h3 {
 .p-6 {
   padding: 1.5rem;
 }
+/* Sub navigation (tabs) inside EmployeesPage */
+.subnav {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 16px 0;
+  justify-content: center;
+}
+
+.subnav-btn {
+  padding: 10px 16px;
+  border: 2px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.subnav-btn:hover {
+  background: #007bff;
+  color: white;
+}
+
+.subnav-btn.active {
+  background: #007bff;
+  color: white;
+}
+
