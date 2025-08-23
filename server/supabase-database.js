@@ -308,7 +308,7 @@ const dbFunctions = {
     try {
       const { data, error } = await supabase
           .from('employees')
-          .select('id, first_name, last_name, name, phone, email, hourly_rate, is_active, created_at')
+          .select('id, first_name, last_name, phone, email, hourly_rate, is_active, created_at')
           .order('first_name', { ascending: true })
           .order('last_name',  { ascending: true });
 

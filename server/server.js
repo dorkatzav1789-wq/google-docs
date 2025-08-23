@@ -586,7 +586,6 @@ app.post('/api/employees', async (req, res) => {
     }
 
     const payload = {
-      name: fullName,         // לטבלה הישנה
       first_name: fn || null, // לעמודות החדשות (אם יש)
       last_name: ln || null,
       phone: phone || null,
