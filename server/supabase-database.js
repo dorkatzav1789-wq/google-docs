@@ -399,21 +399,21 @@ const dbFunctions = {
 
       // 2) מביאים את העובדים הרלוונטיים בשאילתה אחת
       const ids = Array.from(new Set(workHours.map(r => r.employee_id))).filter(Boolean);
-      const {data: emps, error: empErr} = await supabase
-          .from('employees')
-          .select('id, name, first_name, last_name, hourly_rate')
-          .in('id', ids);
+              const {data: emps, error: empErr} = await supabase
+            .from('employees')
+            .select('id, first_name, last_name, hourly_rate')
+            .in('id', ids);
 
       if (empErr) throw empErr;
 
       const byId = new Map((emps || []).map(e => [e.id, e]));
-      const fullName = (e) => {
-        if (!e) return null;
-        const fn = (e.first_name || '').trim();
-        const ln = (e.last_name || '').trim();
-        const combined = `${fn} ${ln}`.trim();
-        return combined || e.name || null;
-      };
+          const fullName = (e) => {
+      if (!e) return null;
+      const fn = (e.first_name || '').trim();
+      const ln = (e.last_name || '').trim();
+      const combined = `${fn} ${ln}`.trim();
+      return combined || null;
+    };
 
       // 3) מחברים שם עובד ושכר לשעה לתוצאה, כפי שהפרונט מצפה
       const enriched = workHours.map(row => {
