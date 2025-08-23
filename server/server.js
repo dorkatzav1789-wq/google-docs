@@ -559,43 +559,47 @@ app.get('/api/employees', async (req, res) => {
   }
 });
 
+// ===== Employees =====
 app.post('/api/employees', async (req, res) => {
   try {
     const {
       first_name = '',
-      last_name  = '',
-      name       = '',
-      phone      = null,
-      email      = null,
-      hourly_rate
+      last_name = '',
+      phone = null,
+      email = null,
+      hourly_rate,
+      name,           // אם בטעות נשלח name — נתחשב בו
+      is_active,
     } = req.body || {};
 
-    if (hourly_rate === undefined || hourly_rate === null || isNaN(Number(hourly_rate))) {
-      return res.status(400).json({ error: 'hourly_rate נדרש' });
+    // ולידציה בסיסית
+    const fn = String(first_name || '').trim();
+    const ln = String(last_name || '').trim();
+    const fullName = (name && String(name).trim()) || `${fn} ${ln}`.trim();
+    if (!fullName) {
+      return res.status(400).json({ error: 'יש להזין שם פרטי/משפחה או name' });
     }
 
-    const finalName = (name && name.trim()) || `${first_name} ${last_name}`.trim();
+    const rateNum = Number(hourly_rate);
+    if (!Number.isFinite(rateNum) || rateNum < 0) {
+      return res.status(400).json({ error: 'hourly_rate חייב להיות מספר לא־שלילי' });
+    }
 
     const payload = {
-      name: finalName || null,
-      first_name: first_name || null,
-      last_name:  last_name  || null,
+      name: fullName,         // לטבלה הישנה
+      first_name: fn || null, // לעמודות החדשות (אם יש)
+      last_name: ln || null,
       phone: phone || null,
       email: email || null,
-      hourly_rate: Number(hourly_rate) || 0
-      // שים לב: אל תוסיף כאן is_active אם אין כזה עמודה בטבלה
+      hourly_rate: rateNum,
+      is_active: typeof is_active === 'boolean' ? is_active : true,
     };
 
-    const employee = await dbFunctions.addEmployee(payload);
-    res.json(employee);
-  } catch (error) {
-    console.error('POST /api/employees error:', {
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-      code: error?.code,
-    });
-    res.status(500).json({ error: error?.message || 'Server error' });
+    const created = await dbFunctions.addEmployee(payload);
+    return res.json(created);
+  } catch (err) {
+    console.error('POST /api/employees error:', err);
+    return res.status(500).json({ error: err?.message || 'Server error' });
   }
 });
 

@@ -52,14 +52,16 @@ const EmployeesPage: React.FC = () => {
     e.preventDefault();
     try {
       setSaving(true);
+      // ב-EmployeeManagement כששולחים create:
       await employeesAPI.create({
-        first_name: newEmployee.first_name.trim(),
-        last_name: newEmployee.last_name.trim(),
-        phone: newEmployee.phone.trim() || undefined,
-        email: newEmployee.email.trim() || undefined,
-        hourly_rate: Number(newEmployee.hourly_rate || 0),
-        is_active: newEmployee.is_active,
+        first_name: newEmployee.first_name,
+        last_name: newEmployee.last_name,
+        phone: newEmployee.phone || null,
+        email: newEmployee.email || null,
+        hourly_rate: newEmployee.hourly_rate,
+        // name: `${newEmployee.first_name} ${newEmployee.last_name}`.trim(), // אופציונלי
       });
+
       setNewEmployee({
         first_name: '',
         last_name: '',

@@ -288,25 +288,20 @@ const dbFunctions = {
   // ===== פונקציות לעובדים =====
 // dbFunctions.addEmployee
   addEmployee: async (employeeData) => {
-    // שמור רק שדות שאתה יודע שקיימים בטבלה
-    const payload = {
-      name:        employeeData.name ?? null,
-      first_name:  employeeData.first_name ?? null,
-      last_name:   employeeData.last_name ?? null,
-      phone:       employeeData.phone ?? null,
-      email:       employeeData.email ?? null,
-      hourly_rate: employeeData.hourly_rate ?? 0,
-      // אל תשלב is_active אם אין עמודה כזו
-    };
+    try {
+      // כאן employeeData כבר מנורמל לפי הראוט
+      const { data, error } = await supabase
+          .from('employees')
+          .insert([employeeData])
+          .select()
+          .single();
 
-    const { data, error } = await supabase
-        .from('employees')
-        .insert([payload])
-        .select()
-        .single();
-
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Supabase addEmployee error:', error);
+      throw error;
+    }
   },
 
   getAllEmployees: async () => {
