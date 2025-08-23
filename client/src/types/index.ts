@@ -97,4 +97,12 @@ export interface MonthlyReport {
     employee_count: number;
   };
 }
+export type NewWorkHoursInput = {
+  employee_id: number;
+  work_date: string;
+  hours_worked: number;
+  hourly_rate: number;
+  notes?: string;
+};
+
 

@@ -1,6 +1,7 @@
 // services/api.ts
 import axios from 'axios';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems,NewWorkHoursInput  } from '../types';
+
 
 const API_BASE_URL =
     process.env.REACT_APP_API_URL || 'https://google-docs-dor.onrender.com/api';
@@ -110,23 +111,13 @@ export const employeesAPI = {
 
 // ---------- Work Hours ----------
 export const workHoursAPI = {
-  create: (workHours: {
-    employee_id: number;
-    work_date: string;             // YYYY-MM-DD
-    hours_worked: number;
-    hourly_rate: number;
-    daily_total: number;
-    notes?: string | null;
-  }) => api.post('/work-hours', workHours).then((res) => res.data),
+  create: (workHours: NewWorkHoursInput) =>
+      api.post('/work-hours', workHours).then(res => res.data),
 
   getByEmployee: (employeeId: number, startDate: string, endDate: string) =>
-      api
-          .get(`/work-hours/employee/${employeeId}`, {
-            params: { startDate, endDate },
-          })
-          .then((res) => res.data),
+      api.get(`/work-hours/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`)
+          .then(res => res.data),
 };
-
 // ---------- Reports ----------
 export const reportsAPI = {
   getMonthly: (year: number, month: number) =>

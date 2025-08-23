@@ -56,7 +56,6 @@ export const WorkHoursTracker: React.FC = () => {
         work_date: workHours.work_date,
         hours_worked: hours,
         hourly_rate: rate,
-        daily_total: hours * rate,
         notes: workHours.notes,
       };
 

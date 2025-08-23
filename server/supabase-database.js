@@ -344,7 +344,7 @@ const dbFunctions = {
         .select();
       
       if (error) throw error;
-      return data[0];
+      return data;
     } catch (error) {
       throw error;
     }
