@@ -98,8 +98,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         <div className="mb-6">
           <button onClick={onBack} className="btn-secondary mb-4">← חזור לרשימה</button>
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">פרטי הצעת מחיר</h1>
-            <p className="text-white/80">הצעה #{quote.id}</p>
+            <h1 className="text-3xl font-bold text-black mb-2">פרטי הצעת מחיר</h1>
+            <p className="text-black/80">הצעה #{quote.id}</p>
             <div className="mt-4">
               <button onClick={handleExportPDF} disabled={exportingPDF} className="btn-success ml-4">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}

@@ -399,8 +399,8 @@ function generateQuoteHTML(quote, items) {
     <tbody>
       ${items.map(i => `
         <tr>
-          <td>${i.name ?? ''}</td>
-          <td>${i.description ?? ''}</td>
+           <td>${i.item_name ?? i.name ?? ''}</td>
+          <td>${i.item_description ?? i.description ?? ''}</td>
           <td>${formatCurrency(i.unit_price)}</td>
           <td>${i.quantity ?? 0}</td>
           <td>${i.discount && i.discount > 0 ? `-${formatCurrency(i.discount)}` : '-'}</td>
