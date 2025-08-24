@@ -277,172 +277,159 @@ function generateQuoteHTML(quote, items) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>הצעת מחיר #${quote.id ?? ''}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: Arial, "Segoe UI", Tahoma, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #fff;
-      color: #111827; /* gray-900 */
-      direction: rtl;
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 24px;
-      border-bottom: 2px solid #3b82f6; /* blue-500 */
-      padding-bottom: 12px;
-    }
-    .header h1 {
-      margin: 0 0 4px 0;
-      color: #1e40af; /* blue-800 */
-      font-size: 26px;
-    }
-    .quote-info {
-      display: flex;
-      gap: 24px;
-      margin-bottom: 18px;
-    }
-    .info-col {
-      flex: 1;
-      padding: 14px;
-      background: #f9fafb; /* gray-50 */
-      border: 1px solid #e5e7eb; /* gray-200 */
-      border-radius: 8px;
-    }
-    .section-title {
-      font-weight: 700;
-      color: #374151; /* gray-700 */
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
+    html, body { background: #ffffff; color: #111827; font-family: "Heebo","Segoe UI",Arial,Tahoma,sans-serif; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+    @media print { thead { display: table-header-group; } tfoot { display: table-footer-group; } .no-print { display: none !important; } a[href]:after { content: "" !important; } }
+    .sheet { padding: 0; }
+    .header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; padding-bottom: 10px; margin-bottom: 14px; border-bottom: 2px solid #3b82f6; }
+    .brand-block { display: flex; flex-direction: column; gap: 4px; }
+    .brand-title { margin: 0; font-size: 26px; color: #1e40af; font-weight: 800; letter-spacing: 0.2px; }
+    .brand-meta { font-size: 13px; color: #4b5563; line-height: 1.35; }
+    .quote-id { text-align: left; color: #4b5563; font-size: 13px; }
+    .logo { text-align: left; }
+    .logo svg { width: 180px; height: auto; display:block; }
+    .info { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+    .card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 12px; }
+    .card-title { margin: 0 0 8px 0; font-weight: 800; color: #374151; font-size: 15px; }
     .row { margin: 6px 0; }
-    .label { font-weight: 700; color: #6b7280; /* gray-500 */ }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 16px 0 10px 0;
-      font-size: 14px;
-    }
-    th, td {
-      border: 1px solid #d1d5db; /* gray-300 */
-      padding: 10px 8px;
-      text-align: right;
-      vertical-align: top;
-    }
-    thead th {
-      background: #f3f4f6; /* gray-100 */
-      color: #374151; /* gray-700 */
-      font-weight: 700;
-    }
-    .summary {
-      margin-top: 20px;
-      border-top: 2px solid #e5e7eb; /* gray-200 */
-      padding-top: 12px;
-      font-size: 15px;
-    }
-    .sum-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 6px 0;
-    }
-    .total {
-      font-weight: 800;
-      font-size: 18px;
-      border-top: 1px solid #d1d5db;
-      padding-top: 8px;
-      margin-top: 6px;
-    }
-    .footer {
-      margin-top: 26px;
-      text-align: center;
-      color: #6b7280; /* gray-500 */
-      font-size: 13px;
-    }
+    .label { font-weight: 700; color: #6b7280; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 8px 0; font-size: 14px; table-layout: fixed; }
+    th, td { border: 1px solid #d1d5db; padding: 9px 8px; text-align: right; vertical-align: top; }
+    thead th { background: #f3f4f6; color: #374151; font-weight: 700; }
+    .num { direction: ltr; unicode-bidi: bidi-override; text-align: left; }
+    .summary { margin-top: 14px; border-top: 2px solid #e5e7eb; padding-top: 10px; font-size: 15px; }
+    .sum-row { display: flex; justify-content: space-between; margin: 6px 0; }
+    .total { font-weight: 800; font-size: 18px; border-top: 1px solid #d1d5db; padding-top: 8px; margin-top: 6px; }
+    .footer { margin-top: 18px; color: #6b7280; font-size: 12.5px; }
+    .sections { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-top: 14px; }
+    .section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
+    .section h3 { margin: 0 0 8px 0; font-size: 15px; color: #374151; }
+    .approve-box { min-height: 84px; }
+    .bank-row { display:flex; gap:10px; margin:6px 0; }
+    .bank-row .label { min-width: 90px; }
+    .grand-banner { margin-top: 10px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:18px; }
+    .page-break { page-break-before: always; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>הצעת מחיר</h1>
-    <div>מספר הצעה: ${quote.id ?? ''}</div>
-  </div>
-
-  <div class="quote-info">
-    <div class="info-col">
-      <div class="section-title">פרטי האירוע</div>
-      <div class="row"><span class="label">שם האירוע:</span> ${quote.event_name ?? ''}</div>
-      <div class="row"><span class="label">תאריך:</span> ${formatDate(quote.event_date)}</div>
-      ${quote.event_hours ? `<div class="row"><span class="label">שעות:</span> ${quote.event_hours}</div>` : ''}
-      ${quote.special_notes ? `<div class="row"><span class="label">הערות:</span> ${quote.special_notes}</div>` : ''}
+  <div class="sheet">
+    <div class="header">
+      <div class="brand-block">
+        <h1 class="brand-title">הצעת מחיר</h1>
+        <div class="brand-meta">
+          ${supplier?.name ? supplier.name : ''}
+          ${supplier?.address ? ' | ' + supplier.address : ''}
+          ${supplier?.phone ? ' | ' + supplier.phone : ''}
+          ${supplier?.email ? ' | ' + supplier.email : ''}
+        </div>
+        <div class="quote-id">מספר הצעה: ${quote.id ?? ''}</div>
+      </div>
+      <div class="logo">
+        <!-- לוגו SVG שלך -->
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="403" height="122" viewBox="0 0 403 122">
+          <image xlink:href="data:image/png;base64,${logoBase64 ?? ''}" x="0" y="0" width="403" height="122"/>
+        </svg>
+      </div>
     </div>
 
-    <div class="info-col">
-      <div class="section-title">פרטי לקוח</div>
-      <div class="row"><span class="label">שם:</span> ${quote.client_name ?? ''}</div>
-      ${quote.client_company ? `<div class="row"><span class="label">חברה:</span> ${quote.client_company}</div>` : ''}
-      ${quote.client_phone ? `<div class="row"><span class="label">טלפון:</span> ${quote.client_phone}</div>` : ''}
-      ${quote.client_company_id ? `<div class="row"><span class="label">ח.פ / ע.מ:</span> ${quote.client_company_id}</div>` : ''}
-    </div>
-  </div>
+    <div class="info">
+      <div class="card">
+        <h2 class="card-title">פרטי האירוע</h2>
+        <div class="row"><span class="label">שם האירוע:</span> ${quote.event_name ?? ''}</div>
+        <div class="row"><span class="label">תאריך:</span> ${formatDate(quote.event_date)}</div>
+        ${quote.event_hours ? `<div class="row"><span class="label">שעות:</span> ${quote.event_hours}</div>` : ''}
+        ${quote.special_notes ? `<div class="row"><span class="label">הערות:</span> ${quote.special_notes}</div>` : ''}
+      </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>שם הפריט</th>
-        <th>תיאור</th>
-        <th>מחיר יחידה</th>
-        <th>כמות</th>
-        <th>הנחה</th>
-        <th>סה"כ</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${items.map(i => `
+      <div class="card">
+        <h2 class="card-title">פרטי לקוח</h2>
+        <div class="row"><span class="label">שם:</span> ${quote.client_name ?? ''}</div>
+        ${quote.client_company ? `<div class="row"><span class="label">חברה:</span> ${quote.client_company}</div>` : ''}
+        ${quote.client_phone ? `<div class="row"><span class="label">טלפון:</span> ${quote.client_phone}</div>` : ''}
+        ${quote.client_company_id ? `<div class="row"><span class="label">ח.פ / ע.מ:</span> ${quote.client_company_id}</div>` : ''}
+      </div>
+    </div>
+
+    <table>
+      <thead>
         <tr>
-           <td>${i.item_name ?? i.name ?? ''}</td>
-          <td>${i.item_description ?? i.description ?? ''}</td>
-          <td>${formatCurrency(i.unit_price)}</td>
-          <td>${i.quantity ?? 0}</td>
-          <td>${i.discount && i.discount > 0 ? `-${formatCurrency(i.discount)}` : '-'}</td>
-          <td>${formatCurrency(i.total)}</td>
+          <th style="width:20%">שם הפריט</th>
+          <th>תיאור</th>
+          <th style="width:13%">מחיר יחידה</th>
+          <th style="width:10%">כמות</th>
+          <th style="width:12%">הנחה</th>
+          <th style="width:15%">סה"כ</th>
         </tr>
-      `).join('')}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        ${items.map(i => `
+          <tr>
+            <td>${i.item_name ?? i.name ?? ''}</td>
+            <td>${i.item_description ?? i.description ?? ''}</td>
+            <td class="num">${formatCurrency(i.unit_price)}</td>
+            <td class="num">${i.quantity ?? 0}</td>
+            <td class="num">${i.discount && i.discount > 0 ? `-${formatCurrency(i.discount)}` : '-'}</td>
+            <td class="num">${formatCurrency(i.total)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
 
-  <div class="summary">
-    <div class="sum-row">
-      <span>סה"כ לפני הנחה:</span>
-      <span>${formatCurrency(quote.total_before_discount)}</span>
+    <div class="summary">
+      <div class="sum-row"><span>סה"כ לפני הנחה:</span><span class="num">${formatCurrency(quote.total_before_discount)}</span></div>
+      ${quote.discount_percent && quote.discount_percent > 0 ? `
+        <div class="sum-row"><span>הנחה (${quote.discount_percent}%):</span><span class="num">-${formatCurrency(quote.discount_amount)}</span></div>
+        <div class="sum-row"><span>סה"כ אחרי הנחה:</span><span class="num">${formatCurrency(quote.total_after_discount)}</span></div>
+      ` : ''}
+      <div class="sum-row"><span>מע"מ (${quote.vat_rate ?? 18}%):</span><span class="num">+${formatCurrency(quote.vat_amount)}</span></div>
+      <div class="grand-banner"><span>סה"כ כולל מע"מ:</span><span class="num">${formatCurrency(quote.final_total)}</span></div>
     </div>
 
-    ${quote.discount_percent && quote.discount_percent > 0 ? `
-      <div class="sum-row">
-        <span>הנחה (${quote.discount_percent}%):</span>
-        <span>-${formatCurrency(quote.discount_amount)}</span>
+    <div class="sections">
+      <div class="section approve-box">
+        <h3>אישור הזמנה</h3>
+    <div style="min-height:60px; border:1px dashed #e5e7eb; border-radius:8px; padding:10px;">
+          ${quote.approval_text ?? 'אני מאשר/ת את ההזמנה כמפורט לעיל.'}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; font-size:13.5px;">
+          <div><span class="label">שם המאשר/ת:</span> ${quote.approver_name ?? ''}</div>
+          <div><span class="label">חתימה:</span> ____________________</div>
+          <div><span class="label">תאריך:</span> ${formatDate(quote.created_at)}</div>
+          <div><span class="label">חותמת:</span> ____________________</div>
+        </div>
       </div>
-      <div class="sum-row">
-        <span>סה"כ אחרי הנחה:</span>
-        <span>${formatCurrency(quote.total_after_discount)}</span>
+
+      <div class="section">
+        <h3>פרטי בנק</h3>
+        ${bank ? `
+          <div class="bank-row"><span class="label">בנק:</span><span>${bank.name ?? ''}</span></div>
+          <div class="bank-row"><span class="label">סניף:</span><span>${bank.branch ?? ''}</span></div>
+          <div class="bank-row"><span class="label">מס' סניף:</span><span>${bank.branch_number ?? ''}</span></div>
+          <div class="bank-row"><span class="label">מס' חשבון:</span><span>${bank.account_number ?? ''}</span></div>
+          ${bank.iban ? `<div class="bank-row"><span class="label">IBAN:</span><span class="num">${bank.iban}</span></div>` : ''}
+          ${bank.swift ? `<div class="bank-row"><span class="label">SWIFT:</span><span class="num">${bank.swift}</span></div>` : ''}
+        ` : '<div>נא לעדכן פרטי בנק במערכת</div>'}
       </div>
-    ` : ''}
-
-    <div class="sum-row">
-      <span>מע"מ (18%):</span>
-      <span>+${formatCurrency(quote.vat_amount)}</span>
     </div>
 
-    <div class="sum-row total">
-      <span>סה"כ כולל מע"מ:</span>
-      <span>${formatCurrency(quote.final_total)}</span>
-    </div>
-  </div>
+    ${quote.terms || quote.notes ? `
+      <div class="section" style="margin-top:12px;">
+        <h3>הבהרות ותנאים</h3>
+<div style="white-space:pre-wrap; line-height:1.6; font-size:13.5px; color:#374151;">
+  ${(quote.terms ? quote.terms + '\n' : '') + (quote.notes ?? '')}
+</div>
+      </div>
+    `: ''}
 
-  <div class="footer">
-    <div>נוצר ב: ${formatDate(quote.created_at)}</div>
+    <div class="footer">
+      נוצר ב: ${formatDate(quote.created_at)}
+    </div>
   </div>
 </body>
-</html>`;
+</html>
+`;
 }
 // ===== HTML generator for Monthly Work Hours PDF =====
 function renderMonthlyReportHTML(report, year, month) {
