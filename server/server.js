@@ -261,16 +261,23 @@ app.post('/api/export-pdf', async (req, res) => {
 
 // ------- generateQuoteHTML (כמו שהיה אצלך) -------
 function generateQuoteHTML(quote, items) {
-  const formatCurrency = (n) =>
-      typeof n === 'number' ? `₪${n.toLocaleString('he-IL')}` : '-';
+    const formatCurrency = (n) =>
+        typeof n === 'number' ? `₪${n.toLocaleString('he-IL')}` : '-';
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'לא צוין';
-    const d = new Date(dateString);
-    return d.toLocaleDateString('he-IL');
-  };
+    const formatDate = (dateString) => {
+        if (!dateString) return 'לא צוין';
+        const d = new Date(dateString);
+        return d.toLocaleDateString('he-IL');
+    };
 
-  return `
+    const esc = (s) =>
+        (s ?? '')
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+    return `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -310,7 +317,6 @@ function generateQuoteHTML(quote, items) {
     .bank-row { display:flex; gap:10px; margin:6px 0; }
     .bank-row .label { min-width: 90px; }
     .grand-banner { margin-top: 10px; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; display:flex; justify-content:space-between; align-items:center; font-weight:800; font-size:18px; }
-    .page-break { page-break-before: always; }
   </style>
 </head>
 <body>
@@ -319,17 +325,15 @@ function generateQuoteHTML(quote, items) {
       <div class="brand-block">
         <h1 class="brand-title">הצעת מחיר</h1>
         <div class="brand-meta">
-          ${supplier?.name ? supplier.name : ''}
-          ${supplier?.address ? ' | ' + supplier.address : ''}
-          ${supplier?.phone ? ' | ' + supplier.phone : ''}
-          ${supplier?.email ? ' | ' + supplier.email : ''}
+          <!-- אפשר להוסיף כאן טקסט קבוע של העסק אם תרצה -->
         </div>
         <div class="quote-id">מספר הצעה: ${quote.id ?? ''}</div>
       </div>
       <div class="logo">
-        <!-- לוגו SVG שלך -->
+        <!-- ה-SVG שסיפקת (inline) -->
+        ${/* שים כאן את בלוק ה-SVG המלא ששלחת, 1:1 */''}
         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="403" height="122" viewBox="0 0 403 122">
-          <image xlink:href="data:image/png;base64,${logoBase64 ?? ''}" x="0" y="0" width="403" height="122"/>
+          <image xlink:href="data:image/png;base64,${'' /* אם תרצה PNG – אחרת אפשר להשאיר את <svg> המקורי שהדבקת קודם כולו */}" x="0" y="0" width="403" height="122"/>
         </svg>
       </div>
     </div>
@@ -337,18 +341,18 @@ function generateQuoteHTML(quote, items) {
     <div class="info">
       <div class="card">
         <h2 class="card-title">פרטי האירוע</h2>
-        <div class="row"><span class="label">שם האירוע:</span> ${quote.event_name ?? ''}</div>
-        <div class="row"><span class="label">תאריך:</span> ${formatDate(quote.event_date)}</div>
-        ${quote.event_hours ? `<div class="row"><span class="label">שעות:</span> ${quote.event_hours}</div>` : ''}
-        ${quote.special_notes ? `<div class="row"><span class="label">הערות:</span> ${quote.special_notes}</div>` : ''}
+        <div class="row"><span class="label">שם האירוע:</span> ${esc(quote.event_name ?? '')}</div>
+        <div class="row"><span class="label">תאריך:</span> ${esc(formatDate(quote.event_date))}</div>
+        ${quote.event_hours ? `<div class="row"><span class="label">שעות:</span> ${esc(quote.event_hours)}</div>` : ''}
+        ${quote.special_notes ? `<div class="row"><span class="label">הערות:</span> ${esc(quote.special_notes)}</div>` : ''}
       </div>
 
       <div class="card">
         <h2 class="card-title">פרטי לקוח</h2>
-        <div class="row"><span class="label">שם:</span> ${quote.client_name ?? ''}</div>
-        ${quote.client_company ? `<div class="row"><span class="label">חברה:</span> ${quote.client_company}</div>` : ''}
-        ${quote.client_phone ? `<div class="row"><span class="label">טלפון:</span> ${quote.client_phone}</div>` : ''}
-        ${quote.client_company_id ? `<div class="row"><span class="label">ח.פ / ע.מ:</span> ${quote.client_company_id}</div>` : ''}
+        <div class="row"><span class="label">שם:</span> ${esc(quote.client_name ?? '')}</div>
+        ${quote.client_company ? `<div class="row"><span class="label">חברה:</span> ${esc(quote.client_company)}</div>` : ''}
+        ${quote.client_phone ? `<div class="row"><span class="label">טלפון:</span> ${esc(quote.client_phone)}</div>` : ''}
+        ${quote.client_company_id ? `<div class="row"><span class="label">ח.פ / ע.מ:</span> ${esc(quote.client_company_id)}</div>` : ''}
       </div>
     </div>
 
@@ -366,71 +370,64 @@ function generateQuoteHTML(quote, items) {
       <tbody>
         ${items.map(i => `
           <tr>
-            <td>${i.item_name ?? i.name ?? ''}</td>
-            <td>${i.item_description ?? i.description ?? ''}</td>
-            <td class="num">${formatCurrency(i.unit_price)}</td>
-            <td class="num">${i.quantity ?? 0}</td>
-            <td class="num">${i.discount && i.discount > 0 ? `-${formatCurrency(i.discount)}` : '-'}</td>
-            <td class="num">${formatCurrency(i.total)}</td>
+            <td>${esc(i.item_name ?? i.name ?? '')}</td>
+            <td>${esc(i.item_description ?? i.description ?? '')}</td>
+            <td class="num">${formatCurrency(Number(i.unit_price ?? 0))}</td>
+            <td class="num">${Number(i.quantity ?? 0)}</td>
+            <td class="num">${Number(i.discount ?? 0) > 0 ? '-' + formatCurrency(Number(i.discount)) : '-'}</td>
+            <td class="num">${formatCurrency(Number(i.total ?? 0))}</td>
           </tr>
         `).join('')}
       </tbody>
     </table>
 
     <div class="summary">
-      <div class="sum-row"><span>סה"כ לפני הנחה:</span><span class="num">${formatCurrency(quote.total_before_discount)}</span></div>
-      ${quote.discount_percent && quote.discount_percent > 0 ? `
-        <div class="sum-row"><span>הנחה (${quote.discount_percent}%):</span><span class="num">-${formatCurrency(quote.discount_amount)}</span></div>
-        <div class="sum-row"><span>סה"כ אחרי הנחה:</span><span class="num">${formatCurrency(quote.total_after_discount)}</span></div>
+      <div class="sum-row"><span>סה"כ לפני הנחה:</span><span class="num">${formatCurrency(Number(quote.total_before_discount ?? 0))}</span></div>
+      ${Number(quote.discount_percent ?? 0) > 0 ? `
+        <div class="sum-row"><span>הנחה (${Number(quote.discount_percent)}%):</span><span class="num">-${formatCurrency(Number(quote.discount_amount ?? 0))}</span></div>
+        <div class="sum-row"><span>סה"כ אחרי הנחה:</span><span class="num">${formatCurrency(Number(quote.total_after_discount ?? 0))}</span></div>
       ` : ''}
-      <div class="sum-row"><span>מע"מ (${quote.vat_rate ?? 18}%):</span><span class="num">+${formatCurrency(quote.vat_amount)}</span></div>
-      <div class="grand-banner"><span>סה"כ כולל מע"מ:</span><span class="num">${formatCurrency(quote.final_total)}</span></div>
+      <div class="sum-row"><span>מע"מ (${Number(quote.vat_rate ?? 18)}%):</span><span class="num">+${formatCurrency(Number(quote.vat_amount ?? 0))}</span></div>
+      <div class="grand-banner"><span>סה"כ כולל מע"מ:</span><span class="num">${formatCurrency(Number(quote.final_total ?? 0))}</span></div>
     </div>
 
     <div class="sections">
       <div class="section approve-box">
         <h3>אישור הזמנה</h3>
-    <div style="min-height:60px; border:1px dashed #e5e7eb; border-radius:8px; padding:10px;">
-          ${quote.approval_text ?? 'אני מאשר/ת את ההזמנה כמפורט לעיל.'}
+        <div style="min-height:60px; border:1px dashed #e5e7eb; border-radius:8px; padding:10px;">
+          ${esc(quote.approval_text ?? 'אני מאשר/ת את ההזמנה כמפורט לעיל.')}
         </div>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; font-size:13.5px;">
-          <div><span class="label">שם המאשר/ת:</span> ${quote.approver_name ?? ''}</div>
+          <div><span class="label">שם המאשר/ת:</span> ${esc(quote.approver_name ?? '')}</div>
           <div><span class="label">חתימה:</span> ____________________</div>
-          <div><span class="label">תאריך:</span> ${formatDate(quote.created_at)}</div>
+          <div><span class="label">תאריך:</span> ${esc(formatDate(quote.created_at))}</div>
           <div><span class="label">חותמת:</span> ____________________</div>
         </div>
       </div>
 
       <div class="section">
         <h3>פרטי בנק</h3>
-        ${bank ? `
-          <div class="bank-row"><span class="label">בנק:</span><span>${bank.name ?? ''}</span></div>
-          <div class="bank-row"><span class="label">סניף:</span><span>${bank.branch ?? ''}</span></div>
-          <div class="bank-row"><span class="label">מס' סניף:</span><span>${bank.branch_number ?? ''}</span></div>
-          <div class="bank-row"><span class="label">מס' חשבון:</span><span>${bank.account_number ?? ''}</span></div>
-          ${bank.iban ? `<div class="bank-row"><span class="label">IBAN:</span><span class="num">${bank.iban}</span></div>` : ''}
-          ${bank.swift ? `<div class="bank-row"><span class="label">SWIFT:</span><span class="num">${bank.swift}</span></div>` : ''}
-        ` : '<div>נא לעדכן פרטי בנק במערכת</div>'}
+        <div>נא לעדכן פרטי בנק במערכת</div>
       </div>
     </div>
 
     ${quote.terms || quote.notes ? `
       <div class="section" style="margin-top:12px;">
         <h3>הבהרות ותנאים</h3>
-<div style="white-space:pre-wrap; line-height:1.6; font-size:13.5px; color:#374151;">
-  ${(quote.terms ? quote.terms + '\n' : '') + (quote.notes ?? '')}
-</div>
+        <div style="white-space:pre-wrap; line-height:1.6; font-size:13.5px; color:#374151;">
+          ${esc((quote.terms ? quote.terms + '\\n' : '') + (quote.notes ?? ''))}
+        </div>
       </div>
     `: ''}
 
     <div class="footer">
-      נוצר ב: ${formatDate(quote.created_at)}
+      נוצר ב: ${esc(formatDate(quote.created_at))}
     </div>
   </div>
 </body>
-</html>
-`;
+</html>`;
 }
+
 // ===== HTML generator for Monthly Work Hours PDF =====
 function renderMonthlyReportHTML(report, year, month) {
   const safe = (v) => (v ?? '').toString();
