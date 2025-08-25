@@ -5,18 +5,21 @@ const { dbFunctions } = require('./supabase-database');
 const { initializeDatabase } = require('./initData');
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-// Middleware
+// ===================== Middleware ===================== //
 app.use(cors());
 app.use(express.json());
+
+// הגשת React build
 app.use(express.static(path.join(__dirname, '../client/build')));
+
+// הגשת קבצים סטטיים (תמונות וכו') מתוך server/static
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-
-// טעינת נתונים ראשוניים
+// ===================== Init Data ===================== //
 initializeDatabase();
 
 // ===================== API ROUTES ===================== //
@@ -32,6 +35,7 @@ app.post('/api/items', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 // כינויים
 app.post('/api/aliases', async (req, res) => {
   try {
@@ -146,7 +150,6 @@ app.get('/api/search/items', async (req, res) => {
   }
 });
 
-// פרסור טקסט הצעת מחיר (השארתי את הלוגיקה שלך)
 // פרסור טקסט הצעת מחיר - מחזיר גם unknown
 app.post('/api/parse-quote', async (req, res) => {
   try {
@@ -206,7 +209,7 @@ app.post('/api/parse-quote', async (req, res) => {
           line,
           quantity,
           raw_text: itemText,
-          unit_price: typedTotal, // סכום כוללת/פר פריט? כאן נשמר כמחיר יעד לטבלה
+          unit_price: typedTotal, // נשמר כמחיר יעד לטבלה
         });
       }
     }
@@ -218,9 +221,7 @@ app.post('/api/parse-quote', async (req, res) => {
   }
 });
 
-// ייצוא PDF
-
-
+// ===================== PDF Export ===================== //
 app.post('/api/export-pdf', async (req, res) => {
   try {
     const { quoteId } = req.body;
@@ -236,7 +237,7 @@ app.post('/api/export-pdf', async (req, res) => {
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: chromium.headless,      // בדרך־כלל true בענן
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
@@ -258,7 +259,6 @@ app.post('/api/export-pdf', async (req, res) => {
     res.status(500).json({ error: 'PDF export failed' });
   }
 });
-
 
 
 // ------- generateQuoteHTML (כמו שהיה אצלך) -------
@@ -408,7 +408,8 @@ function generateQuoteHTML(quote, items) {
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ''}</div>
 
         <!-- "מאת:" קבוע -->
-<img src="http://localhost:5000/static/pdf1.png" >
+<img src="/static/pdf1.png" alt="test">
+
       </div>
     </div>
 
@@ -518,7 +519,8 @@ function generateQuoteHTML(quote, items) {
       <div class="event-date"><strong>תאריך האירוע:</strong> ${formatDate(quote.event_date)}</div>
     </div>
 
-    <img src="http://localhost:3000/static/pdf2.png">
+    <img src="/static/pdf1.png" alt="test">
+
 
 
     <!-- חלונית כחולה #3 – אישור הזמנה (שם/חתימה) -->
