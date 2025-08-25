@@ -5,7 +5,8 @@ const { dbFunctions } = require('./supabase-database');
 const { initializeDatabase } = require('./initData');
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
-
+import path from "path";
+app.use("/static", express.static(path.join(process.cwd(), "server/static")));
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -406,7 +407,7 @@ function generateQuoteHTML(quote, items) {
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ''}</div>
 
         <!-- "מאת:" קבוע -->
-         <img src="../client/public/pdf1.png" class="divider" alt="קו מפריד">
+<img src="http://localhost:5000/static/pdf1.png" >
       </div>
     </div>
 
@@ -489,7 +490,7 @@ function generateQuoteHTML(quote, items) {
           ${(quote.terms ? quote.terms + '\n' : '') + (quote.notes ?? '')}
         </div>
       </div>
-    `: ''}
+    ` : ''}
 
     <div class="footer">
       נוצר ב: ${formatDate(quote.created_at)}
@@ -516,7 +517,8 @@ function generateQuoteHTML(quote, items) {
       <div class="event-date"><strong>תאריך האירוע:</strong> ${formatDate(quote.event_date)}</div>
     </div>
 
-    <img src="../client/public/pdf2.png" class="divider" alt="קו מפריד">
+    <img src="http://localhost:3000/static/pdf2.png">
+
 
     <!-- חלונית כחולה #3 – אישור הזמנה (שם/חתימה) -->
     <div class="card blue-card" style="margin-top: 12px;">
