@@ -140,23 +140,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-black mb-2">הצעת מחיר</h1>
             <p className="text-black/80">מספר הצעה: #{quote.id}</p>
-            {/* תמונות ל-PDF */}
-            <div className="mt-4">
-              {/* <img src="/pdf1.png" alt="header-img" style={{ maxWidth: '220px', height: 'auto' }} /> */}
-              <div style={{
-                width: '220px',
-                height: '60px',
-                backgroundColor: '#f3f4f6',
-                border: '2px solid #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto',
-                borderRadius: '8px'
-              }}>
-                <span style={{color: '#6b7280', fontSize: '14px'}}>לוגו החברה</span>
-              </div>
-            </div>
+          </div>
+
+          {/* תמונה גדולה מעל פרטי האירוע */}
+          <div className="text-center mb-8">
+            <img src="/pdf1.png" alt="header-img" style={{ 
+              maxWidth: '500px', 
+              width: '100%', 
+              height: 'auto',
+              margin: '0 auto'
+            }} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
