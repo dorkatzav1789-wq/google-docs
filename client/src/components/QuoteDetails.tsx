@@ -346,11 +346,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </table>
           </div>
 
-          {/* פרטי יצירה */}
-          <div className="mt-8 text-sm text-gray-600 text-center">
-            <div>נוצר ב: {formatDate(quote.created_at || '')}</div>
-            <div>מספר פריטים: {items.length}</div>
-          </div>
 
           {/* דף שני ל-PDF */}
           <div className="mt-16" style={{ pageBreakBefore: 'always' }}>
