@@ -37,8 +37,28 @@ app.use(express.static(clientBuild));
 
 // קבצים סטטיים של השרת (למשל תמונות ל-PDF)
 const serverStatic = path.join(__dirname, "static");
+
+app.use("/static", express.static(serverStatic));
+// קבצים סטטיים של השרת (למשל תמונות ל-PDF)
+const serverStatic = path.join(__dirname, "static");
 app.use("/static", express.static(serverStatic));
 
+// הוספת routes ישירים לתמונות (לנוחות)
+app.get("/pdf1.png", (req, res) => {
+  res.sendFile(path.join(__dirname, "static/pdf1.png"));
+});
+
+app.get("/pdf2.png", (req, res) => {
+  res.sendFile(path.join(__dirname, "static/pdf2.png"));
+});
+
+app.get("/static/pdf1.png", (req, res) => {
+  res.sendFile(path.join(__dirname, "static/pdf1.png"));
+});
+
+app.get("/static/pdf2.png", (req, res) => {
+  res.sendFile(path.join(__dirname, "static/pdf2.png"));
+});
 // ===================== Init Data ===================== //
 (async () => {
   try {
