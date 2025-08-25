@@ -137,20 +137,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
         {/* קונטיינר ל-PDF */}
         <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{ display: 'none' }}>
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-black mb-2">הצעת מחיר</h1>
-            <p className="text-black/80">מספר הצעה: #{quote.id}</p>
-          </div>
-
           {/* תמונה גדולה מעל פרטי האירוע */}
           <div className="text-center mb-8">
-            <img src="/pdf1.png" alt="header-img" style={{ 
-              maxWidth: '650px',
+            <img src="/pdf3.png" alt="header-img" style={{ 
+              maxWidth: '600px',
               width: '100%',
               height: 'auto',
-              margin: '0 auto',
-              marginLeft: 'auto',
-              marginRight: '-10px'
+              margin: '0 auto'
             }} />
           </div>
 
