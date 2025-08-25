@@ -164,23 +164,23 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <h3 className="text-xs font-bold mb-0.5 text-gray-800">פרטי האירוע</h3>
                 <div className="space-y-0">
                   <div>
-                    <span className="font-medium text-gray-700 text-xs">שם האירוע:</span>
-                    <div className="text-gray-800 font-semibold text-xs">{quote.event_name}</div>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שם האירוע:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '10px'}}>{quote.event_name}</div>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700 text-xs">תאריך:</span>
-                    <div className="text-gray-800 text-xs">{formatDate(quote.event_date)}</div>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>תאריך:</span>
+                    <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{formatDate(quote.event_date)}</div>
                   </div>
                   {quote.event_hours && (
                       <div>
-                        <span className="font-medium text-gray-700 text-xs">שעות:</span>
-                        <div className="text-gray-800 text-xs">{quote.event_hours}</div>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שעות:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{quote.event_hours}</div>
                       </div>
                   )}
                   {quote.special_notes && (
                       <div>
-                        <span className="font-medium text-gray-700 text-xs">הערות מיוחדות:</span>
-                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0.5 text-xs">{quote.special_notes}</div>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>הערות מיוחדות:</span>
+                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0.5 text-xs" style={{fontSize: '10px'}}>{quote.special_notes}</div>
                       </div>
                   )}
                 </div>
@@ -191,13 +191,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <h3 className="text-xs font-bold mb-0.5 text-gray-800">פרטי לקוח</h3>
                 <div className="space-y-0">
                   <div>
-                    <span className="font-medium text-gray-700 text-xs">שם:</span>
-                    <div className="text-gray-800 font-semibold text-xs">{quote.client_name}</div>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שם:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '10px'}}>{quote.client_name}</div>
                   </div>
                   {quote.client_company && (
                       <div>
-                        <span className="font-medium text-gray-700 text-xs">חברה:</span>
-                        <div className="text-gray-800 text-xs">{quote.client_company}</div>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>חברה:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{quote.client_company}</div>
                       </div>
                   )}
                 </div>
