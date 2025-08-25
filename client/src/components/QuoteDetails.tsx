@@ -145,8 +145,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* תמונה גדולה מעל פרטי האירוע */}
           <div className="text-center mb-8">
             <img src="/pdf1.png" alt="header-img" style={{ 
-              maxWidth: '500px', 
-              width: '100%', 
+              maxWidth: '700px',
+              width: '300%',
               height: 'auto',
               margin: '0 auto'
             }} />
@@ -273,7 +273,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               <p className="text-black/80">תאריך: {formatDate(new Date().toISOString())}</p>
               {/* תמונה שנייה */}
               <div className="mt-4">
-                <img src="/pdf2.png" alt="header-img" style={{maxWidth: '520px', height: 'auto'}}/>
+                <img src="/pdf2.png" alt="header-img" style={{Width: '520px', height: 'auto'}}/>
               </div>
             </div>
 
