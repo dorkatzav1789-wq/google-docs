@@ -408,7 +408,7 @@ function generateQuoteHTML(quote, items) {
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ''}</div>
 
         <!-- "מאת:" קבוע -->
-<img src="/static/pdf1.png" alt="test">
+<img src="/pdf1.png" alt="test">
 
       </div>
     </div>
@@ -519,7 +519,7 @@ function generateQuoteHTML(quote, items) {
       <div class="event-date"><strong>תאריך האירוע:</strong> ${formatDate(quote.event_date)}</div>
     </div>
 
-    <img src="/static/pdf1.png" alt="test">
+    <img src="/pdf2.png" alt="test">
 
 
 
