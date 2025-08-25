@@ -411,7 +411,7 @@ function generateQuoteHTML(quote, items) {
         <h1 class="brand-title">הצעת מחיר</h1>
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ""}</div>
         <!-- תמונה (ודא שקובץ קיים ב-server/static/pdf1.png) -->
-        <img src="/static/pdf1.png" alt="header-img" style="max-width:220px; height:auto;">
+        <img src="/pdf1.png" alt="header-img" style="max-width:220px; height:auto;">
       </div>
     </div>
 
@@ -525,7 +525,7 @@ function generateQuoteHTML(quote, items) {
       <div class="logo"></div>
       <div class="event-date">${formatDate(quote.event_date)}</div>
     </div>
-
+<img src="/pdf2.png" alt="header-img" style="max-width:220px; height:auto;">
     <div class="sections">
       <div class="section">
         <h3>אישור הזמנה</h3>
