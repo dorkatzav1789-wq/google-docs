@@ -145,12 +145,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* תמונה גדולה מעל פרטי האירוע */}
           <div className="text-center mb-8">
             <img src="/pdf1.png" alt="header-img" style={{ 
-              maxWidth: '1200px',
+              maxWidth: '1300px',
               width: '100%',
               height: 'auto',
               margin: '0 auto',
               marginLeft: 'auto',
-              marginRight: '0'
+              marginRight: '-10px'
             }} />
           </div>
 
