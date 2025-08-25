@@ -203,63 +203,142 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* טבלת פריטים */}
           <div className="mb-8">
             <h3 className="text-lg font-bold mb-4 text-gray-800">פריטי הצעה</h3>
-            <table className="w-full border-collapse border border-gray-300">
+            
+            <style>
+              {`
+                @import url('https://fonts.googleapis.com/css2?family=Arial&display=swap');
+                
+                .invoice-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  font-size: 13px;
+                  direction: rtl;
+                  font-family: Arial, sans-serif;
+                }
+                
+                .invoice-table th,
+                .invoice-table td {
+                  padding: 12px 10px;
+                  text-align: center;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                
+                .invoice-table thead th {
+                  background-color: #e9eef2;
+                  font-weight: bold;
+                  color: #333;
+                  border-bottom: 2px solid #d0d8e0;
+                }
+                
+                .invoice-table tbody tr:nth-child(even) {
+                  background-color: #f5f8fa;
+                }
+                
+                .invoice-table .item-description {
+                  text-align: right;
+                }
+                
+                .item-description .item-title {
+                  font-weight: bold;
+                }
+                
+                .item-description .item-details {
+                  color: #555;
+                  font-size: 12px;
+                }
+                
+                .summary-row-green {
+                  background-color: #e6f3d8 !important;
+                }
+                
+                .summary-row-orange {
+                  background-color: #fde8d7 !important;
+                }
+                
+                .summary-row-green td, .summary-row-orange td {
+                  font-weight: bold;
+                }
+                
+                .final-total {
+                  font-weight: bold;
+                  font-size: 14px;
+                }
+                
+                .final-total td {
+                  border-top: 2px solid #333;
+                  border-bottom: none !important;
+                }
+              `}
+            </style>
+            
+            <table className="invoice-table">
               <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 p-2 text-right">שם הפריט</th>
-                <th className="border border-gray-300 p-2 text-right">תיאור</th>
-                <th className="border border-gray-300 p-2 text-right">מחיר יחידה</th>
-                <th className="border border-gray-300 p-2 text-right">כמות</th>
-                <th className="border border-gray-300 p-2 text-right">הנחה</th>
-                <th className="border border-gray-300 p-2 text-right">סה"כ</th>
-              </tr>
+                <tr>
+                  <th style={{width: '50%'}}>תיאור הפריט</th>
+                  <th>מחיר יחידה</th>
+                  <th>כמות</th>
+                  <th>הנחה</th>
+                  <th>סה"כ</th>
+                </tr>
               </thead>
               <tbody>
-              {items.map((item, index) => (
+                {items.map((item, index) => (
                   <tr key={index}>
-                    <td className="border border-gray-300 p-2 font-medium">{item.name}</td>
-                    <td className="border border-gray-300 p-2 text-sm text-gray-600">{item.description}</td>
-                    <td className="border border-gray-300 p-2">{formatCurrency(item.unit_price)}</td>
-                    <td className="border border-gray-300 p-2">{item.quantity}</td>
-                    <td className="border border-gray-300 p-2">
-                      {item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}
+                    <td className="item-description">
+                      <div className="item-title">{item.name}</div>
+                      <div className="item-details">{item.description}</div>
                     </td>
-                    <td className="border border-gray-300 p-2 font-bold">{formatCurrency(item.total)}</td>
+                    <td>{formatCurrency(item.unit_price)}</td>
+                    <td>{item.quantity}</td>
+                    <td>{item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}</td>
+                    <td>{formatCurrency(item.total)}</td>
                   </tr>
-              ))}
+                ))}
+                
+                {/* שורות סיכום */}
+                <tr className="summary-row-green">
+                  <td className="item-description">סה"כ לפני מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.total_before_discount)}</td>
+                </tr>
+                
+                {quote.discount_percent > 0 && (
+                  <tr className="summary-row-orange">
+                    <td className="item-description">הנחה ({quote.discount_percent}%)</td>
+                    <td></td>
+                    <td></td>
+                    <td>-{formatCurrency(quote.discount_amount)}</td>
+                    <td>-{formatCurrency(quote.discount_amount)}</td>
+                  </tr>
+                )}
+                
+                <tr className="summary-row-green">
+                  <td className="item-description">סה"כ לאחר הנחה</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.total_after_discount)}</td>
+                </tr>
+                
+                <tr className="summary-row-orange">
+                  <td className="item-description">18% מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.vat_amount)}</td>
+                </tr>
+                
+                <tr className="final-total">
+                  <td className="item-description">סה"כ כולל מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.final_total)}</td>
+                </tr>
               </tbody>
             </table>
-          </div>
-
-          {/* סיכום כספי */}
-          <div className="border border-gray-300 rounded-lg p-4">
-            <h3 className="text-lg font-bold mb-4 text-gray-800">סיכום כספי</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-700">סה"כ לפני הנחה:</span>
-                <span className="font-bold">{formatCurrency(quote.total_before_discount)}</span>
-              </div>
-              {quote.discount_percent > 0 && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">הנחה ({quote.discount_percent}%):</span>
-                      <span className="font-bold text-red-600">-{formatCurrency(quote.discount_amount)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-gray-700">סה"כ אחרי הנחה:</span>
-                      <span className="font-bold">{formatCurrency(quote.total_after_discount)}</span>
-                    </div>
-                  </>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-700">מע"מ (18%):</span>
-                <span className="font-bold text-blue-600">+{formatCurrency(quote.vat_amount)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 text-lg">
-                <span className="font-bold text-gray-800">סה"כ כולל מע"מ:</span>
-                <span className="font-bold text-green-600 text-xl">{formatCurrency(quote.final_total)}</span>
-              </div>
-            </div>
           </div>
 
           {/* פרטי יצירה */}
