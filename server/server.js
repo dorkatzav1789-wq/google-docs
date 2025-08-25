@@ -5,9 +5,10 @@ const { dbFunctions } = require('./supabase-database');
 const { initializeDatabase } = require('./initData');
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
-app.use("/static", express.static(path.join(process.cwd(), "server/static")));
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+app.use("/static", express.static(path.join(process.cwd(), "server/static")));
 
 // Middleware
 app.use(cors());
