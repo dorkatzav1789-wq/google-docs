@@ -142,7 +142,20 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             <p className="text-black/80">מספר הצעה: #{quote.id}</p>
             {/* תמונות ל-PDF */}
             <div className="mt-4">
-              <img src="/static/pdf1.png" alt="header-img" style={{ maxWidth: '220px', height: 'auto' }} />
+              {/* <img src="/pdf1.png" alt="header-img" style={{ maxWidth: '220px', height: 'auto' }} /> */}
+              <div style={{
+                width: '220px',
+                height: '60px',
+                backgroundColor: '#f3f4f6',
+                border: '2px solid #d1d5db',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto',
+                borderRadius: '8px'
+              }}>
+                <span style={{color: '#6b7280', fontSize: '14px'}}>לוגו החברה</span>
+              </div>
             </div>
           </div>
 
@@ -267,7 +280,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               <p className="text-black/80">תאריך: {formatDate(new Date().toISOString())}</p>
               {/* תמונה שנייה */}
               <div className="mt-4">
-                <img src="/pdf1.png" alt="header-img" style={{maxWidth: '220px', height: 'auto'}}/>
+                <img src="/pdf2.png" alt="header-img" style={{maxWidth: '220px', height: 'auto'}}/>
               </div>
             </div>
 
