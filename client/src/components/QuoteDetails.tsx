@@ -138,7 +138,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         {/* קונטיינר ל-PDF */}
         <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{ display: 'none' }}>
           {/* כותרת עם תמונה */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-4">
             <img src="/pdf3.png" alt="header-img" style={{ 
               maxWidth: '200px',
               width: '100%',
@@ -355,8 +355,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* דף שני ל-PDF */}
           <div className="mt-16" style={{ pageBreakBefore: 'always' }}>
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-black mb-2">אישור הזמנה</h2>
-              <p className="text-black/80">תאריך: {formatDate(new Date().toISOString())}</p>
+              <img src="/pdf3.png" alt="header-img" style={{ 
+                maxWidth: '200px',
+                width: '100%',
+                height: 'auto',
+                margin: '0 auto'
+              }} />
               {/* תמונה שנייה */}
               <div className="mt-4">
                 <img src="/pdf2.png" alt="header-img" style={{maxWidth: '620px', height: 'auto'}}/>
