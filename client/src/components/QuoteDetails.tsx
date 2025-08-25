@@ -154,48 +154,50 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             }} />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* פרטי האירוע */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי האירוע</h3>
-              <div className="space-y-3">
-                <div>
-                  <span className="font-medium text-gray-700">שם האירוע:</span>
-                  <div className="text-gray-800 font-semibold">{quote.event_name}</div>
+          <div className="border border-gray-300 rounded-md p-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* פרטי האירוע */}
+              <div>
+                <h3 className="text-base font-bold mb-3 text-gray-800">פרטי האירוע</h3>
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">שם האירוע:</span>
+                    <div className="text-gray-800 font-semibold text-sm">{quote.event_name}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">תאריך:</span>
+                    <div className="text-gray-800 text-sm">{formatDate(quote.event_date)}</div>
+                  </div>
+                  {quote.event_hours && (
+                      <div>
+                        <span className="font-medium text-gray-700 text-sm">שעות:</span>
+                        <div className="text-gray-800 text-sm">{quote.event_hours}</div>
+                      </div>
+                  )}
+                  {quote.special_notes && (
+                      <div>
+                        <span className="font-medium text-gray-700 text-sm">הערות מיוחדות:</span>
+                        <div className="text-gray-800 bg-gray-50 p-2 rounded-sm mt-1 text-sm">{quote.special_notes}</div>
+                      </div>
+                  )}
                 </div>
-                <div>
-                  <span className="font-medium text-gray-700">תאריך:</span>
-                  <div className="text-gray-800">{formatDate(quote.event_date)}</div>
-                </div>
-                {quote.event_hours && (
-                    <div>
-                      <span className="font-medium text-gray-700">שעות:</span>
-                      <div className="text-gray-800">{quote.event_hours}</div>
-                    </div>
-                )}
-                {quote.special_notes && (
-                    <div>
-                      <span className="font-medium text-gray-700">הערות מיוחדות:</span>
-                      <div className="text-gray-800 bg-gray-50 p-2 rounded mt-1">{quote.special_notes}</div>
-                    </div>
-                )}
               </div>
-            </div>
 
-            {/* פרטי לקוח */}
-            <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי לקוח</h3>
-              <div className="space-y-3">
-                <div>
-                  <span className="font-medium text-gray-700">שם:</span>
-                  <div className="text-gray-800 font-semibold">{quote.client_name}</div>
+              {/* פרטי לקוח */}
+              <div>
+                <h3 className="text-base font-bold mb-3 text-gray-800">פרטי לקוח</h3>
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">שם:</span>
+                    <div className="text-gray-800 font-semibold text-sm">{quote.client_name}</div>
+                  </div>
+                  {quote.client_company && (
+                      <div>
+                        <span className="font-medium text-gray-700 text-sm">חברה:</span>
+                        <div className="text-gray-800 text-sm">{quote.client_company}</div>
+                      </div>
+                  )}
                 </div>
-                {quote.client_company && (
-                    <div>
-                      <span className="font-medium text-gray-700">חברה:</span>
-                      <div className="text-gray-800">{quote.client_company}</div>
-                    </div>
-                )}
               </div>
             </div>
           </div>
