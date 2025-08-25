@@ -207,7 +207,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
           {/* טבלת פריטים */}
           <div className="mb-8">
-            <h3 className="text-lg font-bold mb-4 text-gray-800">פריטי הצעה</h3>
             
             <style>
               {`
@@ -219,20 +218,21 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   font-size: 13px;
                   direction: rtl;
                   font-family: Arial, sans-serif;
+                  border: 1px solid #e0e0e0;
                 }
                 
                 .invoice-table th,
                 .invoice-table td {
                   padding: 12px 10px;
                   text-align: center;
-                  border: 1px solid #e0e0e0;
+                  border-bottom: 1px solid #e0e0e0;
                 }
                 
                 .invoice-table thead th {
                   background-color: #e9eef2;
                   font-weight: bold;
                   color: #333;
-                  border: 1px solid #d0d8e0;
+                  border-bottom: 2px solid #d0d8e0;
                 }
                 
                 .invoice-table tbody tr:nth-child(even) {
