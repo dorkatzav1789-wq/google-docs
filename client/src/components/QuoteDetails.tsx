@@ -245,11 +245,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 
                 .item-description .item-title {
                   font-weight: bold;
+                  font-size: 11px;
                 }
                 
                 .item-description .item-details {
                   color: #555;
-                  font-size: 12px;
+                  font-size: 10px;
                 }
                 
                 .summary-row-green {
@@ -402,44 +403,44 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         {/* תצוגה רגילה */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* פרטי הצעה */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="card">
-              <h3 className="text-base font-bold mb-3 text-gray-800">פרטי האירוע</h3>
-              <div className="space-y-2">
+              <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי האירוע</h3>
+              <div className="space-y-1">
                 <div>
-                  <span className="font-medium text-gray-700 text-sm">שם האירוע:</span>
-                  <div className="text-gray-800 font-semibold text-sm">{quote.event_name}</div>
+                  <span className="font-medium text-gray-700 text-xs">שם האירוע:</span>
+                  <div className="text-gray-800 font-semibold text-xs">{quote.event_name}</div>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-700 text-sm">תאריך:</span>
-                  <div className="text-gray-800 text-sm">{formatDate(quote.event_date)}</div>
+                  <span className="font-medium text-gray-700 text-xs">תאריך:</span>
+                  <div className="text-gray-800 text-xs">{formatDate(quote.event_date)}</div>
                 </div>
                 {quote.event_hours && (
                     <div>
-                      <span className="font-medium text-gray-700 text-sm">שעות:</span>
-                      <div className="text-gray-800 text-sm">{quote.event_hours}</div>
+                      <span className="font-medium text-gray-700 text-xs">שעות:</span>
+                      <div className="text-gray-800 text-xs">{quote.event_hours}</div>
                     </div>
                 )}
                 {quote.special_notes && (
                     <div>
-                      <span className="font-medium text-gray-700 text-sm">הערות מיוחדות:</span>
-                      <div className="text-gray-800 bg-gray-50 p-2 rounded mt-1 text-sm">{quote.special_notes}</div>
+                      <span className="font-medium text-gray-700 text-xs">הערות מיוחדות:</span>
+                      <div className="text-gray-800 bg-gray-50 p-1 rounded mt-1 text-xs">{quote.special_notes}</div>
                     </div>
                 )}
               </div>
             </div>
 
             <div className="card">
-              <h3 className="text-base font-bold mb-3 text-gray-800">פרטי לקוח</h3>
-              <div className="space-y-2">
+              <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי לקוח</h3>
+              <div className="space-y-1">
                 <div>
-                  <span className="font-medium text-gray-700 text-sm">שם:</span>
-                  <div className="text-gray-800 font-semibold text-sm">{quote.client_name}</div>
+                  <span className="font-medium text-gray-700 text-xs">שם:</span>
+                  <div className="text-gray-800 font-semibold text-xs">{quote.client_name}</div>
                 </div>
                 {quote.client_company && (
                     <div>
-                      <span className="font-medium text-gray-700 text-sm">חברה:</span>
-                      <div className="text-gray-800 text-sm">{quote.client_company}</div>
+                      <span className="font-medium text-gray-700 text-xs">חברה:</span>
+                      <div className="text-gray-800 text-xs">{quote.client_company}</div>
                     </div>
                 )}
               </div>
