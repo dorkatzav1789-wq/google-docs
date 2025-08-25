@@ -406,12 +406,7 @@ function generateQuoteHTML(quote, items) {
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ''}</div>
 
         <!-- "מאת:" קבוע -->
-        <div class="from-box">
-          <div><span class="label">מאת:</span> דנאור מערכות בע"מ</div>
-          <div>הנגר 9, א.ת. נווה נאמן, הוד השרון, מיקוד 4501310, ת.ד. 7180, ע.מ. 511101941</div>
-          <div>ספק משרד הביטחון 83/084548 • <a href="https://www.danor.com">www.danor.com</a> • טלפון 09-7444222</div>
-          <div>איש קשר: דור קצב • מס' טלפון: 052-489-1025</div>
-        </div>
+         <img src="../client/public/pdf1.png" class="divider" alt="קו מפריד">
       </div>
     </div>
 
@@ -521,29 +516,7 @@ function generateQuoteHTML(quote, items) {
       <div class="event-date"><strong>תאריך האירוע:</strong> ${formatDate(quote.event_date)}</div>
     </div>
 
-    <!-- חלונית כחולה #1 -->
-    <div class="card blue-card" style="margin-top: 8px;">
-      <h2 class="card-title">מצגות להקרנה על המסך – פורמט PowerPoint</h2>
-      <ul>
-        <li>את התשלום יש להעביר בצ'ק/העברה בנקאית ביום האירוע לחברת דנאור. פרטי הבנק להעברה:
-          דנאור מערכות בע"מ • בנק 12 • סניף 061 • חשבון 535354.</li>
-        <li>עלות העובדים היא ל-9 שעות. כל שעה נוספת: ₪250 לכל עובד.</li>
-        <li>המחירים אינם כוללים מע"מ.</li>
-        <li>כל שינוי או תוספת יתומחרו בנפרד.</li>
-      </ul>
-    </div>
-
-    <!-- חלונית כחולה #2 -->
-    <div class="card blue-card" style="margin-top: 12px;">
-      <h2 class="card-title">אחריות ותיאום חומרי הקרנה</h2>
-      <ul>
-        <li>המזמין מאשר כי הספק / דנאור אינו אחראי על הפרעות, כשלים ואיבוד קליטה במיקרופונים אלחוטיים.
-            במקרה של הפרעות וכשל בזמן אמת, הספק ידאג למיקרופון חוטי כפיתרון חליפי.</li>
-        <li>על אחריות הלקוח להעביר קבצי גרפיקה למסך לפחות 72 שעות טרם מועד האירוע לבדיקה.
-            וואלי אירועים ודנאור מערכות מסירים מעצמם כל אחריות בנוגע לגרפיקה שלא נבדקה מראש.
-            מייל לשליחת חומרים: <strong>valleyvj2023@gmail.com</strong></li>
-      </ul>
-    </div>
+    <img src="../client/public/pdf2.png" class="divider" alt="קו מפריד">
 
     <!-- חלונית כחולה #3 – אישור הזמנה (שם/חתימה) -->
     <div class="card blue-card" style="margin-top: 12px;">
