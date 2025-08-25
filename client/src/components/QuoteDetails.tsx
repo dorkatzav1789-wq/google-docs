@@ -157,12 +157,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             }} />
           </div>
 
-          <div className="border border-gray-300 rounded-sm p-3 mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="border border-gray-300 rounded-md p-2 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* פרטי האירוע */}
               <div>
-                <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי האירוע</h3>
-                <div className="space-y-1">
+                <h3 className="text-xs font-bold mb-1 text-gray-800">פרטי האירוע</h3>
+                <div className="space-y-0.5">
                   <div>
                     <span className="font-medium text-gray-700 text-xs">שם האירוע:</span>
                     <div className="text-gray-800 font-semibold text-xs">{quote.event_name}</div>
@@ -188,8 +188,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
               {/* פרטי לקוח */}
               <div>
-                <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי לקוח</h3>
-                <div className="space-y-1">
+                <h3 className="text-xs font-bold mb-1 text-gray-800">פרטי לקוח</h3>
+                <div className="space-y-0.5">
                   <div>
                     <span className="font-medium text-gray-700 text-xs">שם:</span>
                     <div className="text-gray-800 font-semibold text-xs">{quote.client_name}</div>
