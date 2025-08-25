@@ -157,30 +157,30 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             }} />
           </div>
 
-          <div className="border border-gray-300 rounded-md p-1 mb-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="border border-gray-300 rounded-md p-0.5 mb-2" style={{borderWidth: '0.5px'}}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
               {/* פרטי האירוע */}
               <div>
-                <h3 className="text-xs font-bold mb-0.5 text-gray-800">פרטי האירוע</h3>
+                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי האירוע</h3>
                 <div className="space-y-0">
-                  <div>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שם האירוע:</span>
-                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '10px'}}>{quote.event_name}</div>
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם האירוע:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.event_name}</div>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>תאריך:</span>
-                    <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{formatDate(quote.event_date)}</div>
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>תאריך:</span>
+                    <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{formatDate(quote.event_date)}</div>
                   </div>
                   {quote.event_hours && (
-                      <div>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שעות:</span>
-                        <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{quote.event_hours}</div>
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שעות:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.event_hours}</div>
                       </div>
                   )}
                   {quote.special_notes && (
-                      <div>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>הערות מיוחדות:</span>
-                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0.5 text-xs" style={{fontSize: '10px'}}>{quote.special_notes}</div>
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>הערות מיוחדות:</span>
+                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0 text-xs" style={{fontSize: '9px'}}>{quote.special_notes}</div>
                       </div>
                   )}
                 </div>
@@ -188,16 +188,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
               {/* פרטי לקוח */}
               <div>
-                <h3 className="text-xs font-bold mb-0.5 text-gray-800">פרטי לקוח</h3>
+                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי לקוח</h3>
                 <div className="space-y-0">
-                  <div>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>שם:</span>
-                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '10px'}}>{quote.client_name}</div>
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.client_name}</div>
                   </div>
                   {quote.client_company && (
-                      <div>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '10px'}}>חברה:</span>
-                        <div className="text-gray-800 text-xs" style={{fontSize: '10px'}}>{quote.client_company}</div>
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>חברה:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.client_company}</div>
                       </div>
                   )}
                 </div>
