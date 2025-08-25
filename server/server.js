@@ -32,13 +32,10 @@ app.use(express.json());
 // ===================== Static ===================== //
 
 // React build (אם קיים)
+// React build (אם קיים)
 const clientBuild = path.join(__dirname, "../client/build");
 app.use(express.static(clientBuild));
 
-// קבצים סטטיים של השרת (למשל תמונות ל-PDF)
-const serverStatic = path.join(__dirname, "static");
-
-app.use("/static", express.static(serverStatic));
 // קבצים סטטיים של השרת (למשל תמונות ל-PDF)
 const serverStatic = path.join(__dirname, "static");
 app.use("/static", express.static(serverStatic));
