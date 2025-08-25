@@ -267,13 +267,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               <p className="text-black/80">תאריך: {formatDate(new Date().toISOString())}</p>
               {/* תמונה שנייה */}
               <div className="mt-4">
-                <img src="/static/pdf2.png" alt="footer-img" style={{ maxWidth: '220px', height: 'auto' }} />
+                <img src="/pdf1.png" alt="header-img" style={{maxWidth: '220px', height: 'auto'}}/>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="border border-gray-300 rounded-lg p-4">
-                <h3 className="text-lg font-bold mb-4 text-gray-800">אישור הזמנה</h3>
+              <h3 className="text-lg font-bold mb-4 text-gray-800">אישור הזמנה</h3>
                 <p className="text-sm text-gray-700 mb-4">
                   אשר/י בחתימה שהפרטים לעיל מאושרים וכי ידוע לך שהמחירים אינם כוללים הובלה/עומסים חריגים אלא אם צוין אחרת.
                 </p>
