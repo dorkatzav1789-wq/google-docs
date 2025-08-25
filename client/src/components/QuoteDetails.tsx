@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QuoteWithItems } from '../types';
 import { quotesAPI } from '../services/api';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 interface QuoteDetailsProps {
   quoteId: number;
@@ -11,6 +13,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [quoteData, setQuoteData] = useState<QuoteWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const loadQuoteDetails = async () => {
     try {
@@ -48,22 +51,46 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   };
 
   const handleExportPDF = async () => {
-    if (!quoteData) return;
+    if (!quoteData || !pdfRef.current) return;
+    
     try {
       setExportingPDF(true);
-      const blob = await quotesAPI.exportPDF(quoteData.quote.id!);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `quote-${quoteData.quote.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      const element = pdfRef.current;
+      
+      // הצג את הקונטיינר ל-PDF
+      element.style.display = 'block';
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `quote-${quoteData.quote.id}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+          scale: 2,
+          useCORS: true,
+          allowTaint: true
+        },
+        jsPDF: { 
+          unit: 'mm', 
+          format: 'a4', 
+          orientation: 'portrait' 
+        }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+      
+      // הסתר את הקונטיינר אחרי הייצוא
+      element.style.display = 'none';
+      
       alert('PDF יוצא בהצלחה!');
     } catch (error) {
       console.error('שגיאה בייצוא PDF:', error);
       alert('שגיאה בייצוא PDF');
+      
+      // הסתר את הקונטיינר גם במקרה של שגיאה
+      if (pdfRef.current) {
+        pdfRef.current.style.display = 'none';
+      }
     } finally {
       setExportingPDF(false);
     }
@@ -108,6 +135,180 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
         </div>
 
+        {/* קונטיינר ל-PDF */}
+        <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{ display: 'none' }}>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-black mb-2">הצעת מחיר</h1>
+            <p className="text-black/80">מספר הצעה: #{quote.id}</p>
+            {/* תמונות ל-PDF */}
+            <div className="mt-4">
+              <img src="/static/pdf1.png" alt="header-img" style={{ maxWidth: '220px', height: 'auto' }} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* פרטי האירוע */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי האירוע</h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="font-medium text-gray-700">שם האירוע:</span>
+                  <div className="text-gray-800 font-semibold">{quote.event_name}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-700">תאריך:</span>
+                  <div className="text-gray-800">{formatDate(quote.event_date)}</div>
+                </div>
+                {quote.event_hours && (
+                    <div>
+                      <span className="font-medium text-gray-700">שעות:</span>
+                      <div className="text-gray-800">{quote.event_hours}</div>
+                    </div>
+                )}
+                {quote.special_notes && (
+                    <div>
+                      <span className="font-medium text-gray-700">הערות מיוחדות:</span>
+                      <div className="text-gray-800 bg-gray-50 p-2 rounded mt-1">{quote.special_notes}</div>
+                    </div>
+                )}
+              </div>
+            </div>
+
+            {/* פרטי לקוח */}
+            <div className="border border-gray-300 rounded-lg p-4">
+              <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי לקוח</h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="font-medium text-gray-700">שם:</span>
+                  <div className="text-gray-800 font-semibold">{quote.client_name}</div>
+                </div>
+                {quote.client_company && (
+                    <div>
+                      <span className="font-medium text-gray-700">חברה:</span>
+                      <div className="text-gray-800">{quote.client_company}</div>
+                    </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* טבלת פריטים */}
+          <div className="mb-8">
+            <h3 className="text-lg font-bold mb-4 text-gray-800">פריטי הצעה</h3>
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 p-2 text-right">שם הפריט</th>
+                <th className="border border-gray-300 p-2 text-right">תיאור</th>
+                <th className="border border-gray-300 p-2 text-right">מחיר יחידה</th>
+                <th className="border border-gray-300 p-2 text-right">כמות</th>
+                <th className="border border-gray-300 p-2 text-right">הנחה</th>
+                <th className="border border-gray-300 p-2 text-right">סה"כ</th>
+              </tr>
+              </thead>
+              <tbody>
+              {items.map((item, index) => (
+                  <tr key={index}>
+                    <td className="border border-gray-300 p-2 font-medium">{item.name}</td>
+                    <td className="border border-gray-300 p-2 text-sm text-gray-600">{item.description}</td>
+                    <td className="border border-gray-300 p-2">{formatCurrency(item.unit_price)}</td>
+                    <td className="border border-gray-300 p-2">{item.quantity}</td>
+                    <td className="border border-gray-300 p-2">
+                      {item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}
+                    </td>
+                    <td className="border border-gray-300 p-2 font-bold">{formatCurrency(item.total)}</td>
+                  </tr>
+              ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* סיכום כספי */}
+          <div className="border border-gray-300 rounded-lg p-4">
+            <h3 className="text-lg font-bold mb-4 text-gray-800">סיכום כספי</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-700">סה"כ לפני הנחה:</span>
+                <span className="font-bold">{formatCurrency(quote.total_before_discount)}</span>
+              </div>
+              {quote.discount_percent > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-700">הנחה ({quote.discount_percent}%):</span>
+                      <span className="font-bold text-red-600">-{formatCurrency(quote.discount_amount)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-gray-700">סה"כ אחרי הנחה:</span>
+                      <span className="font-bold">{formatCurrency(quote.total_after_discount)}</span>
+                    </div>
+                  </>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-700">מע"מ (18%):</span>
+                <span className="font-bold text-blue-600">+{formatCurrency(quote.vat_amount)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 text-lg">
+                <span className="font-bold text-gray-800">סה"כ כולל מע"מ:</span>
+                <span className="font-bold text-green-600 text-xl">{formatCurrency(quote.final_total)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* פרטי יצירה */}
+          <div className="mt-8 text-sm text-gray-600 text-center">
+            <div>נוצר ב: {formatDate(quote.created_at || '')}</div>
+            <div>מספר פריטים: {items.length}</div>
+          </div>
+
+          {/* דף שני ל-PDF */}
+          <div className="mt-16" style={{ pageBreakBefore: 'always' }}>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-black mb-2">אישור הזמנה</h2>
+              <p className="text-black/80">תאריך: {formatDate(new Date().toISOString())}</p>
+              {/* תמונה שנייה */}
+              <div className="mt-4">
+                <img src="/static/pdf2.png" alt="footer-img" style={{ maxWidth: '220px', height: 'auto' }} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border border-gray-300 rounded-lg p-4">
+                <h3 className="text-lg font-bold mb-4 text-gray-800">אישור הזמנה</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  אשר/י בחתימה שהפרטים לעיל מאושרים וכי ידוע לך שהמחירים אינם כוללים הובלה/עומסים חריגים אלא אם צוין אחרת.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <span className="font-medium text-gray-700">שם מלא:</span>
+                    <div className="border-b border-gray-300 mt-1 h-6"></div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">חתימה:</span>
+                    <div className="border-b border-gray-300 mt-1 h-6"></div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">תאריך:</span>
+                    <div className="text-gray-800">{formatDate(new Date().toISOString())}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-gray-300 rounded-lg p-4">
+                <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי תשלום</h3>
+                <p className="text-sm text-gray-700">פרטי תשלום יסופקו לפי הצורך.</p>
+              </div>
+            </div>
+
+            <div className="mt-8 text-sm text-gray-600 text-center">
+              <div><strong>בברכה,</strong> דור קצב</div>
+              <div>מנהל מערכות מולטימדיה, תאורה, הגברה, מסכי לד</div>
+              <div>📞 052-489-1025</div>
+              <div>✉️ Dor.katzav.valley@gmail.com</div>
+            </div>
+          </div>
+        </div>
+
+        {/* תצוגה רגילה */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* פרטי הצעה */}
           <div className="space-y-6">
