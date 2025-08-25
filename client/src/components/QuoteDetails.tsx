@@ -146,7 +146,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           <div className="text-center mb-8">
             <img src="/pdf1.png" alt="header-img" style={{ 
               maxWidth: '1900px',
-              width: '150%',
+              width: '100%',
               height: '650px',
               margin: '0 auto',
               marginLeft: 'auto',
