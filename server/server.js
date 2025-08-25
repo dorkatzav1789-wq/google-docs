@@ -277,16 +277,37 @@ app.post("/api/export-pdf", async (req, res) => {
     // טעינת התמונות כ-base64 (חובה לפרודקשן)
     let pdf1Base64, pdf2Base64;
     try {
-      pdf1Base64 = fs.readFileSync(path.join(__dirname, "static/pdf1.png")).toString("base64");
-      pdf2Base64 = fs.readFileSync(path.join(__dirname, "static/pdf2.png")).toString("base64");
+      const pdf1Path = path.join(__dirname, "static/pdf1.png");
+      const pdf2Path = path.join(__dirname, "static/pdf2.png");
+      
+      console.log("🔍 מחפש תמונות ב:", pdf1Path, pdf2Path);
+      console.log("📁 קובץ pdf1 קיים:", fs.existsSync(pdf1Path));
+      console.log("📁 קובץ pdf2 קיים:", fs.existsSync(pdf2Path));
+      
+      pdf1Base64 = fs.readFileSync(pdf1Path).toString("base64");
+      pdf2Base64 = fs.readFileSync(pdf2Path).toString("base64");
+      
+      console.log("✅ תמונות נטענו בהצלחה!");
+      console.log("📏 גודל pdf1 (base64):", pdf1Base64.length, "תווים");
+      console.log("📏 גודל pdf2 (base64):", pdf2Base64.length, "תווים");
+      console.log("🔍 pdf1 מתחיל ב:", pdf1Base64.substring(0, 50));
+      console.log("🔍 pdf2 מתחיל ב:", pdf2Base64.substring(0, 50));
+      
     } catch (error) {
-      console.error("שגיאה בטעינת תמונות:", error);
+      console.error("❌ שגיאה בטעינת תמונות:", error);
+      console.error("📋 פרטי השגיאה:", error.message);
       // אם התמונות לא קיימות, השתמש בתמונות ריקות או הסר אותן
       pdf1Base64 = "";
       pdf2Base64 = "";
     }
 
     const html = generateQuoteHTML(quote, items, pdf1Base64, pdf2Base64);
+    
+    console.log("📄 HTML נוצר בהצלחה!");
+    console.log("📏 אורך HTML:", html.length, "תווים");
+    console.log("🖼️ האם יש תמונות ב-HTML:", html.includes("data:image/png;base64"));
+    console.log("🖼️ האם יש pdf1 ב-HTML:", html.includes("pdf1"));
+    console.log("🖼️ האם יש pdf2 ב-HTML:", html.includes("pdf2"));
 
     // הגדרות הפעלה לסביבות שונות
     const isServerless = !!process.env.AWS_REGION || !!process.env.LAMBDA_TASK_ROOT || process.env.PUPPETEER_EXECUTABLE_PATH;
