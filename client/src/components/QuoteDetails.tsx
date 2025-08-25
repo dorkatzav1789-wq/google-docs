@@ -225,14 +225,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 .invoice-table td {
                   padding: 12px 10px;
                   text-align: center;
-                  border-bottom: 1px solid #e0e0e0;
+                  border: 1px solid #e0e0e0;
                 }
                 
                 .invoice-table thead th {
                   background-color: #e9eef2;
                   font-weight: bold;
                   color: #333;
-                  border-bottom: 2px solid #d0d8e0;
+                  border: 1px solid #d0d8e0;
                 }
                 
                 .invoice-table tbody tr:nth-child(even) {
@@ -491,7 +491,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
         {/* טבלת פריטים */}
         <div className="card mt-6">
-          <h3 className="text-lg font-bold mb-4 text-gray-800">פריטי הצעה</h3>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
