@@ -8,12 +8,12 @@ const puppeteer = require('puppeteer-core');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use("/static", express.static(path.join(process.cwd(), "server/static")));
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../client/build')));
+app.use("/static", express.static(path.join(process.cwd(), "server/static")));
 
 // טעינת נתונים ראשוניים
 initializeDatabase();
