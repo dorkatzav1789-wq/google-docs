@@ -361,33 +361,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               <div className="mt-4">
                 <img src="/pdf2.png" alt="header-img" style={{maxWidth: '620px', height: 'auto'}}/>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border border-gray-300 rounded-lg p-4">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">אישור הזמנה</h3>
-                <p className="text-sm text-gray-700 mb-4">
-                  אשר/י בחתימה שהפרטים לעיל מאושרים וכי ידוע לך שהמחירים אינם כוללים הובלה/עומסים חריגים אלא אם צוין אחרת.
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <span className="font-medium text-gray-700">שם מלא:</span>
-                    <div className="border-b border-gray-300 mt-1 h-6"></div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">חתימה:</span>
-                    <div className="border-b border-gray-300 mt-1 h-6"></div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">תאריך:</span>
-                    <div className="text-gray-800">{formatDate(new Date().toISOString())}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border border-gray-300 rounded-lg p-4">
-                <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי תשלום</h3>
-                <p className="text-sm text-gray-700">פרטי תשלום יסופקו לפי הצורך.</p>
+              {/* תמונה שלישית */}
+              <div className="mt-4">
+                <img src="/pdf4.png" alt="header-img" style={{maxWidth: '620px', height: 'auto'}}/>
               </div>
             </div>
 
