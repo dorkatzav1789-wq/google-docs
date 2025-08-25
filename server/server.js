@@ -4,6 +4,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 
 // מודולים פנימיים
 const { dbFunctions } = require("./supabase-database");
@@ -273,7 +274,19 @@ app.post("/api/export-pdf", async (req, res) => {
 
     const items = (await dbFunctions.getQuoteItems(quoteId)) || [];
 
-    const html = generateQuoteHTML(quote, items);
+    // טעינת התמונות כ-base64 (חובה לפרודקשן)
+    let pdf1Base64, pdf2Base64;
+    try {
+      pdf1Base64 = fs.readFileSync(path.join(__dirname, "static/pdf1.png")).toString("base64");
+      pdf2Base64 = fs.readFileSync(path.join(__dirname, "static/pdf2.png")).toString("base64");
+    } catch (error) {
+      console.error("שגיאה בטעינת תמונות:", error);
+      // אם התמונות לא קיימות, השתמש בתמונות ריקות או הסר אותן
+      pdf1Base64 = "";
+      pdf2Base64 = "";
+    }
+
+    const html = generateQuoteHTML(quote, items, pdf1Base64, pdf2Base64);
 
     // הגדרות הפעלה לסביבות שונות
     const isServerless = !!process.env.AWS_REGION || !!process.env.LAMBDA_TASK_ROOT || process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -331,7 +344,7 @@ app.listen(PORT, () => {
 });
 
 // ===================== Helpers ===================== //
-function generateQuoteHTML(quote, items) {
+function generateQuoteHTML(quote, items, pdf1Base64, pdf2Base64) {
   const formatCurrency = (n) =>
       typeof n === "number" && !isNaN(n) ? `₪${n.toLocaleString("he-IL")}` : "-";
 
@@ -410,8 +423,7 @@ function generateQuoteHTML(quote, items) {
       <div class="brand-block">
         <h1 class="brand-title">הצעת מחיר</h1>
         <div class="brand-meta">מספר הצעה: ${quote.id ?? ""}</div>
-        <!-- תמונה (ודא שקובץ קיים ב-server/static/pdf1.png) -->
-        <img src="/static/pdf1.png" alt="header-img" style="max-width:220px; height:auto;">
+        ${pdf1Base64 ? `<img src="data:image/png;base64,${pdf1Base64}" alt="header-img" style="max-width:220px; height:auto;">` : ''}
       </div>
     </div>
 
@@ -525,7 +537,7 @@ function generateQuoteHTML(quote, items) {
       <div class="logo"></div>
       <div class="event-date">${formatDate(quote.event_date)}</div>
     </div>
-<img src="/static/pdf2.png" alt="header-img" style="max-width:220px; height:auto;">
+${pdf2Base64 ? `<img src="data:image/png;base64,${pdf2Base64}" alt="header-img" style="max-width:220px; height:auto;">` : ''}
     <div class="sections">
       <div class="section">
         <h3>אישור הזמנה</h3>
