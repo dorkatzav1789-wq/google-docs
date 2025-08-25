@@ -140,7 +140,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* כותרת עם תמונה */}
           <div className="text-center mb-8">
             <img src="/pdf3.png" alt="header-img" style={{ 
-              maxWidth: '400px',
+              maxWidth: '300px',
               width: '100%',
               height: 'auto',
               margin: '0 auto'
