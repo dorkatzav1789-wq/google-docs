@@ -136,7 +136,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         </div>
 
         {/* קונטיינר ל-PDF */}
-        <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{ display: 'none' }}>
+        <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{display: 'none'}}>
           {/* כותרת עם תמונה */}
           <div className="text-center mb-4">
             <img src="/pdf3.png" alt="header-img" style={{
@@ -144,7 +144,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               width: '100%',
               height: 'auto',
               margin: '0 auto'
-            }} />
+            }}/>
           </div>
 
           {/* תמונה גדולה מעל פרטי האירוע */}
@@ -154,7 +154,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               width: '100%',
               height: 'auto',
               margin: '0 auto'
-            }} />
+            }}/>
           </div>
 
           <div className="border border-gray-300 rounded-md p-0.5 mb-2" style={{borderWidth: '0.5px'}}>
@@ -165,11 +165,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <div className="space-y-0">
                   <div style={{lineHeight: '1.2'}}>
                     <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם האירוע:</span>
-                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.event_name}</div>
+                    <div className="text-gray-800 font-semibold text-xs"
+                         style={{fontSize: '9px'}}>{quote.event_name}</div>
                   </div>
                   <div style={{lineHeight: '1.2'}}>
                     <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>תאריך:</span>
-                    <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{formatDate(quote.event_date)}</div>
+                    <div className="text-gray-800 text-xs"
+                         style={{fontSize: '9px'}}>{formatDate(quote.event_date)}</div>
                   </div>
                   {quote.event_hours && (
                       <div style={{lineHeight: '1.2'}}>
@@ -179,8 +181,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   )}
                   {quote.special_notes && (
                       <div style={{lineHeight: '1.2'}}>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>הערות מיוחדות:</span>
-                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0 text-xs" style={{fontSize: '9px'}}>{quote.special_notes}</div>
+                        <span className="font-medium text-gray-700 text-xs"
+                              style={{fontSize: '9px'}}>הערות מיוחדות:</span>
+                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0 text-xs"
+                             style={{fontSize: '9px'}}>{quote.special_notes}</div>
                       </div>
                   )}
                 </div>
@@ -192,7 +196,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <div className="space-y-0">
                   <div style={{lineHeight: '1.2'}}>
                     <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם:</span>
-                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.client_name}</div>
+                    <div className="text-gray-800 font-semibold text-xs"
+                         style={{fontSize: '9px'}}>{quote.client_name}</div>
                   </div>
                   {quote.client_company && (
                       <div style={{lineHeight: '1.2'}}>
@@ -279,16 +284,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
             <table className="invoice-table">
               <thead>
-                <tr>
-                  <th style={{width: '50%'}}>תיאור הפריט</th>
-                  <th>מחיר יחידה</th>
-                  <th>כמות</th>
-                  <th>הנחה</th>
-                  <th>סה"כ</th>
-                </tr>
+              <tr>
+                <th style={{width: '50%'}}>תיאור הפריט</th>
+                <th>מחיר יחידה</th>
+                <th>כמות</th>
+                <th>הנחה</th>
+                <th>סה"כ</th>
+              </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => (
+              {items.map((item, index) => (
                   <tr key={index}>
                     <td className="item-description">
                       <div className="item-title">{item.name}</div>
@@ -299,18 +304,18 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     <td>{item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}</td>
                     <td>{formatCurrency(item.total)}</td>
                   </tr>
-                ))}
+              ))}
 
-                {/* שורות סיכום */}
-                <tr className="summary-row-green">
-                  <td className="item-description">סה"כ לפני מע"מ</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatCurrency(quote.total_before_discount)}</td>
-                </tr>
+              {/* שורות סיכום */}
+              <tr className="summary-row-green">
+                <td className="item-description">סה"כ לפני מע"מ</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>{formatCurrency(quote.total_before_discount)}</td>
+              </tr>
 
-                {quote.discount_percent > 0 && (
+              {quote.discount_percent > 0 && (
                   <tr className="summary-row-orange">
                     <td className="item-description">הנחה ({quote.discount_percent}%)</td>
                     <td></td>
@@ -318,45 +323,45 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     <td>-{formatCurrency(quote.discount_amount)}</td>
                     <td>-{formatCurrency(quote.discount_amount)}</td>
                   </tr>
-                )}
+              )}
 
-                <tr className="summary-row-green">
-                  <td className="item-description">סה"כ לאחר הנחה</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatCurrency(quote.total_after_discount)}</td>
-                </tr>
+              <tr className="summary-row-green">
+                <td className="item-description">סה"כ לאחר הנחה</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>{formatCurrency(quote.total_after_discount)}</td>
+              </tr>
 
-                <tr className="summary-row-orange">
-                  <td className="item-description">18% מע"מ</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatCurrency(quote.vat_amount)}</td>
-                </tr>
+              <tr className="summary-row-orange">
+                <td className="item-description">18% מע"מ</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>{formatCurrency(quote.vat_amount)}</td>
+              </tr>
 
-                <tr className="final-total">
-                  <td className="item-description">סה"כ כולל מע"מ</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatCurrency(quote.final_total)}</td>
-                </tr>
+              <tr className="final-total">
+                <td className="item-description">סה"כ כולל מע"מ</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>{formatCurrency(quote.final_total)}</td>
+              </tr>
               </tbody>
             </table>
           </div>
 
 
           {/* דף שני ל-PDF */}
-          <div className="mt-16" style={{ pageBreakBefore: 'always' }}>
+          <div className="mt-16" style={{pageBreakBefore: 'always'}}>
             <div className="text-center mb-8">
               <img src="/pdf3.png" alt="header-img" style={{
                 maxWidth: '200px',
                 width: '100%',
                 height: 'auto',
                 margin: '0 auto'
-              }} />
+              }}/>
               {/* תמונה שנייה */}
               <div className="mt-4">
                 <img src="/pdf2.png" alt="header-img" style={{maxWidth: '620px', height: 'auto'}}/>
@@ -381,54 +386,134 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
         </div>
 
-        {/* תצוגה רגילה */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* פרטי הצעה */}
-          <div className="space-y-3">
-            <div className="card">
-              <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי האירוע</h3>
-              <div className="space-y-1">
-                <div>
-                  <span className="font-medium text-gray-700 text-xs">שם האירוע:</span>
-                  <div className="text-gray-800 font-semibold text-xs">{quote.event_name}</div>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700 text-xs">תאריך:</span>
-                  <div className="text-gray-800 text-xs">{formatDate(quote.event_date)}</div>
-                </div>
-                {quote.event_hours && (
-                    <div>
-                      <span className="font-medium text-gray-700 text-xs">שעות:</span>
-                      <div className="text-gray-800 text-xs">{quote.event_hours}</div>
-                    </div>
-                )}
-                {quote.special_notes && (
-                    <div>
-                      <span className="font-medium text-gray-700 text-xs">הערות מיוחדות:</span>
-                      <div className="text-gray-800 bg-gray-50 p-1 rounded mt-1 text-xs">{quote.special_notes}</div>
-                    </div>
-                )}
+        {/* תצוגה רגילה - עם העיצוב החדש */}
+        <style >{`
+          .event-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 700px;
+            padding: 40px;
+            box-sizing: border-box;
+            margin: 0 auto;
+          }
+
+          .card-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+          }
+
+          @media (max-width: 768px) {
+            .card-content {
+              grid-template-columns: 1fr;
+              gap: 30px;
+            }
+          }
+
+          .section {
+            display: flex;
+            flex-direction: column;
+          }
+
+          .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0 0 24px 0;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+
+          .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+          }
+
+          .field:last-child {
+            margin-bottom: 0;
+          }
+
+          .label {
+            font-size: 14px;
+            color: #718096;
+          }
+
+          .value {
+            font-size: 15px;
+            font-weight: 500;
+            color: #2d3748;
+          }
+
+          .special-notes {
+            margin-top: 16px;
+          }
+
+          .special-notes .label {
+            margin-bottom: 8px;
+            display: block;
+          }
+
+          .special-notes .value {
+            background-color: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            line-height: 1.5;
+          }
+        `}</style>
+
+        <div className="event-card mb-6">
+          <div className="card-content">
+            <div className="section">
+              <h3 className="section-title">פרטי האירוع</h3>
+              <div className="field">
+                <span className="label">שם האירוע:</span>
+                <span className="value">{quote.event_name}</span>
               </div>
+              <div className="field">
+                <span className="label">תאריך:</span>
+                <span className="value">{formatDate(quote.event_date)}</span>
+              </div>
+              {quote.event_hours && (
+                  <div className="field">
+                    <span className="label">שעות:</span>
+                    <span className="value">{quote.event_hours}</span>
+                  </div>
+              )}
+              {quote.special_notes && (
+                  <div className="special-notes">
+                    <span className="label">הערות מיוחדות:</span>
+                    <div className="value">{quote.special_notes}</div>
+                  </div>
+              )}
             </div>
 
-            <div className="card">
-              <h3 className="text-sm font-bold mb-2 text-gray-800">פרטי לקוח</h3>
-              <div className="space-y-1">
-                <div>
-                  <span className="font-medium text-gray-700 text-xs">שם:</span>
-                  <div className="text-gray-800 font-semibold text-xs">{quote.client_name}</div>
-                </div>
-                {quote.client_company && (
-                    <div>
-                      <span className="font-medium text-gray-700 text-xs">חברה:</span>
-                      <div className="text-gray-800 text-xs">{quote.client_company}</div>
-                    </div>
-                )}
+            <div className="section">
+              <h3 className="section-title">פרטי לקוח</h3>
+              <div className="field">
+                <span className="label">שם:</span>
+                <span className="value">{quote.client_name}</span>
               </div>
+              {quote.client_company && (
+                  <div className="field">
+                    <span className="label">חברה:</span>
+                    <span className="value">{quote.client_company}</span>
+                  </div>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* סיכום כספי */}
+        {/* סיכום כספי */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div></div>
+          {/* ריק כדי לשמור על הפריסה */}
           <div className="space-y-6">
             <div className="card">
               <h3 className="text-lg font-bold mb-4 text-gray-800">סיכום כספי</h3>
