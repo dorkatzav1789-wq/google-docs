@@ -157,55 +157,118 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             }}/>
           </div>
 
-          <div className="border border-gray-300 rounded-md p-0.5 mb-2" style={{borderWidth: '0.5px'}}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-              {/* פרטי האירוע */}
-              <div>
-                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי האירוע</h3>
-                <div className="space-y-0">
-                  <div style={{lineHeight: '1.2'}}>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם האירוע:</span>
-                    <div className="text-gray-800 font-semibold text-xs"
-                         style={{fontSize: '9px'}}>{quote.event_name}</div>
-                  </div>
-                  <div style={{lineHeight: '1.2'}}>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>תאריך:</span>
-                    <div className="text-gray-800 text-xs"
-                         style={{fontSize: '9px'}}>{formatDate(quote.event_date)}</div>
-                  </div>
-                  {quote.event_hours && (
-                      <div style={{lineHeight: '1.2'}}>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שעות:</span>
-                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.event_hours}</div>
-                      </div>
-                  )}
-                  {quote.special_notes && (
-                      <div style={{lineHeight: '1.2'}}>
-                        <span className="font-medium text-gray-700 text-xs"
-                              style={{fontSize: '9px'}}>הערות מיוחדות:</span>
-                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0 text-xs"
-                             style={{fontSize: '9px'}}>{quote.special_notes}</div>
-                      </div>
-                  )}
+          {/* עיצוב מותאם ל-PDF */}
+          <style>
+            {`
+              .pdf-event-card {
+                background-color: #ffffff;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                padding: 24px;
+                margin-bottom: 16px;
+              }
+
+              .pdf-card-content {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+              }
+
+              .pdf-section {
+                display: flex;
+                flex-direction: column;
+              }
+
+              .pdf-section-title {
+                font-size: 14px;
+                font-weight: 700;
+                color: #1a202c;
+                margin: 0 0 16px 0;
+                padding-bottom: 8px;
+                border-bottom: 1px solid #e2e8f0;
+              }
+
+              .pdf-field {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+              }
+
+              .pdf-field:last-child {
+                margin-bottom: 0;
+              }
+
+              .pdf-label {
+                font-size: 11px;
+                color: #718096;
+              }
+
+              .pdf-value {
+                font-size: 11px;
+                font-weight: 500;
+                color: #2d3748;
+              }
+
+              .pdf-special-notes {
+                margin-top: 12px;
+              }
+
+              .pdf-special-notes .pdf-label {
+                margin-bottom: 6px;
+                display: block;
+              }
+
+              .pdf-special-notes .pdf-value {
+                background-color: #f7fafc;
+                padding: 8px;
+                border-radius: 6px;
+                border: 1px solid #e2e8f0;
+                font-size: 10px;
+                line-height: 1.4;
+              }
+            `}
+          </style>
+
+          <div className="pdf-event-card">
+            <div className="pdf-card-content">
+              <div className="pdf-section">
+                <h3 className="pdf-section-title">פרטי האירוע</h3>
+                <div className="pdf-field">
+                  <span className="pdf-label">שם האירוע:</span>
+                  <span className="pdf-value">{quote.event_name}</span>
                 </div>
+                <div className="pdf-field">
+                  <span className="pdf-label">תאריך:</span>
+                  <span className="pdf-value">{formatDate(quote.event_date)}</span>
+                </div>
+                {quote.event_hours && (
+                    <div className="pdf-field">
+                      <span className="pdf-label">שעות:</span>
+                      <span className="pdf-value">{quote.event_hours}</span>
+                    </div>
+                )}
+                {quote.special_notes && (
+                    <div className="pdf-special-notes">
+                      <span className="pdf-label">הערות מיוחדות:</span>
+                      <div className="pdf-value">{quote.special_notes}</div>
+                    </div>
+                )}
               </div>
 
-              {/* פרטי לקוח */}
-              <div>
-                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי לקוח</h3>
-                <div className="space-y-0">
-                  <div style={{lineHeight: '1.2'}}>
-                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם:</span>
-                    <div className="text-gray-800 font-semibold text-xs"
-                         style={{fontSize: '9px'}}>{quote.client_name}</div>
-                  </div>
-                  {quote.client_company && (
-                      <div style={{lineHeight: '1.2'}}>
-                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>חברה:</span>
-                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.client_company}</div>
-                      </div>
-                  )}
+              <div className="pdf-section">
+                <h3 className="pdf-section-title">פרטי לקוח</h3>
+                <div className="pdf-field">
+                  <span className="pdf-label">שם:</span>
+                  <span className="pdf-value">{quote.client_name}</span>
                 </div>
+                {quote.client_company && (
+                    <div className="pdf-field">
+                      <span className="pdf-label">חברה:</span>
+                      <span className="pdf-value">{quote.client_company}</span>
+                    </div>
+                )}
               </div>
             </div>
           </div>
@@ -387,7 +450,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         </div>
 
         {/* תצוגה רגילה - עם העיצוב החדש */}
-        <style >{`
+        <style>{`
           .event-card {
             background-color: #ffffff;
             border-radius: 12px;
