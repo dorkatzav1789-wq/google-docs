@@ -322,29 +322,35 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                             />
                             <select
                                 className="p-2 border rounded"
-                                value={aliasForm.selected?.id || ''}
+                                value={aliasForm.selected?.id ?? ''}   // מחרוזת
                                 onChange={(e) => {
-                                  const id = Number(e.target.value);
-                                  const found = aliasForm.results.find(r => r.id === id) || null;
-                                  setAliasForm(prev => ({ ...prev, selected: found }));
+                                  const id = e.target.value; // מחרוזת UUID
+                                  const found = aliasForm.results.find(r => String(r.id) === id) || null;
+                                  setAliasForm(prev => ({...prev, selected: found}));
                                 }}
                                 aria-label="בחר פריט קיים"
                             >
                               <option value="">בחר פריט...</option>
                               {aliasForm.results.length > 0 ? (
-                                aliasForm.results.map(r => (
-                                  <option key={r.id} value={r.id}>{r.name} — ₪{r.price}</option>
-                                ))
+                                  aliasForm.results.map(r => (
+                                      <option key={String(r.id)} value={String(r.id)}>
+                                        {r.name} — ₪{r.price}
+                                      </option>
+                                  ))
                               ) : (
-                                <option value="" disabled>לא נמצאו פריטים תואמים</option>
+                                  <option value="" disabled>לא נמצאו פריטים תואמים</option>
                               )}
                             </select>
+
                             <input
                                 type="number"
                                 placeholder="דריסת מחיר יחידה (אופציונלי)"
                                 className="p-2 border rounded"
                                 value={aliasForm.overridePrice}
-                                onChange={(e) => setAliasForm(prev => ({ ...prev, overridePrice: e.target.value === '' ? '' : Number(e.target.value) }))}
+                                onChange={(e) => setAliasForm(prev => ({
+                                  ...prev,
+                                  overridePrice: e.target.value === '' ? '' : Number(e.target.value)
+                                }))}
                             />
                             <div>
                               <button className="btn-primary" onClick={submitAlias} disabled={!aliasForm.selected}>
