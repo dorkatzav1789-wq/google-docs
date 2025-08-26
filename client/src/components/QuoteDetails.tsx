@@ -444,6 +444,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               bottom: '20mm',
               left: '50%',
               transform: 'translateX(-50%)',
+              width: "100%",
             }}>
               <div><strong>בברכה,</strong> דור קצב</div>
               <div>מנהל מערכות מולטימדיה, תאורה, הגברה, מסכי לד</div>
