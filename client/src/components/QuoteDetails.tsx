@@ -440,7 +440,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </div>
 
             <div className="mt-8 text-sm text-gray-600 text-center"style={{
-              position: 'absolute',
+              position: 'fixed',
               bottom: '20mm',
               left: '50%',
               transform: 'translateX(-50%)',
