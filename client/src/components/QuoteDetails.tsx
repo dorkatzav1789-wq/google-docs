@@ -20,7 +20,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       setLoading(true);
       const data = await quotesAPI.getById(quoteId);
 
-      // נרמול פריטים (שם/תיאור)
+      // ✅ נרמול הפריטים: תרגום item_name -> name, item_description -> description
       const normalizedItems = (data.items || []).map((it: any) => ({
         name: it.name ?? it.item_name ?? '',
         description: it.description ?? it.item_description ?? '',
@@ -40,7 +40,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
   useEffect(() => {
     loadQuoteDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteId]);
 
   const formatCurrency = (amount: number) => `₪${amount.toLocaleString('he-IL')}`;
@@ -59,27 +58,39 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
       const element = pdfRef.current;
 
-      // html2canvas/ jsPDF אופציות
+      // הצג את הקונטיינר ל-PDF
+      element.style.display = 'block';
+
       const opt = {
         margin: [10, 10, 10, 10],
         filename: `quote-${quoteData.quote.id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
-          scale: Math.min(window.devicePixelRatio || 2, 3),
-          useCORS: true
+          scale: 2,
+          useCORS: true,
+          allowTaint: true
         },
         jsPDF: {
           unit: 'mm',
           format: 'a4',
           orientation: 'portrait'
-        },
-        pagebreak: { mode: ['css', 'avoid-all', 'legacy'] }
-      } as const;
+        }
+      };
 
       await html2pdf().set(opt).from(element).save();
+
+      // הסתר את הקונטיינר אחרי הייצוא
+      element.style.display = 'none';
+
+      alert('PDF יוצא בהצלחה!');
     } catch (error) {
       console.error('שגיאה בייצוא PDF:', error);
       alert('שגיאה בייצוא PDF');
+
+      // הסתר את הקונטיינר גם במקרה של שגיאה
+      if (pdfRef.current) {
+        pdfRef.current.style.display = 'none';
+      }
     } finally {
       setExportingPDF(false);
     }
@@ -89,7 +100,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     return (
         <div className="w-full mx-auto p-6">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-white">טוען פרטי הצעה...</p>
           </div>
         </div>
@@ -111,7 +122,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
   return (
       <div className="w-full mx-auto p-6">
-        {/* כותרת ופעולות */}
         <div className="mb-6">
           <button onClick={onBack} className="btn-secondary mb-4">← חזור לרשימה</button>
           <div className="text-center mb-8">
@@ -125,212 +135,240 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
         </div>
 
-        {/* ========= קונטיינר PDF (Offscreen) ========= */}
-        <div
-            ref={pdfRef}
-            className="pdf-root bg-white p-8 max-w-4xl offscreen"
-        >
-          {/* סגנונות ייעודיים ל-PDF */}
-          <style>
-            {`
-            .pdf-root {
-              direction: rtl;
-              font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-              color: #111;
-              font-size: 12px;
-              line-height: 1.5;
-              width: 190mm;            /* מתאים ל-A4 (210mm פחות מרווחים) */
-              margin: 0 auto;
-            }
-            .offscreen {
-              position: fixed;
-              left: -10000px;
-              top: 0;
-              visibility: hidden;
-            }
-            .box {
-              border: 1px solid #e0e0e0;
-              border-radius: 6px;
-              padding: 10px 12px;
-              margin-bottom: 12px;
-            }
-            .cols {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 12px;
-            }
-            .sec-title {
-              margin: 0 0 6px;
-              font-weight: 700;
-              font-size: 12px;
-              color: #333;
-            }
-            .kv {
-              width: 100%;
-              border-collapse: separate;
-              border-spacing: 0 6px;
-              table-layout: fixed;
-            }
-            .kv th {
-              text-align: right;
-              width: 35%;
-              white-space: nowrap;
-              color: #555;
-              font-weight: 600;
-              padding: 0;
-              vertical-align: top;
-            }
-            .kv td {
-              font-weight: 700;
-              color: #111;
-              padding: 0;
-              word-break: break-word;
-            }
-
-            /* טבלת פריטים */
-            .invoice-table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 12px;
-              direction: rtl;
-              border: 1px solid #e0e0e0;
-            }
-            .invoice-table th,
-            .invoice-table td {
-              padding: 10px;
-              text-align: center;
-              border-bottom: 1px solid #e0e0e0;
-            }
-            .invoice-table thead th {
-              background-color: #e9eef2;
-              font-weight: bold;
-              color: #333;
-              border-bottom: 2px solid #d0d8e0;
-            }
-            .invoice-table tbody tr:nth-child(even) {
-              background-color: #f5f8fa;
-            }
-            .item-description { text-align: right; }
-            .item-title { font-weight: 700; font-size: 12px; }
-            .item-details { color: #555; font-size: 11px; }
-
-            .summary-row-green { background-color: #e6f3d8 !important; }
-            .summary-row-orange { background-color: #fde8d7 !important; }
-            .summary-row-green td, .summary-row-orange td { font-weight: bold; }
-
-            .final-total { font-weight: bold; font-size: 14px; }
-            .final-total td { border-top: 2px solid #333; border-bottom: none !important; }
-
-            /* שמירת מספרים יפים ב-RTL */
-            .num { direction: ltr; text-align: left; }
-          `}
-          </style>
-
-          {/* לוגו/תמונות עליונות */}
+        {/* קונטיינר ל-PDF */}
+        <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{ display: 'none' }}>
+          {/* כותרת עם תמונה */}
           <div className="text-center mb-4">
-            <img src="/pdf3.png" alt="header-img" style={{ maxWidth: '200px', width: '100%', height: 'auto', margin: '0 auto' }} />
-          </div>
-          <div className="text-center mb-8">
-            <img src="/pdf1.png" alt="header-img" style={{ maxWidth: '600px', width: '100%', height: 'auto', margin: '0 auto' }} />
+            <img src="/pdf3.png" alt="header-img" style={{
+              maxWidth: '200px',
+              width: '100%',
+              height: 'auto',
+              margin: '0 auto'
+            }} />
           </div>
 
-          {/* פרטי אירוע + פרטי לקוח (Key/Value) */}
-          <div className="box">
-            <div className="cols">
+          {/* תמונה גדולה מעל פרטי האירוע */}
+          <div className="text-center mb-8">
+            <img src="/pdf1.png" alt="header-img" style={{
+              maxWidth: '600px',
+              width: '100%',
+              height: 'auto',
+              margin: '0 auto'
+            }} />
+          </div>
+
+          <div className="border border-gray-300 rounded-md p-0.5 mb-2" style={{borderWidth: '0.5px'}}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              {/* פרטי האירוע */}
               <div>
-                <h3 className="sec-title">פרטי האירוע</h3>
-                <table className="kv">
-                  <tbody>
-                  <tr><th>שם האירוע:</th><td>{quote.event_name}</td></tr>
-                  <tr><th>תאריך:</th><td>{formatDate(quote.event_date)}</td></tr>
-                  {quote.event_hours && <tr><th>שעות:</th><td>{quote.event_hours}</td></tr>}
-                  {quote.special_notes && <tr><th>הערות מיוחדות:</th><td>{quote.special_notes}</td></tr>}
-                  </tbody>
-                </table>
+                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי האירוע</h3>
+                <div className="space-y-0">
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם האירוע:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.event_name}</div>
+                  </div>
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>תאריך:</span>
+                    <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{formatDate(quote.event_date)}</div>
+                  </div>
+                  {quote.event_hours && (
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שעות:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.event_hours}</div>
+                      </div>
+                  )}
+                  {quote.special_notes && (
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>הערות מיוחדות:</span>
+                        <div className="text-gray-800 bg-gray-50 p-0.5 rounded-sm mt-0 text-xs" style={{fontSize: '9px'}}>{quote.special_notes}</div>
+                      </div>
+                  )}
+                </div>
               </div>
+
+              {/* פרטי לקוח */}
               <div>
-                <h3 className="sec-title">פרטי לקוח</h3>
-                <table className="kv">
-                  <tbody>
-                  <tr><th>שם:</th><td>{quote.client_name}</td></tr>
-                  {quote.client_company && <tr><th>חברה:</th><td>{quote.client_company}</td></tr>}
-                  </tbody>
-                </table>
+                <h3 className="text-xs font-bold mb-0 text-gray-800">פרטי לקוח</h3>
+                <div className="space-y-0">
+                  <div style={{lineHeight: '1.2'}}>
+                    <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>שם:</span>
+                    <div className="text-gray-800 font-semibold text-xs" style={{fontSize: '9px'}}>{quote.client_name}</div>
+                  </div>
+                  {quote.client_company && (
+                      <div style={{lineHeight: '1.2'}}>
+                        <span className="font-medium text-gray-700 text-xs" style={{fontSize: '9px'}}>חברה:</span>
+                        <div className="text-gray-800 text-xs" style={{fontSize: '9px'}}>{quote.client_company}</div>
+                      </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* טבלת פריטים */}
           <div className="mb-8">
+
+            <style>
+              {`
+                @import url('https://fonts.googleapis.com/css2?family=Arial&display=swap');
+                
+                .invoice-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  font-size: 13px;
+                  direction: rtl;
+                  font-family: Arial, sans-serif;
+                  border: 1px solid #e0e0e0;
+                }
+                
+                .invoice-table th,
+                .invoice-table td {
+                  padding: 12px 10px;
+                  text-align: center;
+                  border-bottom: 1px solid #e0e0e0;
+                }
+                
+                .invoice-table thead th {
+                  background-color: #e9eef2;
+                  font-weight: bold;
+                  color: #333;
+                  border-bottom: 2px solid #d0d8e0;
+                }
+                
+                .invoice-table tbody tr:nth-child(even) {
+                  background-color: #f5f8fa;
+                }
+                
+                .invoice-table .item-description {
+                  text-align: right;
+                }
+                
+                .item-description .item-title {
+                  font-weight: bold;
+                  font-size: 11px;
+                }
+                
+                .item-description .item-details {
+                  color: #555;
+                  font-size: 10px;
+                }
+                
+                .summary-row-green {
+                  background-color: #e6f3d8 !important;
+                }
+                
+                .summary-row-orange {
+                  background-color: #fde8d7 !important;
+                }
+                
+                .summary-row-green td, .summary-row-orange td {
+                  font-weight: bold;
+                }
+                
+                .final-total {
+                  font-weight: bold;
+                  font-size: 14px;
+                }
+                
+                .final-total td {
+                  border-top: 2px solid #333;
+                  border-bottom: none !important;
+                }
+              `}
+            </style>
+
             <table className="invoice-table">
               <thead>
-              <tr>
-                <th style={{ width: '50%' }}>תיאור הפריט</th>
-                <th>מחיר יחידה</th>
-                <th>כמות</th>
-                <th>הנחה</th>
-                <th>סה"כ</th>
-              </tr>
+                <tr>
+                  <th style={{width: '50%'}}>תיאור הפריט</th>
+                  <th>מחיר יחידה</th>
+                  <th>כמות</th>
+                  <th>הנחה</th>
+                  <th>סה"כ</th>
+                </tr>
               </thead>
               <tbody>
-              {items.map((item, index) => (
+                {items.map((item, index) => (
                   <tr key={index}>
                     <td className="item-description">
                       <div className="item-title">{item.name}</div>
                       <div className="item-details">{item.description}</div>
                     </td>
-                    <td className="num">{formatCurrency(item.unit_price)}</td>
-                    <td className="num">{item.quantity}</td>
-                    <td className="num">{item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}</td>
-                    <td className="num">{formatCurrency(item.total)}</td>
+                    <td>{formatCurrency(item.unit_price)}</td>
+                    <td>{item.quantity}</td>
+                    <td>{item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}</td>
+                    <td>{formatCurrency(item.total)}</td>
                   </tr>
-              ))}
+                ))}
 
-              <tr className="summary-row-green">
-                <td className="item-description">סה"כ לפני הנחה</td>
-                <td></td><td></td><td></td>
-                <td className="num">{formatCurrency(quote.total_before_discount)}</td>
-              </tr>
+                {/* שורות סיכום */}
+                <tr className="summary-row-green">
+                  <td className="item-description">סה"כ לפני מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.total_before_discount)}</td>
+                </tr>
 
-              {quote.discount_percent > 0 && (
+                {quote.discount_percent > 0 && (
                   <tr className="summary-row-orange">
                     <td className="item-description">הנחה ({quote.discount_percent}%)</td>
-                    <td></td><td></td>
-                    <td className="num">-{formatCurrency(quote.discount_amount)}</td>
-                    <td className="num">-{formatCurrency(quote.discount_amount)}</td>
+                    <td></td>
+                    <td></td>
+                    <td>-{formatCurrency(quote.discount_amount)}</td>
+                    <td>-{formatCurrency(quote.discount_amount)}</td>
                   </tr>
-              )}
+                )}
 
-              <tr className="summary-row-green">
-                <td className="item-description">סה"כ לאחר הנחה</td>
-                <td></td><td></td><td></td>
-                <td className="num">{formatCurrency(quote.total_after_discount)}</td>
-              </tr>
+                <tr className="summary-row-green">
+                  <td className="item-description">סה"כ לאחר הנחה</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.total_after_discount)}</td>
+                </tr>
 
-              <tr className="summary-row-orange">
-                <td className="item-description">18% מע"מ</td>
-                <td></td><td></td><td></td>
-                <td className="num">{formatCurrency(quote.vat_amount)}</td>
-              </tr>
+                <tr className="summary-row-orange">
+                  <td className="item-description">18% מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.vat_amount)}</td>
+                </tr>
 
-              <tr className="final-total">
-                <td className="item-description">סה"כ כולל מע"מ</td>
-                <td></td><td></td><td></td>
-                <td className="num">{formatCurrency(quote.final_total)}</td>
-              </tr>
+                <tr className="final-total">
+                  <td className="item-description">סה"כ כולל מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(quote.final_total)}</td>
+                </tr>
               </tbody>
             </table>
           </div>
 
-          {/* דף שני */}
+
+          {/* דף שני ל-PDF */}
           <div className="mt-16" style={{ pageBreakBefore: 'always' }}>
             <div className="text-center mb-8">
-              <img src="/pdf3.png" alt="header-img" style={{ maxWidth: '200px', width: '100%', height: 'auto', margin: '0 auto' }} />
+              <img src="/pdf3.png" alt="header-img" style={{
+                maxWidth: '200px',
+                width: '100%',
+                height: 'auto',
+                margin: '0 auto'
+              }} />
+              {/* תמונה שנייה */}
               <div className="mt-4">
-                <img src="/pdf2.png" alt="header-img" style={{ maxWidth: '620px', height: 'auto' }} />
+                <img src="/pdf2.png" alt="header-img" style={{maxWidth: '620px', height: 'auto'}}/>
               </div>
+              {/* תמונה שלישית */}
               <div className="mt-4 text-left">
-                <img src="/pdf4.png" alt="header-img" style={{ maxWidth: '620px', height: 'auto', marginLeft: '20px', marginRight: 'auto' }} />
+                <img src="/pdf4.png" alt="header-img" style={{
+                  maxWidth: '620px',
+                  height: 'auto',
+                  marginLeft: '20px',
+                  marginRight: 'auto'
+                }}/>
               </div>
             </div>
 
@@ -342,9 +380,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </div>
           </div>
         </div>
-        {/* ========= סוף קונטיינר PDF ========= */}
 
-        {/* ===== תצוגה רגילה על המסך ===== */}
+        {/* תצוגה רגילה */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* פרטי הצעה */}
           <div className="space-y-3">
@@ -433,7 +470,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
         </div>
 
-        {/* טבלת פריטים במסך */}
+        {/* טבלת פריטים */}
         <div className="card mt-6">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
