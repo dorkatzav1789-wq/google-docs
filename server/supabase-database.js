@@ -12,13 +12,18 @@ const dbFunctions = {
   // הוספת פריט למחירון
   addItem: async (name, description, price) => {
     try {
-      const {data, error} = await supabase
-          .from('items')
-          .insert([{name, description, price}])
-          .select();
+      // Upsert לפי name כדי למנוע כפילויות ולתמוך ב-create-if-not-exists
+      const { data, error } = await supabase
+        .from('items')
+        .upsert(
+          [{ name, description, price }],
+          { onConflict: 'name' }
+        )
+        .select('id')
+        .single();
 
       if (error) throw error;
-      return data[0].id;
+      return data.id;
     } catch (error) {
       throw error;
     }

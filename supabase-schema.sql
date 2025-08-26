@@ -83,6 +83,15 @@ CREATE TABLE IF NOT EXISTS work_hours (
 
 -- יצירת אינדקסים לביצועים טובים יותר
 CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);
+-- ייחודיות על שם פריט כדי למנוע כפילויות לוגיות
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_items_name_unique'
+  ) THEN
+    EXECUTE 'CREATE UNIQUE INDEX idx_items_name_unique ON items (name)';
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_aliases_alias ON aliases(alias);
 CREATE INDEX IF NOT EXISTS idx_aliases_item_name ON aliases(item_name);
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
@@ -93,6 +102,16 @@ CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);
 CREATE INDEX IF NOT EXISTS idx_work_hours_employee_id ON work_hours(employee_id);
 CREATE INDEX IF NOT EXISTS idx_work_hours_work_date ON work_hours(work_date);
 CREATE INDEX IF NOT EXISTS idx_work_hours_month_year ON work_hours(EXTRACT(YEAR FROM work_date), EXTRACT(MONTH FROM work_date));
+
+-- תיקון רצפים (sequences) במקרה של ייבוא/שינויים ידניים שיצרו חוסר סנכרון
+-- קובע את ערך הרצף לערך הגבוה בטבלה + 1
+SELECT setval(pg_get_serial_sequence('items','id'),       COALESCE((SELECT MAX(id) FROM items), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('aliases','id'),     COALESCE((SELECT MAX(id) FROM aliases), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('clients','id'),     COALESCE((SELECT MAX(id) FROM clients), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('quotes','id'),      COALESCE((SELECT MAX(id) FROM quotes), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('quote_items','id'), COALESCE((SELECT MAX(id) FROM quote_items), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('employees','id'),   COALESCE((SELECT MAX(id) FROM employees), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('work_hours','id'),  COALESCE((SELECT MAX(id) FROM work_hours), 0) + 1, false);
 
 -- הגדרת RLS (Row Level Security) - אופציונלי
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
