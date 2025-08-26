@@ -446,7 +446,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               <div>✉️ Dor.katzav.valley@gmail.com</div>
             </div>
           </div>
-          </div>
+
 
         {/* תצוגה רגילה - עם העיצוב החדש */}
         <style>{`
@@ -648,6 +648,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </table>
           </div>
         </div>
+      </div>
       </div>
   );
 };
