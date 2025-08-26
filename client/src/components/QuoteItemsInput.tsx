@@ -21,6 +21,9 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
   // שורות שלא זוהו
   const [unknown, setUnknown] = useState<UnknownLine[]>([]);
 
+  // כל הפריטים הקיימים - נטען פעם אחת
+  const [allItems, setAllItems] = useState<Item[]>([]);
+
   // תיבות פעולה לכל unknown
   const [createForm, setCreateForm] = useState<{
     idx: number | null;
@@ -37,6 +40,20 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
     selected: Item | null;
     overridePrice: number | '';// אופציונלי: לדרוס מחיר
   }>({ idx: null, search: '', results: [], selected: null, overridePrice: '' });
+
+  // טעינת כל הפריטים פעם אחת
+  useEffect(() => {
+    const loadAllItems = async () => {
+      try {
+        const data = await itemsAPI.getAll();
+        setAllItems(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('שגיאה בטעינת פריטים:', error);
+        setAllItems([]);
+      }
+    };
+    loadAllItems();
+  }, []);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value);
 
@@ -154,16 +171,14 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
   };
 
   const openAliasForm = (idx: number) => {
-    setAliasForm({ idx, search: unknown[idx].raw_text, results: [], selected: null, overridePrice: '' });
+    setAliasForm({ idx, search: '', results: allItems, selected: null, overridePrice: '' });
     setCreateForm({ idx: null, name: '', description: '', price: '', alsoAlias: true });
-    // חיפוש ראשוני
-    handleSearch(unknown[idx].raw_text);
   };
 
   const handleSearch = async (q: string) => {
     setAliasForm(prev => ({ ...prev, search: q }));
     if (!q.trim()) {
-      setAliasForm(prev => ({ ...prev, results: [] }));
+      setAliasForm(prev => ({ ...prev, results: allItems }));
       return;
     }
     try {
@@ -313,11 +328,16 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                                   const found = aliasForm.results.find(r => r.id === id) || null;
                                   setAliasForm(prev => ({ ...prev, selected: found }));
                                 }}
+                                aria-label="בחר פריט קיים"
                             >
                               <option value="">בחר פריט...</option>
-                              {aliasForm.results.map(r => (
+                              {aliasForm.results.length > 0 ? (
+                                aliasForm.results.map(r => (
                                   <option key={r.id} value={r.id}>{r.name} — ₪{r.price}</option>
-                              ))}
+                                ))
+                              ) : (
+                                <option value="" disabled>לא נמצאו פריטים תואמים</option>
+                              )}
                             </select>
                             <input
                                 type="number"

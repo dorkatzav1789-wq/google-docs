@@ -69,6 +69,16 @@ app.get("/static/pdf2.png", (req, res) => {
 // ===================== API ROUTES ===================== //
 
 // ------- Items -------
+app.get("/api/items", async (_req, res) => {
+  try {
+    const items = await dbFunctions.getAllItems();
+    res.json(items || []);
+  } catch (e) {
+    console.error("GET /api/items error:", e);
+    res.status(500).json({ error: e?.message || "Server error" });
+  }
+});
+
 app.post("/api/items", async (req, res) => {
   try {
     const { name, description, price } = req.body || {};
