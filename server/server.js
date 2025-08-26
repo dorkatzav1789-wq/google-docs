@@ -386,11 +386,6 @@ app.get("*", (req, res, next) => {
   }
 });
 
-// ===================== Start ===================== //
-app.listen(PORT, () => {
-  console.log(`✅ Server listening on http://localhost:${PORT} (${NODE_ENV})`);
-});
-
 // ===================== Helpers ===================== //
 function generateQuoteHTML(quote, items, pdf1Base64, pdf2Base64) {
   const formatCurrency = (n) =>
