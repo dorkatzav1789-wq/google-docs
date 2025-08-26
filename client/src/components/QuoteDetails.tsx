@@ -439,7 +439,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               </div>
             </div>
 
-            <div className="mt-8 text-sm text-gray-600 text-center">
+            <div className="mt-8 text-sm text-gray-600 text-center"style={{
+              position: 'absolute',
+              bottom: '20mm',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}>
               <div><strong>בברכה,</strong> דור קצב</div>
               <div>מנהל מערכות מולטימדיה, תאורה, הגברה, מסכי לד</div>
               <div>📞 052-489-1025</div>
