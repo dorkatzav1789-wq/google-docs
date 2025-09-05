@@ -226,59 +226,57 @@ app.post("/api/parse-quote", async (req, res) => {
     const unknown = [];
 
     for (const line of lines) {
-      // כמות [טקסט פריט] מחיר|   (ללא תלות בקו הפרדה בסוף)
-      const m = line.match(/^(\d+)\s+(.+?)\s+(\d+)(?:\|)?$/);
+      const m = line.match(/^(\d+)\s+(.+?)\s+(\d+)\|?$/);
       if (!m) {
         unknown.push({ line, quantity: 1, raw_text: line, unit_price: null });
         continue;
       }
 
       const [, qtyStr, itemText, priceStr] = m;
-      const quantity = Math.max(1, parseInt(qtyStr, 10));
-      const typedTotal = parseInt(priceStr, 10);
+      const quantity = parseInt(qtyStr, 10);
+      const typedUnit = parseInt(priceStr, 10); // ⬅️ פירוש חדש: מחיר ליחידה שנכתב
 
-      // חיפוש לפי Alias מדויק/מוכל
-      const lowered = itemText.toLowerCase();
-      const alias = aliases.find(
-          (a) =>
-              a.alias?.toLowerCase() === lowered ||
-              lowered.includes(a.alias?.toLowerCase?.() || "")
+      const alias = aliases.find(a =>
+          a.alias.toLowerCase() === itemText.toLowerCase() ||
+          itemText.toLowerCase().includes(a.alias.toLowerCase())
       );
 
       let item = null;
-      let finalPrice = typedTotal;
-
       if (alias) {
-        item = items.find((i) => i.name === alias.item_name);
-        if (alias.price_override != null && !isNaN(Number(alias.price_override))) {
-          finalPrice = Number(alias.price_override);
-        }
+        item = items.find(i => i.name === alias.item_name);
       } else {
-        item = items.find(
-            (i) =>
-                i?.name?.toLowerCase?.().includes(lowered) ||
-                lowered.includes(i?.name?.toLowerCase?.() || "")
+        item = items.find(i =>
+            i.name.toLowerCase().includes(itemText.toLowerCase()) ||
+            itemText.toLowerCase().includes(i.name.toLowerCase())
         );
       }
 
       if (item) {
-        const unitPrice = Number(item.price) || 0;
-        const discount = unitPrice * quantity - finalPrice;
+        // מחיר ליחידה בפועל: עדיפות למה שהמשתמש כתב, אח״כ דריסת אליאס, אחרת מחיר הבסיס
+        const unitBase = Number(item.price || 0);
+        const unitFromAlias = alias?.price_override ?? null;
+        const appliedUnit = Number.isFinite(typedUnit)
+            ? typedUnit
+            : (unitFromAlias ?? unitBase);
+
+        const total = appliedUnit * quantity;
+
         matched.push({
           name: item.name,
           description: item.description,
-          unit_price: unitPrice,
+          unit_price: appliedUnit,
           quantity,
-          discount: Math.max(0, Math.round(discount)),
-          total: finalPrice,
-          matched_text: itemText,
+          discount: 0,
+          total,
+          matched_text: itemText
         });
       } else {
+        // לא זוהה: נשמור את המספר כמחיר ליחידה שהמשתמש התכוון אליו
         unknown.push({
           line,
           quantity,
           raw_text: itemText,
-          unit_price: typedTotal, // נשמר כמחיר יעד לטבלה
+          unit_price: Number.isFinite(typedUnit) ? typedUnit : null,
         });
       }
     }

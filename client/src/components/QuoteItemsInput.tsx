@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QuoteItem, Item } from '../types';
 import { quotesAPI, itemsAPI, aliasesAPI } from '../services/api';
 
@@ -11,7 +11,7 @@ type UnknownLine = {
   line: string;
   quantity: number;
   raw_text: string;
-  unit_price: number | null; // מהמשתמש (סכום מטרה)
+  unit_price: number | null; // מחיר ליחידה מהמשתמש (אם נכתב)
 };
 
 const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange }) => {
@@ -29,7 +29,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
     idx: number | null;
     name: string;
     description: string;
-    price: number | '';
+    price: number | ''; // מחיר קטלוגי ליחידה (לפריט החדש)
     alsoAlias: boolean;
   }>({ idx: null, name: '', description: '', price: '', alsoAlias: true });
 
@@ -38,7 +38,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
     search: string;
     results: Item[];
     selected: Item | null;
-    overridePrice: number | '';// אופציונלי: לדרוס מחיר
+    overridePrice: number | ''; // אופציונלי: דריסת מחיר ליחידה
   }>({ idx: null, search: '', results: [], selected: null, overridePrice: '' });
 
   // טעינת כל הפריטים פעם אחת
@@ -110,7 +110,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
       idx,
       name: u.raw_text,
       description: '',
-      price: u.unit_price || 0,
+      price: u.unit_price ?? 0, // נניח כברירת מחדל למחיר הקטלוגי את מה שנכתב
       alsoAlias: true,
     });
     setAliasForm({ idx: null, search: '', results: [], selected: null, overridePrice: '' });
@@ -119,12 +119,13 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
   const submitCreate = async () => {
     if (createForm.idx == null) return;
     try {
-      const priceNum = Number(createForm.price || 0);
+      const priceNum = Number(createForm.price ?? 0);
       if (!createForm.name || isNaN(priceNum)) {
         alert('שם ומחיר נדרשים');
         return;
       }
-      // 1) יצירת פריט
+
+      // 1) יצירת פריט בקטלוג (מחיר קטלוגי)
       const newItem = await itemsAPI.create({
         name: createForm.name,
         description: createForm.description || '',
@@ -141,25 +142,24 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
       }
 
       // 3) הוספה לרשימת הפריטים בהצעה
-      const qty = Math.max(1, unknown[createForm.idx].quantity || 1);
-      const typedTotal = unknown[createForm.idx].unit_price;
-      const unit = newItem.price;
-      // אם המשתמש כתב סכום כולל – נחשב הנחה כדי להגיע לסכום
-      const desiredTotal = typeof typedTotal === 'number' ? typedTotal : unit * qty;
-      const discount = Math.max(0, unit * qty - desiredTotal);
+      //    פירוש חדש: u.unit_price => מחיר ליחידה שהמשתמש כתב (אם כתב)
+      const qty = Math.max(1, u.quantity || 1);
+      const typedUnit = typeof u.unit_price === 'number' ? u.unit_price : null;
+      const catalogUnit = Number(newItem.price || 0);
+      const appliedUnit = typedUnit ?? catalogUnit; // מחיר ליחידה בפועל להצעה הזו
 
       const qi: QuoteItem = {
         name: newItem.name,
         description: newItem.description,
-        unit_price: unit,
+        unit_price: appliedUnit,          // מחיר ליחידה בפועל
         quantity: qty,
-        discount,
-        total: desiredTotal,
+        discount: 0,                      // אין הנחה — המחיר כבר מותאם ליחידה
+        total: appliedUnit * qty,         // מחיר ליחידה × כמות
       };
 
       addParsedToList([qi]);
 
-      // הסרה מ-unknown
+      // הסרה מ-unknown ואיפוס הטופס
       const copy = [...unknown];
       copy.splice(createForm.idx, 1);
       setUnknown(copy);
@@ -194,30 +194,33 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
     if (aliasForm.idx == null || !aliasForm.selected) return;
     try {
       const u = unknown[aliasForm.idx];
-      // 1) צור alias
+
+      // 1) צור alias (כולל דריסת מחיר יחידה אם הוגדרה)
       await aliasesAPI.create({
         alias: u.raw_text,
         item_name: aliasForm.selected.name,
         price_override: aliasForm.overridePrice === '' ? null : Number(aliasForm.overridePrice),
       });
 
-      // 2) הוסף לפריטים בהצעה (עם מחיר דרוס אם הוגדר)
+      // 2) הוסף לפריטים בהצעה (מחיר ליחידה בפועל לפי עדיפויות)
       const qty = Math.max(1, u.quantity || 1);
-      const unitBase = aliasForm.overridePrice !== '' ? Number(aliasForm.overridePrice) : aliasForm.selected.price;
-      const desiredTotal = typeof u.unit_price === 'number' ? u.unit_price : unitBase * qty;
-      const discount = Math.max(0, unitBase * qty - desiredTotal);
+      const typedUnit = typeof u.unit_price === 'number' ? u.unit_price : null; // מחיר ליחידה מהקלט
+      const unitFromOverride = aliasForm.overridePrice !== '' ? Number(aliasForm.overridePrice) : null;
+      const unitBase = Number(aliasForm.selected.price || 0);
+
+      const appliedUnit = typedUnit ?? unitFromOverride ?? unitBase; // מחיר ליחידה בפועל להצעה
 
       const qi: QuoteItem = {
         name: aliasForm.selected.name,
         description: aliasForm.selected.description,
-        unit_price: unitBase,
+        unit_price: appliedUnit,         // מחיר ליחידה בפועל
         quantity: qty,
-        discount,
-        total: desiredTotal,
+        discount: 0,                     // אין הנחה — המחיר כבר מותאם ליחידה
+        total: appliedUnit * qty,        // מחיר ליחידה × כמות
       };
       addParsedToList([qi]);
 
-      // 3) הסר מהלא-מזוהים
+      // 3) הסר מהלא-מזוהים ואפס טופס
       const copy = [...unknown];
       copy.splice(aliasForm.idx, 1);
       setUnknown(copy);
@@ -240,7 +243,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
           <textarea
               value={text}
               onChange={handleTextChange}
-              placeholder={`לדוגמה:\n2 מסך אולם סוויט 2500|\n1 הגברה 200 איש 2500|`}
+              placeholder={`לדוגמה:\n2 מסך אולם סוויט 2500|\n3 מיק אלחוטי 300|`}
               className="input-field h-32 resize-none"
           />
           <button
@@ -263,7 +266,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                         <div>
                           <div className="text-sm text-gray-700"><b>טקסט:</b> {u.raw_text}</div>
                           <div className="text-sm text-gray-700">
-                            <b>כמות:</b> {u.quantity} &nbsp;|&nbsp; <b>סכום שנכתב:</b> {u.unit_price ?? '-'}
+                            <b>כמות:</b> {u.quantity} &nbsp;|&nbsp; <b>מחיר יחידה שנכתב:</b> {u.unit_price ?? '-'}
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -284,7 +287,7 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                             />
                             <input
                                 type="number"
-                                placeholder="מחיר יחידה"
+                                placeholder="מחיר יחידה (קטלוגי)"
                                 className="p-2 border rounded"
                                 value={createForm.price}
                                 onChange={(e) => setCreateForm(prev => ({ ...prev, price: e.target.value === '' ? '' : Number(e.target.value) }))}
@@ -322,11 +325,11 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
                             />
                             <select
                                 className="p-2 border rounded"
-                                value={aliasForm.selected?.id ?? ''}   // מחרוזת
+                                value={aliasForm.selected?.id ?? ''}
                                 onChange={(e) => {
-                                  const id = e.target.value; // מחרוזת UUID
+                                  const id = e.target.value;
                                   const found = aliasForm.results.find(r => String(r.id) === id) || null;
-                                  setAliasForm(prev => ({...prev, selected: found}));
+                                  setAliasForm(prev => ({ ...prev, selected: found }));
                                 }}
                                 aria-label="בחר פריט קיים"
                             >
