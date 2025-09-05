@@ -263,10 +263,25 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <span className="pdf-label">שם:</span>
                   <span className="pdf-value">{quote.client_name}</span>
                 </div>
-                {quote.client_company && (
+
+                {!!quote.client_company && (
                     <div className="pdf-field">
                       <span className="pdf-label">חברה:</span>
                       <span className="pdf-value">{quote.client_company}</span>
+                    </div>
+                )}
+
+                {!!quote.client_phone && (
+                    <div className="pdf-field">
+                      <span className="pdf-label">טלפון:</span>
+                      <span className="pdf-value ltr">{quote.client_phone}</span>
+                    </div>
+                )}
+
+                {!!quote.client_company_id && (
+                    <div className="pdf-field">
+                      <span className="pdf-label">ח״פ / ע״מ:</span>
+                      <span className="pdf-value ltr">{quote.client_company_id}</span>
                     </div>
                 )}
               </div>
@@ -288,6 +303,11 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   font-family: Arial, sans-serif;
                   border: 1px solid #e0e0e0;
                 }
+.ltr {
+  direction: ltr;
+  unicode-bidi: bidi-override;
+  text-align: left;
+}
                 
                 .invoice-table th,
                 .invoice-table td {

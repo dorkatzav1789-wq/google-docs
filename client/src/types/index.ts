@@ -50,6 +50,8 @@ export interface Quote {
   created_at?: string;
   client_name?: string;
   client_company?: string;
+  client_phone?: string | null;
+  client_company_id?: string | null;
 }
 
 export interface QuoteWithItems {
