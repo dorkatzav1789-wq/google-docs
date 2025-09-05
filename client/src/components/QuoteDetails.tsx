@@ -280,7 +280,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
                 {!!quote.client_company_id && (
                     <div className="pdf-field">
-                      <span className="pdf-label">ח״פ / ע״מ:</span>
+                      <span className="pdf-label">ח״פ:</span>
                       <span className="pdf-value ltr">{quote.client_company_id}</span>
                     </div>
                 )}
