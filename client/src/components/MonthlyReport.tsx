@@ -28,7 +28,7 @@ export const MonthlyReport: React.FC = () => {
             name: (wh as any).employees?.name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
             phone: undefined,
             email: undefined,
-            hourly_rate: Number((wh as any).employees?.hourly_rate ?? wh.hourly_rate ?? 0),
+            daily_rate: Number((wh as any).employees?.daily_rate ?? wh.daily_rate ?? 0),
             is_active: true,
             created_at: '',
           });
@@ -160,7 +160,7 @@ export const MonthlyReport: React.FC = () => {
             <th className="border p-2">עובד</th>
             <th className="border p-2">תאריך</th>
             <th className="border p-2">שעות</th>
-            <th className="border p-2">שכר לשעה</th>
+            <th className="border p-2">שכר יומי</th>
             <th className="border p-2">סה"כ ליום</th>
             <th className="border p-2">הערות</th>
           </tr>
@@ -180,7 +180,7 @@ export const MonthlyReport: React.FC = () => {
                     </td>
                     <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
-                    <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
+                    <td className="border p-2">₪{fmt(row.daily_rate)}</td>
                     <td className="border p-2">₪{fmt(row.daily_total)}</td>
                     <td className="border p-2">{row.notes || '-'}</td>
                   </tr>

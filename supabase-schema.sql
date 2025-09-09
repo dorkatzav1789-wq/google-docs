@@ -60,10 +60,12 @@ CREATE TABLE IF NOT EXISTS quote_items (
 -- טבלת עובדים
 CREATE TABLE IF NOT EXISTS employees (
   id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  name TEXT,
   phone TEXT,
   email TEXT,
-  hourly_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+  daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -74,8 +76,8 @@ CREATE TABLE IF NOT EXISTS work_hours (
   employee_id BIGINT REFERENCES employees(id) ON DELETE CASCADE,
   work_date DATE NOT NULL,
   hours_worked DECIMAL(4,2) NOT NULL, -- עד 99.99 שעות
-  hourly_rate DECIMAL(10,2) NOT NULL, -- השכר לשעה באותו יום
-  daily_total DECIMAL(10,2) NOT NULL, -- שעות * שכר לשעה
+  daily_rate DECIMAL(10,2) NOT NULL, -- השכר היומי באותו יום
+  daily_total DECIMAL(10,2) NOT NULL, -- שעות * שכר יומי
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(employee_id, work_date) -- מניעת כפילות תאריכים לעובד
@@ -112,6 +114,98 @@ SELECT setval(pg_get_serial_sequence('quotes','id'),      COALESCE((SELECT MAX(i
 SELECT setval(pg_get_serial_sequence('quote_items','id'), COALESCE((SELECT MAX(id) FROM quote_items), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('employees','id'),   COALESCE((SELECT MAX(id) FROM employees), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('work_hours','id'),  COALESCE((SELECT MAX(id) FROM work_hours), 0) + 1, false);
+
+-- הוספת עמודות חדשות לטבלת employees אם לא קיימות
+DO $$
+BEGIN
+  -- הוספת first_name אם לא קיים
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'first_name') THEN
+    ALTER TABLE employees ADD COLUMN first_name TEXT;
+  END IF;
+  
+  -- הוספת last_name אם לא קיים
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'last_name') THEN
+    ALTER TABLE employees ADD COLUMN last_name TEXT;
+  END IF;
+  
+  -- שינוי hourly_rate ל-daily_rate אם קיים
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'hourly_rate') THEN
+    ALTER TABLE employees RENAME COLUMN hourly_rate TO daily_rate;
+  END IF;
+  
+  -- הוספת daily_rate אם לא קיים
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'daily_rate') THEN
+    ALTER TABLE employees ADD COLUMN daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0;
+  END IF;
+END $$;
+
+-- הוספת עמודות חדשות לטבלת work_hours אם לא קיימות
+DO $$
+BEGIN
+  -- שינוי hourly_rate ל-daily_rate אם קיים
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'hourly_rate') THEN
+    ALTER TABLE work_hours RENAME COLUMN hourly_rate TO daily_rate;
+  END IF;
+  
+  -- הוספת daily_rate אם לא קיים
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'daily_rate') THEN
+    ALTER TABLE work_hours ADD COLUMN daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0;
+  END IF;
+  
+  -- עדכון daily_total כדי שיתאים לשכר יומי
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'daily_total') THEN
+    -- עדכון הערכים הקיימים
+    UPDATE work_hours SET daily_total = hours_worked * daily_rate WHERE daily_total = 0 OR daily_total IS NULL;
+  END IF;
+END $$;
+
+-- הוספת טריגר לעדכון אוטומטי של daily_total
+CREATE OR REPLACE FUNCTION update_daily_total()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.daily_total = NEW.hours_worked * NEW.daily_rate;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- יצירת הטריגר
+DROP TRIGGER IF EXISTS trigger_update_daily_total ON work_hours;
+CREATE TRIGGER trigger_update_daily_total
+  BEFORE INSERT OR UPDATE ON work_hours
+  FOR EACH ROW
+  EXECUTE FUNCTION update_daily_total();
+
+-- הוספת אינדקסים חדשים
+CREATE INDEX IF NOT EXISTS idx_employees_daily_rate ON employees(daily_rate);
+CREATE INDEX IF NOT EXISTS idx_work_hours_daily_rate ON work_hours(daily_rate);
+
+-- הוספת אינדקסים מורכבים
+CREATE INDEX IF NOT EXISTS idx_work_hours_employee_date ON work_hours(employee_id, work_date);
+CREATE INDEX IF NOT EXISTS idx_work_hours_monthly ON work_hours(EXTRACT(YEAR FROM work_date), EXTRACT(MONTH FROM work_date), employee_id);
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_work_hours_daily_total ON work_hours(daily_total);
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_employees_name_search ON employees USING gin(to_tsvector('hebrew', COALESCE(first_name, '') || ' ' || COALESCE(last_name, '') || ' ' || COALESCE(name, '')));
+CREATE INDEX IF NOT EXISTS idx_work_hours_notes_search ON work_hours USING gin(to_tsvector('hebrew', COALESCE(notes, '')));
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_employees_phone ON employees(phone) WHERE phone IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email) WHERE email IS NOT NULL;
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_work_hours_employee_active ON work_hours(employee_id) WHERE employee_id IN (SELECT id FROM employees WHERE is_active = true);
+CREATE INDEX IF NOT EXISTS idx_work_hours_daily_rate_range ON work_hours(daily_rate) WHERE daily_rate > 0;
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_work_hours_daily_total_range ON work_hours(daily_total) WHERE daily_total > 0;
+CREATE INDEX IF NOT EXISTS idx_work_hours_hours_worked_range ON work_hours(hours_worked) WHERE hours_worked > 0;
+
+-- הוספת אינדקסים נוספים לביצועים
+CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_rate ON work_hours(employee_id, daily_rate);
+CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_total ON work_hours(employee_id, daily_total);
 
 -- הגדרת RLS (Row Level Security) - אופציונלי
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;

@@ -20,7 +20,7 @@ const EmployeesPage: React.FC = () => {
     last_name: '',
     phone: '',
     email: '',
-    hourly_rate: 0,
+    daily_rate: 0,
     is_active: true,
   });
 
@@ -58,7 +58,7 @@ const EmployeesPage: React.FC = () => {
         last_name: newEmployee.last_name,
         phone: newEmployee.phone || null,
         email: newEmployee.email || null,
-        hourly_rate: newEmployee.hourly_rate,
+        daily_rate: newEmployee.daily_rate,
         // name: `${newEmployee.first_name} ${newEmployee.last_name}`.trim(), // אופציונלי
       });
 
@@ -67,7 +67,7 @@ const EmployeesPage: React.FC = () => {
         last_name: '',
         phone: '',
         email: '',
-        hourly_rate: 0,
+        daily_rate: 0,
         is_active: true,
       });
       await loadEmployees();
@@ -88,7 +88,7 @@ const EmployeesPage: React.FC = () => {
       last_name: emp.last_name,
       phone: emp.phone,
       email: emp.email,
-      hourly_rate: emp.hourly_rate,
+      daily_rate: emp.daily_rate,
       is_active: emp.is_active,
     });
   };
@@ -108,7 +108,7 @@ const EmployeesPage: React.FC = () => {
         last_name: (editDraft.last_name ?? '').toString().trim(),
         phone: (editDraft.phone ?? '').toString().trim() || null,
         email: (editDraft.email ?? '').toString().trim() || null,
-        hourly_rate: Number(editDraft.hourly_rate ?? 0),
+        daily_rate: Number(editDraft.daily_rate ?? 0),
         is_active: Boolean(editDraft.is_active),
       });
       await loadEmployees();
@@ -207,12 +207,12 @@ const EmployeesPage: React.FC = () => {
                       <input
                           type="number"
                           step="0.01"
-                          placeholder="שכר לשעה"
-                          value={newEmployee.hourly_rate}
+                          placeholder="שכר יומי"
+                          value={newEmployee.daily_rate}
                           onChange={(e) =>
                               setNewEmployee((s) => ({
                                 ...s,
-                                hourly_rate: parseFloat(e.target.value) || 0,
+                                daily_rate: parseFloat(e.target.value) || 0,
                               }))
                           }
                           className="p-2 border rounded"
@@ -288,12 +288,12 @@ const EmployeesPage: React.FC = () => {
                                           type="number"
                                           step="0.01"
                                           className="p-2 border rounded"
-                                          placeholder="שכר לשעה"
-                                          value={Number(editDraft.hourly_rate ?? 0)}
+                                          placeholder="שכר יומי"
+                                          value={Number(editDraft.daily_rate ?? 0)}
                                           onChange={(e) =>
                                               setEditDraft((s) => ({
                                                 ...s,
-                                                hourly_rate: parseFloat(e.target.value) || 0,
+                                                daily_rate: parseFloat(e.target.value) || 0,
                                               }))
                                           }
                                       />
@@ -334,7 +334,7 @@ const EmployeesPage: React.FC = () => {
                                     <h4 className="font-semibold text-lg">{fullName(emp)}</h4>
                                     <p>טלפון: {emp.phone || 'לא צוין'}</p>
                                     <p>אימייל: {emp.email || 'לא צוין'}</p>
-                                    <p>שכר לשעה: ₪{Number(emp.hourly_rate || 0).toLocaleString('he-IL')}</p>
+                                    <p>שכר יומי: ₪{Number(emp.daily_rate || 0).toLocaleString('he-IL')}</p>
                                     <p>סטטוס: {emp.is_active ? 'פעיל' : 'לא פעיל'}</p>
 
                                     <div className="mt-3">

@@ -49,13 +49,13 @@ export const WorkHoursTracker: React.FC = () => {
       }
 
       const hours = Number(workHours.hours_worked || 0);
-      const rate = Number(employee.hourly_rate || 0);
+      const rate = Number(employee.daily_rate || 0);
 
       const workHoursData = {
         employee_id: selectedEmployee,
         work_date: workHours.work_date,
         hours_worked: hours,
-        hourly_rate: rate,
+        daily_rate: rate,
         notes: workHours.notes,
       };
 
@@ -102,7 +102,7 @@ export const WorkHoursTracker: React.FC = () => {
               {(employees ?? []).map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {fullName(employee)} (₪
-                    {Number(employee.hourly_rate || 0).toLocaleString('he-IL')}/שעה)
+                    {Number(employee.daily_rate || 0).toLocaleString('he-IL')}/יום)
                   </option>
               ))}
             </select>
@@ -115,6 +115,8 @@ export const WorkHoursTracker: React.FC = () => {
                 }
                 className="p-2 border rounded"
                 required
+                title="תאריך עבודה"
+                aria-label="תאריך עבודה"
             />
 
             <input

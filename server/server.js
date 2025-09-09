@@ -635,7 +635,7 @@ function renderMonthlyReportHTML(report, year, month) {
           <td>${safe(wh.employees?.name || 'לא ידוע')}</td>
           <td>${safe(wh.work_date)}</td>
           <td>${fmtNum(wh.hours_worked)}</td>
-          <td>${fmtNis(wh.hourly_rate)}</td>
+          <td>${fmtNis(wh.daily_rate)}</td>
           <td>${fmtNis(wh.daily_total)}</td>
           <td>${safe(wh.notes || '-')}</td>
         </tr>
@@ -694,7 +694,7 @@ function renderMonthlyReportHTML(report, year, month) {
         <th>עובד</th>
         <th>תאריך</th>
         <th>שעות</th>
-        <th>שכר לשעה</th>
+        <th>שכר יומי</th>
         <th>סה"כ ליום</th>
         <th>הערות</th>
       </tr>
@@ -730,7 +730,7 @@ app.post('/api/employees', async (req, res) => {
       last_name = '',
       phone = null,
       email = null,
-      hourly_rate,
+      daily_rate,
       name,           // אם בטעות נשלח name — נתחשב בו
       is_active,
     } = req.body || {};
@@ -743,9 +743,9 @@ app.post('/api/employees', async (req, res) => {
       return res.status(400).json({ error: 'יש להזין שם פרטי/משפחה או name' });
     }
 
-    const rateNum = Number(hourly_rate);
+    const rateNum = Number(daily_rate);
     if (!Number.isFinite(rateNum) || rateNum < 0) {
-      return res.status(400).json({ error: 'hourly_rate חייב להיות מספר לא־שלילי' });
+      return res.status(400).json({ error: 'daily_rate חייב להיות מספר לא־שלילי' });
     }
 
     const payload = {
@@ -753,7 +753,7 @@ app.post('/api/employees', async (req, res) => {
       last_name: ln || null,
       phone: phone || null,
       email: email || null,
-      hourly_rate: rateNum,
+      daily_rate: rateNum,
       is_active: typeof is_active === 'boolean' ? is_active : true,
     };
 

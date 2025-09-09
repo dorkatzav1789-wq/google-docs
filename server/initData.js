@@ -203,8 +203,19 @@ async function initializeDatabase() {
       await dbFunctions.addAlias(alias.alias, alias.item_name, alias.price_override);
     }
 
+    // הוספת עובד לדוגמה עם שכר יומי
+    console.log('👷 טוען עובד לדוגמה...');
+    await dbFunctions.addEmployee({
+      first_name: 'דור',
+      last_name: 'קצב',
+      phone: '052-489-1025',
+      email: 'Dor.katzav.valley@gmail.com',
+      daily_rate: 800,
+      is_active: true
+    });
+
     console.log('✅ כל הנתונים נטענו בהצלחה!');
-    console.log(`📊 נטענו: ${itemsData.length} פריטים, ${clientsData.length} לקוחות, ${aliasesData.length} כינויים`);
+    console.log(`📊 נטענו: ${itemsData.length} פריטים, ${clientsData.length} לקוחות, ${aliasesData.length} כינויים, 1 עובד`);
 
   } catch (error) {
     console.error('❌ שגיאה בטעינת נתונים:', error);

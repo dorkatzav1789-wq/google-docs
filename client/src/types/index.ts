@@ -66,7 +66,7 @@ export interface Employee {
   name?: string;
   phone?: string;
   email?: string;
-  hourly_rate: number;
+  daily_rate: number;
   is_active: boolean;
   created_at: string;
 }
@@ -76,14 +76,14 @@ export interface WorkHours {
   employee_id: number;
   work_date: string;
   hours_worked: number;
-  hourly_rate: number;
+  daily_rate: number;
   daily_total: number;
   notes?: string;
 
   // כשמחזירים מ-Supabase עם join:
   employees?: {
     name: string;
-    hourly_rate?: number;
+    daily_rate?: number;
   } | null;
 
   // fallback אם תחזירו שם עובד בצורה שטוחה
@@ -103,7 +103,7 @@ export type NewWorkHoursInput = {
   employee_id: number;
   work_date: string;
   hours_worked: number;
-  hourly_rate: number;
+  daily_rate: number;
   notes?: string;
 };
 

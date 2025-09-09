@@ -89,7 +89,7 @@ type EmployeeCreateBody = {
   last_name: string;
   phone?: string | null;
   email?: string | null;
-  hourly_rate: number;
+  daily_rate: number;
   is_active?: boolean;
 };
 

@@ -313,7 +313,7 @@ const dbFunctions = {
     try {
       const {data, error} = await supabase
           .from('employees')
-          .select('id, first_name, last_name, phone, email, hourly_rate, is_active, created_at')
+          .select('id, first_name, last_name, phone, email, daily_rate, is_active, created_at')
           .order('first_name', {ascending: true})
           .order('last_name', {ascending: true});
 
@@ -384,7 +384,7 @@ const dbFunctions = {
       // 1) מביאים שעות עבודה לחודש
       const {data: wh, error: whErr} = await supabase
           .from('work_hours')
-          .select('id, employee_id, work_date, hours_worked, hourly_rate, daily_total, notes')
+          .select('id, employee_id, work_date, hours_worked, daily_rate, daily_total, notes')
           .gte('work_date', start)
           .lt('work_date', end)
           .order('work_date', {ascending: true});
@@ -406,7 +406,7 @@ const dbFunctions = {
       const ids = Array.from(new Set(workHours.map(r => r.employee_id))).filter(Boolean);
               const {data: emps, error: empErr} = await supabase
             .from('employees')
-            .select('id, first_name, last_name, hourly_rate')
+            .select('id, first_name, last_name, daily_rate')
             .in('id', ids);
 
       if (empErr) throw empErr;
@@ -420,12 +420,12 @@ const dbFunctions = {
       return combined || null;
     };
 
-      // 3) מחברים שם עובד ושכר לשעה לתוצאה, כפי שהפרונט מצפה
+      // 3) מחברים שם עובד ושכר יומי לתוצאה, כפי שהפרונט מצפה
       const enriched = workHours.map(row => {
         const emp = byId.get(row.employee_id);
         return {
           ...row,
-          employees: emp ? {name: fullName(emp), hourly_rate: emp.hourly_rate} : null,
+          employees: emp ? {name: fullName(emp), daily_rate: emp.daily_rate} : null,
           employee_name: emp ? fullName(emp) : null,
         };
       });
