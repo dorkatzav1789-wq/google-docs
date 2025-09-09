@@ -141,7 +141,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           {/* --- פס עליון: תאריך הפקה בצד שמאל --- */}
           <div className="w-full mb-2">
             <div className="text-sm text-gray-600" style={{textAlign: 'left'}}>
-              תאריך הפקה: {exportDate}
+              {exportDate}
             </div>
           </div>
 
@@ -211,10 +211,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <span className="pdf-label">תאריך:</span>
                   <span className="pdf-value">{formatDate(quote.event_date)}</span>
                 </div>
-                <div className="pdf-field">
-                  <span className="pdf-label">תאריך:</span>
-                  <span className="pdf-value">{formatDate(quote.event_date)}</span>
-                </div>
+
                 {quote.event_hours && (
                     <div className="pdf-field">
                       <span className="pdf-label">שעות:</span>
