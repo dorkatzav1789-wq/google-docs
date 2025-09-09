@@ -119,6 +119,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   }
 
   const { quote, items } = quoteData;
+  const exportDate = new Date().toLocaleDateString('he-IL');
 
   return (
       <div className="w-full mx-auto p-6">
@@ -137,6 +138,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
         {/* קונטיינר ל-PDF */}
         <div ref={pdfRef} className="bg-white p-8 max-w-4xl mx-auto" style={{display: 'none'}}>
+          {/* --- פס עליון: תאריך הפקה בצד שמאל --- */}
+          <div className="w-full mb-2">
+            <div className="text-sm text-gray-600" style={{textAlign: 'left'}}>
+              תאריך הפקה: {exportDate}
+            </div>
+          </div>
+
           {/* כותרת עם תמונה */}
           <div className="text-center mb-4">
             <img src="/pdf3.png" alt="header-img" style={{
@@ -148,7 +156,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
 
           {/* תמונה גדולה מעל פרטי האירוע */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <img src="/pdf1.png" alt="header-img" style={{
               maxWidth: '600px',
               width: '100%',
@@ -157,87 +165,51 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             }}/>
           </div>
 
+          {/* --- כותרת שם האירוע מחוץ ל-border --- */}
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold">{quote.event_name}</h2>
+          </div>
+
           {/* עיצוב מותאם ל-PDF */}
-          <style>
-            {`
-              .pdf-event-card {
-                background-color: #ffffff;
-                border-radius: 12px;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                padding: 24px;
-                margin-bottom: 16px;
-              }
+          <style>{`
+        .pdf-event-card {
+          background-color: #ffffff;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          padding: 24px;
+          margin-bottom: 16px;
+        }
+        .pdf-card-content { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .pdf-section { display: flex; flex-direction: column; }
+        .pdf-section-title {
+          font-size: 14px; font-weight: 700; color: #1a202c;
+          margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;
+        }
+        .pdf-field { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .pdf-field:last-child { margin-bottom: 0; }
+        .pdf-label { font-size: 11px; color: #718096; }
+        .pdf-value { font-size: 11px; font-weight: 500; color: #2d3748; }
+        .pdf-special-notes { margin-top: 12px; }
+        .pdf-special-notes .pdf-label { margin-bottom: 6px; display: block; }
+        .pdf-special-notes .pdf-value {
+          background-color: #f7fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;
+          font-size: 10px; line-height: 1.4;
+        }
+        .ltr { direction: ltr; unicode-bidi: bidi-override; text-align: left; }
+      `}</style>
 
-              .pdf-card-content {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 40px;
-              }
-
-              .pdf-section {
-                display: flex;
-                flex-direction: column;
-              }
-
-              .pdf-section-title {
-                font-size: 14px;
-                font-weight: 700;
-                color: #1a202c;
-                margin: 0 0 16px 0;
-                padding-bottom: 8px;
-                border-bottom: 1px solid #e2e8f0;
-              }
-
-              .pdf-field {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-              }
-
-              .pdf-field:last-child {
-                margin-bottom: 0;
-              }
-
-              .pdf-label {
-                font-size: 11px;
-                color: #718096;
-              }
-
-              .pdf-value {
-                font-size: 11px;
-                font-weight: 500;
-                color: #2d3748;
-              }
-
-              .pdf-special-notes {
-                margin-top: 12px;
-              }
-
-              .pdf-special-notes .pdf-label {
-                margin-bottom: 6px;
-                display: block;
-              }
-
-              .pdf-special-notes .pdf-value {
-                background-color: #f7fafc;
-                padding: 8px;
-                border-radius: 6px;
-                border: 1px solid #e2e8f0;
-                font-size: 10px;
-                line-height: 1.4;
-              }
-            `}
-          </style>
-
+          {/* --- כרטיס פרטי אירוע/לקוח (שם האירוע הוצא החוצה) --- */}
           <div className="pdf-event-card">
             <div className="pdf-card-content">
+              {/* צד ימין: פרטי אירוע */}
               <div className="pdf-section">
                 <h3 className="pdf-section-title">פרטי האירוע</h3>
+
+                {/* שם האירוע הוסר מכאן */}
                 <div className="pdf-field">
-                  <span className="pdf-label">שם האירוע:</span>
-                  <span className="pdf-value">{quote.event_name}</span>
+                  <span className="pdf-label">תאריך:</span>
+                  <span className="pdf-value">{formatDate(quote.event_date)}</span>
                 </div>
                 <div className="pdf-field">
                   <span className="pdf-label">תאריך:</span>
