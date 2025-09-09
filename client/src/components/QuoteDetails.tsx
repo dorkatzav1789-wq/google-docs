@@ -301,7 +301,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   font-size: 13px;
                   direction: rtl;
                   font-family: Arial, sans-serif;
-                  border: 1px solid #e0e0e0;
+                  border: none;
                 }
 .ltr {
   direction: ltr;
@@ -359,7 +359,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 }
                 
                 .final-total td {
-                  border-top: 2px solid #333;
+                  border-top: none;
                   border-bottom: none !important;
                 }
               `}
