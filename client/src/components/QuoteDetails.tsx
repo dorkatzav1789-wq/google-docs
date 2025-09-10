@@ -63,7 +63,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
       const opt = {
         margin: [10, 10, 10, 10],
-        filename: `${quoteData.quote.event_name}.pdf`,
+        filename: `${quoteData.quote.event_name}_${quoteData.quote.client_name}_${formatDate(quoteData.quote.event_date)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale: 2,
