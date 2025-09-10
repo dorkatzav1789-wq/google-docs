@@ -377,13 +377,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   </tr>
               )}
 
-              <tr className="summary-row-green">
-                <td className="item-description">סה"כ לאחר הנחה</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td>{formatCurrency(quote.total_after_discount)}</td>
-              </tr>
+              {quote.discount_percent > 0 && (
+                  <tr className="summary-row-orange">
+                    <td className="item-description">סה"כ לאחר הנחה</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>{formatCurrency(quote.total_after_discount)}</td>
+                  </tr>
+              )}
+
 
               <tr className="summary-row-orange">
                 <td className="item-description">18% מע"מ</td>
