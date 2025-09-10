@@ -1,6 +1,6 @@
 // services/api.ts
 import axios from 'axios';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems,NewWorkHoursInput  } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput } from '../types';
 
 
 const API_BASE_URL =
@@ -127,6 +127,33 @@ export const reportsAPI = {
       api
           .get(`/reports/monthly/${year}/${month}/pdf`, { responseType: 'blob' })
           .then((res) => res.data),
+};
+
+// ---------- Reminders ----------
+export const remindersAPI = {
+  getAll: (): Promise<Reminder[]> =>
+      api.get('/reminders').then((res) => res.data),
+
+  getByQuote: (quoteId: number): Promise<Reminder[]> =>
+      api.get(`/reminders/quote/${quoteId}`).then((res) => res.data),
+
+  create: (reminder: NewReminderInput): Promise<Reminder> =>
+      api.post('/reminders', reminder).then((res) => res.data),
+
+  update: (id: number, reminder: Partial<NewReminderInput>): Promise<Reminder> =>
+      api.put(`/reminders/${id}`, reminder).then((res) => res.data),
+
+  delete: (id: number): Promise<{ success: boolean }> =>
+      api.delete(`/reminders/${id}`).then((res) => res.data),
+
+  createAuto: (quoteId: number): Promise<Reminder> =>
+      api.post(`/reminders/auto/${quoteId}`).then((res) => res.data),
+
+  getPending: (): Promise<Reminder[]> =>
+      api.get('/reminders/pending').then((res) => res.data),
+
+  markAsSent: (id: number): Promise<Reminder> =>
+      api.post(`/reminders/${id}/mark-sent`).then((res) => res.data),
 };
 
 export default api;

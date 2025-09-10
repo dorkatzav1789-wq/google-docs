@@ -107,4 +107,31 @@ export type NewWorkHoursInput = {
   notes?: string;
 };
 
+export interface Reminder {
+  id?: number;
+  quote_id: number;
+  reminder_date: string;
+  reminder_type: 'email' | 'sms' | 'push';
+  email_addresses: string[];
+  message?: string;
+  is_sent: boolean;
+  sent_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  // נתונים מ-join עם quotes
+  quotes?: Array<{
+    event_name: string;
+    event_date: string;
+    special_notes?: string;
+  }>;
+}
+
+export type NewReminderInput = {
+  quote_id: number;
+  reminder_date: string;
+  reminder_type: 'email' | 'sms' | 'push';
+  email_addresses: string[];
+  message?: string;
+};
+
 

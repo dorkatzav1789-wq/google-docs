@@ -21,6 +21,7 @@ try {
   puppeteer = require("puppeteer");
 }
 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -784,6 +785,130 @@ app.post('/api/work-hours', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ===== Reminders routes =====
+// קבלת כל התזכורות
+app.get('/api/reminders', async (req, res) => {
+  try {
+    const reminders = await dbFunctions.getAllReminders();
+    res.json(reminders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// קבלת תזכורות לפי הצעת מחיר
+app.get('/api/reminders/quote/:quoteId', async (req, res) => {
+  try {
+    const quoteId = Number(req.params.quoteId);
+    if (!quoteId) return res.status(400).json({ error: "מזהה הצעה לא תקין" });
+
+    const reminders = await dbFunctions.getRemindersByQuote(quoteId);
+    res.json(reminders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// הוספת תזכורת
+app.post('/api/reminders', async (req, res) => {
+  try {
+    const { quote_id, reminder_date, reminder_type, email_addresses, message } = req.body;
+    
+    if (!quote_id || !reminder_date || !reminder_type) {
+      return res.status(400).json({ error: "שדות חובה: quote_id, reminder_date, reminder_type" });
+    }
+
+    const reminderData = {
+      quote_id: Number(quote_id),
+      reminder_date,
+      reminder_type,
+      email_addresses: email_addresses || [],
+      message: message || null,
+      is_sent: false
+    };
+
+    const reminder = await dbFunctions.addReminder(reminderData);
+    res.status(201).json(reminder);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// עדכון תזכורת
+app.put('/api/reminders/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "מזהה תזכורת לא תקין" });
+
+    const reminder = await dbFunctions.updateReminder(id, req.body);
+    res.json(reminder);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// מחיקת תזכורת
+app.delete('/api/reminders/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "מזהה תזכורת לא תקין" });
+
+    await dbFunctions.deleteReminder(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// יצירת תזכורת אוטומטית עבור הצעת מחיר
+app.post('/api/reminders/auto/:quoteId', async (req, res) => {
+  try {
+    const quoteId = Number(req.params.quoteId);
+    if (!quoteId) return res.status(400).json({ error: "מזהה הצעה לא תקין" });
+
+    // קבלת פרטי ההצעה
+    const quote = await dbFunctions.getQuoteById(quoteId);
+    if (!quote) return res.status(404).json({ error: "הצעת מחיר לא נמצאה" });
+
+    if (!quote.event_date) {
+      return res.status(400).json({ error: "לא ניתן ליצור תזכורת ללא תאריך אירוע" });
+    }
+
+    const reminder = await dbFunctions.createAutoReminder(quoteId, quote.event_date);
+    if (!reminder) {
+      return res.status(409).json({ error: "תזכורת כבר קיימת עבור הצעה זו" });
+    }
+
+    res.status(201).json(reminder);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// קבלת תזכורות שצריכות להישלח
+app.get('/api/reminders/pending', async (req, res) => {
+  try {
+    const reminders = await dbFunctions.getPendingReminders();
+    res.json(reminders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// סימון תזכורת כנשלחה
+app.post('/api/reminders/:id/mark-sent', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "מזהה תזכורת לא תקין" });
+
+    const reminder = await dbFunctions.markReminderAsSent(id);
+    res.json(reminder);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 app.get('/api/work-hours/employee/:id', async (req, res) => {
   try {

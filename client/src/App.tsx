@@ -5,6 +5,7 @@ import QuotesList from './components/QuotesList';
 import QuoteDetails from './components/QuoteDetails';
 import NewClientForm from './components/NewClientForm';
 import EmployeesPage from './components/EmployeeManagement';
+import ReminderService from './components/ReminderService';
 
 type Page =
     | 'quotes'
@@ -47,83 +48,95 @@ function App() {
 
   if (currentPage === 'quote-details' && selectedQuoteId) {
     return (
-        <div className="App">
-          <QuoteDetails quoteId={selectedQuoteId} onBack={handleBackToList} />
-        </div>
+        <ReminderService>
+          <div className="App">
+            <QuoteDetails quoteId={selectedQuoteId} onBack={handleBackToList} />
+          </div>
+        </ReminderService>
     );
   }
 
   if (currentPage === 'new-quote') {
     return (
-        <div className="App">
-          <header className="App-header">
-            <div className="header-content">
-              <button onClick={handleBackToList} className="btn-back">
-                ← חזור להצעות קיימות
-              </button>
-              <h1>יצירת הצעת מחיר חדשה</h1>
-            </div>
-          </header>
-          <main className="App-main">
-            <div className="quote-form-container">
-              <QuoteForm onQuoteSaved={handleQuoteSaved} />
-            </div>
-          </main>
-        </div>
+        <ReminderService>
+          <div className="App">
+            <header className="App-header">
+              <div className="header-content">
+                <button onClick={handleBackToList} className="btn-back">
+                  ← חזור להצעות קיימות
+                </button>
+                <h1>יצירת הצעת מחיר חדשה</h1>
+              </div>
+            </header>
+            <main className="App-main">
+              <div className="quote-form-container">
+                <QuoteForm onQuoteSaved={handleQuoteSaved} />
+              </div>
+            </main>
+          </div>
+        </ReminderService>
     );
   }
 
   if (currentPage === 'new-client') {
     return (
-        <div className="App">
-          <header className="App-header">
-            <div className="header-content">
-              <button onClick={handleBackToList} className="btn-back">
-                ← חזור להצעות קיימות
-              </button>
-              <h1>הוספת לקוח חדש</h1>
-            </div>
-          </header>
-          <main className="App-main">
-            <div className="new-client-container">
-              <NewClientForm onClientCreated={handleClientCreated} onCancel={handleBackToList} />
-            </div>
-          </main>
-        </div>
+        <ReminderService>
+          <div className="App">
+            <header className="App-header">
+              <div className="header-content">
+                <button onClick={handleBackToList} className="btn-back">
+                  ← חזור להצעות קיימות
+                </button>
+                <h1>הוספת לקוח חדש</h1>
+              </div>
+            </header>
+            <main className="App-main">
+              <div className="new-client-container">
+                <NewClientForm onClientCreated={handleClientCreated} onCancel={handleBackToList} />
+              </div>
+            </main>
+          </div>
+        </ReminderService>
     );
   }
 
   if (currentPage === 'employees') {
-    return <EmployeesPage />;
+    return (
+        <ReminderService>
+          <EmployeesPage />
+        </ReminderService>
+    );
   }
 
   // עמוד ראשי
   return (
-      <div className="App">
-        <header className="App-header">
-          <h1>מערכת ניהול הצעות מחיר ושעות עבודה</h1>
+      <ReminderService>
+        <div className="App">
+          <header className="App-header">
+            <h1>מערכת ניהול הצעות מחיר ושעות עבודה</h1>
 
-          <div className="header-buttons">
-            <button onClick={handleNewQuote} className="btn-primary">
-              + הצעת מחיר חדשה
-            </button>
-            <button onClick={handleNewClient} className="btn-secondary">
-              + לקוח חדש
-            </button>
-            {/* ← כפתור חדש: ניהול עובדים */}
-            <button onClick={() => setCurrentPage('employees')} className="btn-secondary">
-              ⚙️ ניהול עובדים
-            </button>
-          </div>
-        </header>
+            <div className="header-buttons">
+              <button onClick={handleNewQuote} className="btn-primary">
+                + הצעת מחיר חדשה
+              </button>
+              <button onClick={handleNewClient} className="btn-secondary">
+                + לקוח חדש
+              </button>
+              {/* ← כפתור חדש: ניהול עובדים */}
+              <button onClick={() => setCurrentPage('employees')} className="btn-secondary">
+                ⚙️ ניהול עובדים
+              </button>
+            </div>
+          </header>
 
-        <main className="App-main">
-          <div className="quotes-container">
-            <h2>הצעות מחיר קיימות</h2>
-            <QuotesList onQuoteSelect={handleQuoteSelect} />
-          </div>
-        </main>
-      </div>
+          <main className="App-main">
+            <div className="quotes-container">
+              <h2>הצעות מחיר קיימות</h2>
+              <QuotesList onQuoteSelect={handleQuoteSelect} />
+            </div>
+          </main>
+        </div>
+      </ReminderService>
   );
 }
 

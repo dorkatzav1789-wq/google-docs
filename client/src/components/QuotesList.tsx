@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Quote } from '../types';
-import { quotesAPI } from '../services/api';
+import { quotesAPI, remindersAPI } from '../services/api';
 
 interface QuotesListProps {
   onQuoteSelect: (quoteId: number) => void;
@@ -19,6 +19,7 @@ const formatCurrency = (amount: number) => `₪${amount.toLocaleString()}`;
 const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reminders, setReminders] = useState<Record<number, boolean>>({});
 
   const loadQuotes = async () => {
     try {
@@ -32,8 +33,24 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
     }
   };
 
+  const loadReminders = async () => {
+    try {
+      const data = await remindersAPI.getAll();
+      const reminderMap: Record<number, boolean> = {};
+      data.forEach(reminder => {
+        if (reminder.quote_id) {
+          reminderMap[reminder.quote_id] = true;
+        }
+      });
+      setReminders(reminderMap);
+    } catch (error) {
+      console.error('שגיאה בטעינת תזכורות:', error);
+    }
+  };
+
   useEffect(() => {
     loadQuotes();
+    loadReminders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,6 +150,12 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                                   {quote.special_notes && (
                                       <div>
                                         <span className="font-medium">הערות:</span> {quote.special_notes}
+                                      </div>
+                                  )}
+                                  {reminders[quote.id!] && (
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-blue-600">🔔</span>
+                                        <span className="text-blue-600 font-medium">תזכורת פעילה</span>
                                       </div>
                                   )}
                                 </div>

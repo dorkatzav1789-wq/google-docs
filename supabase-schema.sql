@@ -207,6 +207,26 @@ CREATE INDEX IF NOT EXISTS idx_work_hours_hours_worked_range ON work_hours(hours
 CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_rate ON work_hours(employee_id, daily_rate);
 CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_total ON work_hours(employee_id, daily_total);
 
+-- טבלת תזכורות
+CREATE TABLE IF NOT EXISTS reminders (
+  id BIGSERIAL PRIMARY KEY,
+  quote_id BIGINT REFERENCES quotes(id) ON DELETE CASCADE,
+  reminder_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  reminder_type TEXT NOT NULL DEFAULT 'email', -- 'email', 'sms', 'push'
+  email_addresses TEXT[], -- רשימת כתובות מייל
+  message TEXT, -- הודעה מותאמת אישית
+  is_sent BOOLEAN DEFAULT false,
+  sent_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- אינדקסים לטבלת תזכורות
+CREATE INDEX IF NOT EXISTS idx_reminders_quote_id ON reminders(quote_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_reminder_date ON reminders(reminder_date);
+CREATE INDEX IF NOT EXISTS idx_reminders_is_sent ON reminders(is_sent);
+CREATE INDEX IF NOT EXISTS idx_reminders_type ON reminders(reminder_type);
+
 -- הגדרת RLS (Row Level Security) - אופציונלי
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aliases ENABLE ROW LEVEL SECURITY;
@@ -215,6 +235,7 @@ ALTER TABLE quotes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quote_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_hours ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
 
 -- מדיניות גישה ציבורית (לצורך הדגמה - ניתן לשנות בהמשך)
 CREATE POLICY "Allow public read access" ON items FOR SELECT USING (true);
@@ -224,6 +245,7 @@ CREATE POLICY "Allow public read access" ON quotes FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON quote_items FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON employees FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON work_hours FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON reminders FOR SELECT USING (true);
 
 CREATE POLICY "Allow public insert access" ON items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON aliases FOR INSERT WITH CHECK (true);
@@ -232,6 +254,7 @@ CREATE POLICY "Allow public insert access" ON quotes FOR INSERT WITH CHECK (true
 CREATE POLICY "Allow public insert access" ON quote_items FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON employees FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert access" ON work_hours FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public insert access" ON reminders FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow public update access" ON items FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON aliases FOR UPDATE USING (true);
@@ -240,3 +263,4 @@ CREATE POLICY "Allow public update access" ON quotes FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON quote_items FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON employees FOR UPDATE USING (true);
 CREATE POLICY "Allow public update access" ON work_hours FOR UPDATE USING (true);
+CREATE POLICY "Allow public update access" ON reminders FOR UPDATE USING (true);

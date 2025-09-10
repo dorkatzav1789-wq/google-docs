@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QuoteWithItems } from '../types';
 import { quotesAPI } from '../services/api';
+import ReminderManager from './ReminderManager';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -13,6 +14,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [quoteData, setQuoteData] = useState<QuoteWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [showReminderManager, setShowReminderManager] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const loadQuoteDetails = async () => {
@@ -128,9 +130,15 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-black mb-2">פרטי הצעת מחיר</h1>
             <p className="text-black/80">הצעה #{quote.id}</p>
-            <div className="mt-4">
-              <button onClick={handleExportPDF} disabled={exportingPDF} className="btn-success ml-4">
+            <div className="mt-4 flex gap-2">
+              <button onClick={handleExportPDF} disabled={exportingPDF} className="btn-success">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}
+              </button>
+              <button 
+                onClick={() => setShowReminderManager(true)} 
+                className="btn-primary"
+              >
+                🔔 ניהול תזכורות
               </button>
             </div>
           </div>
@@ -377,16 +385,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   </tr>
               )}
 
-              {quote.discount_percent > 0 && (
-                  <tr className="summary-row-orange">
-                    <td className="item-description">סה"כ לאחר הנחה</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td>{formatCurrency(quote.total_after_discount)}</td>
-                  </tr>
-              )}
-
+              <tr className="summary-row-green">
+                <td className="item-description">סה"כ לאחר הנחה</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>{formatCurrency(quote.total_after_discount)}</td>
+              </tr>
 
               <tr className="summary-row-orange">
                 <td className="item-description">18% מע"מ</td>
@@ -641,6 +646,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </table>
           </div>
         </div>
+
+        {/* ניהול תזכורות */}
+        {showReminderManager && quoteData && (
+          <ReminderManager
+            quoteId={quoteId}
+            eventDate={quoteData.quote.event_date}
+            eventName={quoteData.quote.event_name}
+            onClose={() => setShowReminderManager(false)}
+          />
+        )}
       </div>
 
   );

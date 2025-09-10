@@ -447,6 +447,165 @@ const dbFunctions = {
       throw error;
     }
   },
+
+  // ===== פונקציות לתזכורות =====
+  // הוספת תזכורת
+  addReminder: async (reminderData) => {
+    try {
+      const {data, error} = await supabase
+          .from('reminders')
+          .insert([reminderData])
+          .select()
+          .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Supabase addReminder error:', error);
+      throw error;
+    }
+  },
+
+  // קבלת כל התזכורות
+  getAllReminders: async () => {
+    try {
+      const {data, error} = await supabase
+          .from('reminders')
+          .select(`
+            *,
+            quotes(event_name, event_date)
+          `)
+          .order('reminder_date', {ascending: true});
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // קבלת תזכורות לפי הצעת מחיר
+  getRemindersByQuote: async (quoteId) => {
+    try {
+      const {data, error} = await supabase
+          .from('reminders')
+          .select('*')
+          .eq('quote_id', quoteId)
+          .order('reminder_date', {ascending: true});
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // עדכון תזכורת
+  updateReminder: async (id, reminderData) => {
+    try {
+      const {data, error} = await supabase
+          .from('reminders')
+          .update({
+            ...reminderData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // מחיקת תזכורת
+  deleteReminder: async (id) => {
+    try {
+      const {error} = await supabase
+          .from('reminders')
+          .delete()
+          .eq('id', id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // קבלת תזכורות שצריכות להישלח (72 שעות לפני האירוע)
+  getPendingReminders: async () => {
+    try {
+      const now = new Date();
+      
+      const {data, error} = await supabase
+          .from('reminders')
+          .select(`
+            *,
+            quotes(event_name, event_date, special_notes)
+          `)
+          .eq('is_sent', false)
+          .gte('reminder_date', now.toISOString())
+          .order('reminder_date', {ascending: true});
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // סימון תזכורת כנשלחה
+  markReminderAsSent: async (id) => {
+    try {
+      const {data, error} = await supabase
+          .from('reminders')
+          .update({
+            is_sent: true,
+            sent_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // יצירת תזכורת אוטומטית עבור הצעת מחיר
+  createAutoReminder: async (quoteId, eventDate) => {
+    try {
+      // חישוב תאריך התזכורת (72 שעות לפני האירוע)
+      const eventDateTime = new Date(eventDate);
+      const reminderDateTime = new Date(eventDateTime.getTime() - (72 * 60 * 60 * 1000));
+      
+      // בדיקה אם כבר קיימת תזכורת עבור הצעה זו
+      const existingReminders = await dbFunctions.getRemindersByQuote(quoteId);
+      if (existingReminders.length > 0) {
+        return null; // כבר קיימת תזכורת
+      }
+
+      const reminderData = {
+        quote_id: quoteId,
+        reminder_date: reminderDateTime.toISOString(),
+        reminder_type: 'email',
+        email_addresses: [], // יועבר מהפרונט
+        message: null, // יועבר מהפרונט או יוגדר אוטומטית
+        is_sent: false
+      };
+
+      return await dbFunctions.addReminder(reminderData);
+    } catch (error) {
+      console.error('createAutoReminder error:', error);
+      throw error;
+    }
+  },
 }
 module.exports = { supabase, dbFunctions };
 
