@@ -63,7 +63,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
       const opt = {
         margin: [10, 10, 10, 10],
-        filename: `${quoteData.quote.event_name}_${quoteData.quote.client_name}_${formatDate(quoteData.quote.event_date)}.pdf`,
+        filename: `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -218,6 +218,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       <span className="pdf-value">{quote.event_hours}</span>
                     </div>
                 )}
+                {!!quote.client_company_id && (
+                    <div className="pdf-field">
+                      <span className="pdf-label">ח״פ:</span>
+                      <span className="pdf-value ltr">{quote.client_company_id}</span>
+                    </div>
+                )}
                 {quote.special_notes && (
                     <div className="pdf-special-notes">
                       <span className="pdf-label">הערות מיוחדות:</span>
@@ -247,12 +253,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     </div>
                 )}
 
-                {!!quote.client_company_id && (
-                    <div className="pdf-field">
-                      <span className="pdf-label">ח״פ:</span>
-                      <span className="pdf-value ltr">{quote.client_company_id}</span>
-                    </div>
-                )}
               </div>
             </div>
           </div>
@@ -359,7 +359,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               ))}
 
               {/* שורות סיכום */}
-              <tr className="summary-row-green">
+              <tr className="summary-row-orange">
                 <td className="item-description">סה"כ לפני מע"מ</td>
                 <td></td>
                 <td></td>
