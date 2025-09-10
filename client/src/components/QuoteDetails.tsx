@@ -368,7 +368,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               </tr>
 
               {quote.discount_percent > 0 && (
-                  <tr className="summary-row-orange">
+                  <tr className="summary-row-green">
                     <td className="item-description">הנחה ({quote.discount_percent}%)</td>
                     <td></td>
                     <td></td>
@@ -377,7 +377,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   </tr>
               )}
 
-              <tr className="summary-row-orange">
+              <tr className="summary-row-green">
                 <td className="item-description">סה"כ לאחר הנחה</td>
                 <td></td>
                 <td></td>
@@ -385,7 +385,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <td>{formatCurrency(quote.total_after_discount)}</td>
               </tr>
 
-              <tr className="summary-row-green">
+              <tr className="summary-row-orange">
                 <td className="item-description">18% מע"מ</td>
                 <td></td>
                 <td></td>
@@ -393,7 +393,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <td>{formatCurrency(quote.vat_amount)}</td>
               </tr>
 
-              <tr className="final-total">
+              <tr className="final-total summary-row-orange">
                 <td className="item-description">סה"כ כולל מע"מ</td>
                 <td></td>
                 <td></td>
