@@ -50,3 +50,4 @@ const SplitModal: React.FC<SplitModalProps> = ({ isOpen, onClose, onSelectSplit,
 
 export default SplitModal;
 
+
