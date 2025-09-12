@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase, supabaseAdmin } from '../services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -64,23 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (signUpError) throw signUpError;
 
       if (user) {
-
-
-        // 2. הוספת המשתמש לטבלת users עם הרשאת 'user'
-        const { error: insertError } = await supabaseAdmin
-          .from('users')
-          .insert([{
-            id: user.id,
-            email: user.email,
-            first_name: firstName,
-            last_name: lastName,
-            role: 'user',
-            is_active: true,
-          }]);
-
-        if (insertError) throw insertError;
-
-        // 3. עדכון הקונטקסט
+        // עדכון הקונטקסט (הרשומה ב-public.users נוצרת ע"י טריגר במסד)
         setUser({
           id: user.id,
           email: user.email,
