@@ -156,7 +156,15 @@ export const quotesAPI = {
         client_phone: quoteData.clients?.phone,
         client_company_id: quoteData.clients?.company_id,
       },
-      items: itemsData || [],
+      items: (itemsData || []).map((item: any) => ({
+        id: item.id,
+        name: item.item_name,
+        description: item.item_description,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        discount: item.discount,
+        total: item.total,
+      })),
     };
   },
 
@@ -184,7 +192,12 @@ export const quotesAPI = {
 
     // Insert quote items
     const itemsWithQuoteId = items.map(item => ({
-      ...item,
+      item_name: item.name,
+      item_description: item.description,
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      discount: item.discount,
+      total: item.total,
       quote_id: quoteData.id,
     }));
 
