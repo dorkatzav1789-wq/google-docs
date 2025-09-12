@@ -659,7 +659,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 </tr>
                 </thead>
                 <tbody>
-                {items.map((item, index) => (
+                {items.map((item, index) => {
+                  console.log('Rendering item:', index, item); // לוג לבדיקה
+                  return (
                     <React.Fragment key={index}>
                       {/* פריט ראשי */}
                       <tr>
@@ -777,7 +779,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                           </tr>
                       ))}
                     </React.Fragment>
-                ))}
+                  );
+                })}
 
                 {/* שורות סיכום */}
                 <tr className="summary-row-orange">
