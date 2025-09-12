@@ -20,7 +20,74 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [showReminderManager, setShowReminderManager] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    unit_price: 0,
+    quantity: 1,
+    discount: 0
+  });
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  const startEdit = (index: number) => {
+    const item = quoteData?.items[index];
+    if (item) {
+      setEditingItem(index);
+      setEditForm({
+        name: item.name,
+        description: item.description,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        discount: item.discount
+      });
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingItem(null);
+    setEditForm({
+      name: '',
+      description: '',
+      unit_price: 0,
+      quantity: 1,
+      discount: 0
+    });
+  };
+
+  const saveEdit = async () => {
+    if (editingItem === null || !quoteData) return;
+    
+    try {
+      const updatedItems = [...quoteData.items];
+      const item = updatedItems[editingItem];
+      
+      // עדכון הפריט
+      item.name = editForm.name;
+      item.description = editForm.description;
+      item.unit_price = editForm.unit_price;
+      item.quantity = editForm.quantity;
+      item.discount = editForm.discount;
+      item.total = (editForm.unit_price * editForm.quantity) - editForm.discount;
+      
+      // עדכון במסד הנתונים
+      await quotesAPI.updateItem(item.id, {
+        item_name: editForm.name,
+        item_description: editForm.description,
+        unit_price: editForm.unit_price,
+        quantity: editForm.quantity,
+        discount: editForm.discount,
+        total: item.total
+      });
+      
+      setQuoteData({ ...quoteData, items: updatedItems });
+      setEditingItem(null);
+      alert('הפריט עודכן בהצלחה!');
+    } catch (error) {
+      console.error('שגיאה בעדכון פריט:', error);
+      alert('שגיאה בעדכון הפריט');
+    }
+  };
 
   const loadQuoteDetails = useCallback(async () => {
     try {
@@ -588,6 +655,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <th>כמות</th>
                   <th>הנחה</th>
                   <th>סה"כ</th>
+                  <th>פעולות</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -596,13 +664,100 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       {/* פריט ראשי */}
                       <tr>
                         <td className="item-description">
-                          <div className="item-title">{item.name}</div>
-                          <div className="item-details">{item.description}</div>
+                          {editingItem === index ? (
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                className="w-full p-2 border rounded text-black"
+                                placeholder="שם הפריט"
+                              />
+                              <textarea
+                                value={editForm.description}
+                                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                className="w-full p-2 border rounded text-black"
+                                placeholder="תיאור הפריט"
+                                rows={2}
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <div className="item-title">{item.name}</div>
+                              <div className="item-details">{item.description}</div>
+                            </>
+                          )}
                         </td>
-                        <td>{formatCurrency(item.unit_price)}</td>
-                        <td>{item.quantity}</td>
-                        <td>{item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}</td>
-                        <td>{formatCurrency(item.total)}</td>
+                        <td>
+                          {editingItem === index ? (
+                            <input
+                              type="number"
+                              value={editForm.unit_price}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
+                              className="w-20 p-1 border rounded text-black text-center"
+                            />
+                          ) : (
+                            formatCurrency(item.unit_price)
+                          )}
+                        </td>
+                        <td>
+                          {editingItem === index ? (
+                            <input
+                              type="number"
+                              value={editForm.quantity}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                              className="w-16 p-1 border rounded text-black text-center"
+                              min="1"
+                            />
+                          ) : (
+                            item.quantity
+                          )}
+                        </td>
+                        <td>
+                          {editingItem === index ? (
+                            <input
+                              type="number"
+                              value={editForm.discount}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, discount: Number(e.target.value) }))}
+                              className="w-20 p-1 border rounded text-black text-center"
+                              min="0"
+                            />
+                          ) : (
+                            item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'
+                          )}
+                        </td>
+                        <td>
+                          {editingItem === index ? (
+                            formatCurrency((editForm.unit_price * editForm.quantity) - editForm.discount)
+                          ) : (
+                            formatCurrency(item.total)
+                          )}
+                        </td>
+                        <td>
+                          {editingItem === index ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={saveEdit}
+                                className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                              >
+                                שמור
+                              </button>
+                              <button
+                                onClick={cancelEdit}
+                                className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                              >
+                                ביטול
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(index)}
+                              className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                            >
+                              ערוך
+                            </button>
+                          )}
+                        </td>
                       </tr>
                       {/* פיצולים מתחת לפריט הראשי */}
                       {item.splits && item.splits.map((split: any, splitIndex: number) => (

@@ -320,6 +320,23 @@ export const quotesAPI = {
     return { ok: true };
   },
 
+  updateItem: async (itemId: number, updates: {
+    item_name?: string;
+    item_description?: string;
+    unit_price?: number;
+    quantity?: number;
+    discount?: number;
+    total?: number;
+  }): Promise<{ ok: boolean }> => {
+    const { error } = await getSupabaseAdmin()
+      .from('quote_items')
+      .update(updates)
+      .eq('id', itemId);
+    
+    if (error) throw error;
+    return { ok: true };
+  },
+
   addSplit: async (quoteId: number, itemIndex: number, splitType: string): Promise<{ ok: boolean }> => {
     // יצירת פריט פיצול חדש - פשוט יותר עד שהעמודה parent_item_id תהיה זמינה
     const splitItem = {
