@@ -751,7 +751,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             </div>
                           ) : (
                             <button
-                              onClick={() => startEdit(index)}
+                              onClick={() => {
+                                console.log('Edit button clicked for index:', index);
+                                startEdit(index);
+                              }}
                               className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
                             >
                               ערוך
