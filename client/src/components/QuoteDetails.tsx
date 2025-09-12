@@ -647,6 +647,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               `}
             </style>
             <div className="avoid-page-break">
+              <div className="mb-4">
+                <button 
+                  onClick={() => setEditingItem(0)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  ערוך פריטים
+                </button>
+              </div>
               <table className={`invoice-table ${items.length > 6 ? 'compact' : ''}`}>
                 <thead>
                 <tr>
@@ -658,6 +666,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <th>פעולות</th>
                 </tr>
                 </thead>
+                {console.log('Table header rendered')}
                 <tbody>
                 {items.map((item, index) => {
                   console.log('Rendering item:', index, item); // לוג לבדיקה
