@@ -623,7 +623,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     </tr>
 
 
-                {quote.discount_percent > 0 && (
+                {quote.discount_percent < 0 && (
                     <tr className="summary-row-orange">
                       <td className="item-description">סה"כ לאחר הנחה</td>
                       <td></td>
