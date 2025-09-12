@@ -148,6 +148,27 @@ export const quotesAPI = {
     
     if (itemsError) throw itemsError;
 
+    console.log('Raw itemsData from DB:', itemsData); // לוג לבדיקה
+
+    const mappedItems = (itemsData || []).map((item: any) => {
+      console.log('Mapping item from DB:', { 
+        item_name: item.item_name, 
+        item_description: item.item_description,
+        unit_price: item.unit_price 
+      }); // לוג לבדיקה
+      return {
+        id: item.id,
+        name: item.item_name,
+        description: item.item_description,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        discount: item.discount,
+        total: item.total,
+      };
+    });
+
+    console.log('Final mapped items:', mappedItems); // לוג לבדיקה
+
     return {
       quote: {
         ...quoteData,
@@ -156,15 +177,7 @@ export const quotesAPI = {
         client_phone: quoteData.clients?.phone,
         client_company_id: quoteData.clients?.company_id,
       },
-      items: (itemsData || []).map((item: any) => ({
-        id: item.id,
-        name: item.item_name,
-        description: item.item_description,
-        unit_price: item.unit_price,
-        quantity: item.quantity,
-        discount: item.discount,
-        total: item.total,
-      })),
+      items: mappedItems,
     };
   },
 
