@@ -191,15 +191,19 @@ export const quotesAPI = {
     if (quoteError) throw quoteError;
 
     // Insert quote items
-    const itemsWithQuoteId = items.map(item => ({
-      item_name: item.name,
-      item_description: item.description,
-      unit_price: item.unit_price,
-      quantity: item.quantity,
-      discount: item.discount,
-      total: item.total,
-      quote_id: quoteData.id,
-    }));
+    console.log('Items to insert:', items); // לוג לבדיקה
+    const itemsWithQuoteId = items.map(item => {
+      console.log('Mapping item:', { name: item.name, description: item.description }); // לוג לבדיקה
+      return {
+        item_name: item.name || 'שם לא זמין',
+        item_description: item.description || 'תיאור לא זמין',
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        discount: item.discount,
+        total: item.total,
+        quote_id: quoteData.id,
+      };
+    });
 
     const { error: itemsError } = await getSupabaseAdmin()
       .from('quote_items')

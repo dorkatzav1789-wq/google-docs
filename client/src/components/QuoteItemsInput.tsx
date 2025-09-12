@@ -156,6 +156,8 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
         discount: 0,                      // אין הנחה — המחיר כבר מותאם ליחידה
         total: appliedUnit * qty,         // מחיר ליחידה × כמות
       };
+      
+      console.log('Created QuoteItem (new):', qi); // לוג לבדיקה
 
       addParsedToList([qi]);
 
@@ -218,6 +220,8 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
         discount: 0,                     // אין הנחה — המחיר כבר מותאם ליחידה
         total: appliedUnit * qty,        // מחיר ליחידה × כמות
       };
+      
+      console.log('Created QuoteItem (alias):', qi); // לוג לבדיקה
       addParsedToList([qi]);
 
       // 3) הסר מהלא-מזוהים ואפס טופס
