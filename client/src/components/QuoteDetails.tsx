@@ -26,13 +26,17 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     try {
       setLoading(true);
       const data = await quotesAPI.getById(quoteId);
+      console.log('Data from getById:', data); // לוג לבדיקה
 
       // ✅ נרמול הפריטים: תרגום item_name -> name, item_description -> description
       const allItems = data.items || [];
+      console.log('All items from data:', allItems); // לוג לבדיקה
       
       // הפרדת פריטים רגילים מפיצולים
+      console.log('All items before filtering:', allItems); // לוג לבדיקה
       const regularItems = allItems.filter((it: any) => !it.name?.startsWith('פיצול '));
       const splitItems = allItems.filter((it: any) => it.name?.startsWith('פיצול '));
+      console.log('Regular items after filtering:', regularItems); // לוג לבדיקה
       
       // יצירת מפה של פיצולים לפי מיקום (פשוט יותר)
       const splitsMap: { [key: number]: any[] } = {};
@@ -56,15 +60,24 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
         currentItemIndex++;
       });
       
-      const normalizedItems = regularItems.map((it: any, index: number) => ({
-        name: it.name ?? '',
-        description: it.description ?? '',
-        unit_price: Number(it.unit_price ?? 0),
-        quantity: Number(it.quantity ?? 0),
-        discount: Number(it.discount ?? 0),
-        total: Number(it.total ?? 0),
-        splits: splitsMap[index] || [],
-      }));
+      const normalizedItems = regularItems.map((it: any, index: number) => {
+        console.log('Normalizing item:', { 
+          original: it, 
+          name: it.name, 
+          description: it.description 
+        }); // לוג לבדיקה
+        return {
+          name: it.name ?? '',
+          description: it.description ?? '',
+          unit_price: Number(it.unit_price ?? 0),
+          quantity: Number(it.quantity ?? 0),
+          discount: Number(it.discount ?? 0),
+          total: Number(it.total ?? 0),
+          splits: splitsMap[index] || [],
+        };
+      });
+      
+      console.log('Final normalizedItems:', normalizedItems); // לוג לבדיקה
 
       setQuoteData({ quote: data.quote, items: normalizedItems });
     } catch (error) {

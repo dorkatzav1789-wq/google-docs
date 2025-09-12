@@ -168,6 +168,7 @@ export const quotesAPI = {
     });
 
     console.log('Final mapped items:', mappedItems); // לוג לבדיקה
+    console.log('About to return from getById'); // לוג לבדיקה
 
     return {
       quote: {
