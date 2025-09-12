@@ -240,11 +240,11 @@ export const quotesAPI = {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
 
-      // פורמט: כמות שם_פריט מחיר|
-      const match = trimmedLine.match(/^(\d+)\s+(.+?)\s+(\d+)\|?$/);
+      // פורמט: כמות שם_פריט מחיר| או שם_פריט מחיר|
+      const match = trimmedLine.match(/^(?:(\d+)\s+)?(.+?)\s+(\d+)\|?$/);
       
       if (match) {
-        const quantity = parseInt(match[1]);
+        const quantity = match[1] ? parseInt(match[1]) : 1; // ברירת מחדל 1 אם לא כתבת כמות
         const name = match[2].trim();
         const unitPrice = parseInt(match[3]);
         
