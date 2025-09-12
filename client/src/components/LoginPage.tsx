@@ -64,13 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (signUpError) throw signUpError;
 
       if (user) {
-        // שליחת מייל אימות
-        const { error: verificationError } = await supabase.auth.resend({
-          type: 'signup',
-          email,
-        });
 
-        if (verificationError) throw verificationError;
 
         // 2. הוספת המשתמש לטבלת users עם הרשאת 'user'
         const { error: insertError } = await supabaseAdmin
