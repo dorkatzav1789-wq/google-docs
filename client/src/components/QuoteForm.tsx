@@ -65,6 +65,14 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
   };
 
   const handleItemsChange = (newItems: QuoteItem[]) => {
+    console.log('handleItemsChange called with:', newItems);
+    console.log('Items details in handleItemsChange:', newItems.map(item => ({
+      name: item.name,
+      description: item.description,
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      total: item.total
+    })));
     setItems(newItems);
   };
 
@@ -133,6 +141,13 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
 
       console.log('Quote data:', quote);
       console.log('Items:', items);
+    console.log('Items details:', items.map(item => ({
+      name: item.name,
+      description: item.description,
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      total: item.total
+    })));
 
       const result = await quotesAPI.create(quote, items);
       console.log('Quote saved successfully:', result);
