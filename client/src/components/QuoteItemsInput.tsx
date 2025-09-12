@@ -149,8 +149,8 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
       const appliedUnit = typedUnit ?? catalogUnit; // מחיר ליחידה בפועל להצעה הזו
 
       const qi: QuoteItem = {
-        name: newItem.name,
-        description: newItem.description,
+        name: u.raw_text,                 // השם שהמשתמש כתב בפורמט
+        description: newItem.description, // התיאור מהפריט החדש
         unit_price: appliedUnit,          // מחיר ליחידה בפועל
         quantity: qty,
         discount: 0,                      // אין הנחה — המחיר כבר מותאם ליחידה
@@ -211,8 +211,8 @@ const QuoteItemsInput: React.FC<QuoteItemsInputProps> = ({ items, onItemsChange 
       const appliedUnit = typedUnit ?? unitFromOverride ?? unitBase; // מחיר ליחידה בפועל להצעה
 
       const qi: QuoteItem = {
-        name: aliasForm.selected.name,
-        description: aliasForm.selected.description,
+        name: u.raw_text,                // השם שהמשתמש כתב בפורמט
+        description: aliasForm.selected.description, // התיאור מהקטלוג
         unit_price: appliedUnit,         // מחיר ליחידה בפועל
         quantity: qty,
         discount: 0,                     // אין הנחה — המחיר כבר מותאם ליחידה
