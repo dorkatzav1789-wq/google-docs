@@ -236,6 +236,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const { quote, items } = quoteData;
   const exportDate = new Date().toLocaleDateString('he-IL');
 
+  const hasDiscount =
+      (Number(quote.discount_percent) || 0) > 0 ||
+      (Number(quote.discount_amount) || 0) > 0;
+
   return (
       <div className="w-full mx-auto p-6 bg-white dark:bg-gray-900 min-h-screen">
         <div className="mb-6">
@@ -613,6 +617,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td>{formatCurrency(quote.total_before_discount)}</td>
                 </tr>
 
+                {hasDiscount && (
+                    <>
 
                     <tr className="summary-row-green">
                       <td className="item-description">הנחה ){quote.discount_percent}%(</td>
@@ -623,7 +629,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     </tr>
 
 
-                {quote.discount_percent < 0 && (
+
                     <tr className="summary-row-orange">
                       <td className="item-description">סה"כ לאחר הנחה</td>
                       <td></td>
@@ -631,7 +637,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       <td></td>
                       <td>{formatCurrency(quote.total_after_discount)}</td>
                     </tr>
+                    </>
                 )}
+
+
 
                 <tr className="summary-row-orange">
                   <td className="item-description">18% מע"מ</td>
