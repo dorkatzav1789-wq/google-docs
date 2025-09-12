@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Quote } from '../types';
-import { quotesAPI, remindersAPI } from '../services/api';
+import { quotesAPI, remindersAPI } from '../services/supabaseAPI';
 
 interface QuotesListProps {
   onQuoteSelect: (quoteId: number) => void;
@@ -95,29 +95,29 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
   }
 
   return (
-      <div className="w-full mx-auto p-6">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">הצעות קיימות</h1>
-          <p className="text-black/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
+      <div className="w-full mx-auto bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className="text-center mb-8 px-6 pt-6">
+          <h1 className="text-3xl font-bold text-black dark:text-white mb-2">הצעות קיימות</h1>
+          <p className="text-black/80 dark:text-white/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
         </div>
 
         {quotes.length === 0 ? (
             <div className="text-center">
-              <div className="card max-w-md mx-auto">
+              <div className="card max-w-md mx-auto bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <div className="text-6xl mb-4">📋</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">אין הצעות עדיין</h3>
-                <p className="text-gray-600">צור הצעת מחיר ראשונה כדי להתחיל</p>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">אין הצעות עדיין</h3>
+                <p className="text-gray-600 dark:text-gray-400">צור הצעת מחיר ראשונה כדי להתחיל</p>
               </div>
             </div>
         ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 px-6 pb-6">
               {days.map((dayKey) => (
-                  <div key={dayKey} className="card">
+                  <div key={dayKey} className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-gray-800">
+                      <h3 className="text-xl font-bold text-gray-800 dark:text-white">
                         {dayKey === 'ללא תאריך אירוע' ? dayKey : formatHebDate(dayKey)}
                       </h3>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                   {groupedQuotes[dayKey].length} הצעות
                 </span>
                     </div>
@@ -126,7 +126,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                       {groupedQuotes[dayKey].map((quote) => (
                           <div
                               key={quote.id}
-                              className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                              className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors bg-white dark:bg-gray-800"
                           >
                             <div className="flex justify-between items-start">
                               {/* פרטי ההצעה – לחיצה פותחת פרטים */}
@@ -134,10 +134,10 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                                   className="flex-1 cursor-pointer"
                                   onClick={() => onQuoteSelect(quote.id!)}
                               >
-                                <h4 className="font-semibold text-gray-800 mb-1">
+                                <h4 className="font-semibold text-gray-800 dark:text-white mb-1">
                                   {quote.event_name}
                                 </h4>
-                                <div className="text-sm text-gray-600 space-y-1">
+                                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                                   <div>
                                     <span className="font-medium">לקוח:</span> {quote.client_name}
                                     {quote.client_company && ` - ${quote.client_company}`}
@@ -166,7 +166,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                                 <div className="text-lg font-bold text-green-600">
                                   {formatCurrency(quote.final_total!)}
                                 </div>
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
                                   נוצר:{' '}
                                   {quote.created_at
                                       ? new Date(quote.created_at).toLocaleDateString('he-IL')
@@ -174,7 +174,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                                 </div>
 
                                 <button
-                                    className="text-red-600 hover:text-red-800"
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                                     title="מחיקת הצעה"
                                     aria-label="מחיקת הצעה"
                                     onClick={async (e) => {

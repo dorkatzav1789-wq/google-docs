@@ -723,6 +723,23 @@ app.get('/api/employees', async (req, res) => {
   }
 });
 
+// קבלת העובד של המשתמש המחובר
+app.get('/api/employees/current', async (req, res) => {
+  try {
+    const user = await dbFunctions.getUserByEmail(req.headers['x-user-email']);
+    if (!user) {
+      return res.status(404).json({ error: 'משתמש לא נמצא' });
+    }
+    const employee = await dbFunctions.getEmployeeByEmail(user.email);
+    if (!employee) {
+      return res.status(404).json({ error: 'עובד לא נמצא' });
+    }
+    res.json(employee);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== Employees =====
 app.post('/api/employees', async (req, res) => {
   try {
@@ -731,7 +748,7 @@ app.post('/api/employees', async (req, res) => {
       last_name = '',
       phone = null,
       email = null,
-      daily_rate,
+      hourly_rate,
       name,           // אם בטעות נשלח name — נתחשב בו
       is_active,
     } = req.body || {};
@@ -744,9 +761,9 @@ app.post('/api/employees', async (req, res) => {
       return res.status(400).json({ error: 'יש להזין שם פרטי/משפחה או name' });
     }
 
-    const rateNum = Number(daily_rate);
+    const rateNum = Number(hourly_rate);
     if (!Number.isFinite(rateNum) || rateNum < 0) {
-      return res.status(400).json({ error: 'daily_rate חייב להיות מספר לא־שלילי' });
+      return res.status(400).json({ error: 'שכר לשעה חייב להיות מספר לא־שלילי' });
     }
 
     const payload = {
@@ -754,7 +771,7 @@ app.post('/api/employees', async (req, res) => {
       last_name: ln || null,
       phone: phone || null,
       email: email || null,
-      daily_rate: rateNum,
+      hourly_rate: rateNum,
       is_active: typeof is_active === 'boolean' ? is_active : true,
     };
 
@@ -772,6 +789,21 @@ app.put('/api/employees/:id', async (req, res) => {
     const employee = await dbFunctions.updateEmployee(req.params.id, req.body);
     res.json(employee);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// מחיקת עובד
+app.delete('/api/employees/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) {
+      return res.status(400).json({ error: 'מזהה עובד לא תקין' });
+    }
+    await dbFunctions.deleteEmployee(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /api/employees/:id error:', error);
     res.status(500).json({ error: error.message });
   }
 });

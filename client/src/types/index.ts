@@ -32,6 +32,7 @@ export interface QuoteItem {
   discount: number;
   total: number;
   matched_text?: string;
+  splits?: QuoteItem[];
 }
 
 export interface Quote {
@@ -66,7 +67,7 @@ export interface Employee {
   name?: string;
   phone?: string;
   email?: string;
-  daily_rate: number;
+  hourly_rate: number;
   is_active: boolean;
   created_at: string;
 }
@@ -76,14 +77,14 @@ export interface WorkHours {
   employee_id: number;
   work_date: string;
   hours_worked: number;
-  daily_rate: number;
-  daily_total: number;
+  hourly_rate: number;
+  total_amount: number;
   notes?: string;
 
   // כשמחזירים מ-Supabase עם join:
   employees?: {
     name: string;
-    daily_rate?: number;
+    hourly_rate?: number;
   } | null;
 
   // fallback אם תחזירו שם עובד בצורה שטוחה
@@ -103,7 +104,7 @@ export type NewWorkHoursInput = {
   employee_id: number;
   work_date: string;
   hours_worked: number;
-  daily_rate: number;
+  hourly_rate: number;
   notes?: string;
 };
 

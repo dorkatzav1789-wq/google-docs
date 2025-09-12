@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Client } from '../types';
-import { clientsAPI } from '../services/api';
+import { clientsAPI } from '../services/supabaseAPI';
 
 interface NewClientFormProps {
   onClientCreated: (client: Client) => void;

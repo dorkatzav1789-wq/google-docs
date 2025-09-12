@@ -19,17 +19,17 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
   const finalTotal = totalAfterDiscount + vatAmount;
 
   return (
-    <div className="card">
-      <h3 className="text-lg font-bold mb-4 text-gray-800">סיכום הצעת מחיר</h3>
+    <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">סיכום הצעת מחיר</h3>
       
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <span className="text-gray-700">סה"כ לפני הנחה:</span>
-          <span className="font-bold">₪{subtotal.toLocaleString()}</span>
+          <span className="text-gray-700 dark:text-gray-300">סה"כ לפני הנחה:</span>
+          <span className="font-bold text-gray-900 dark:text-white">₪{subtotal.toLocaleString()}</span>
         </div>
 
         <div className="flex justify-between items-center">
-          <span className="text-gray-700">הנחה כללית:</span>
+          <span className="text-gray-700 dark:text-gray-300">הנחה כללית:</span>
           <div className="flex items-center space-x-2 space-x-reverse">
             <select
               value={discountPercent}
@@ -47,24 +47,24 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
         </div>
 
         <div className="flex justify-between items-center border-t pt-2">
-          <span className="text-gray-700">סה"כ אחרי הנחה:</span>
-          <span className="font-bold">₪{totalAfterDiscount.toLocaleString()}</span>
+          <span className="text-gray-700 dark:text-gray-300">סה"כ אחרי הנחה:</span>
+          <span className="font-bold text-gray-900 dark:text-white">₪{totalAfterDiscount.toLocaleString()}</span>
         </div>
 
         <div className="flex justify-between items-center">
-          <span className="text-gray-700">מע"מ (18%):</span>
-          <span className="font-bold text-blue-600">+₪{vatAmount.toLocaleString()}</span>
+          <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
+          <span className="font-bold text-blue-600 dark:text-blue-400">+₪{vatAmount.toLocaleString()}</span>
         </div>
 
         <div className="flex justify-between items-center border-t pt-2 text-lg">
-          <span className="font-bold text-gray-800">סה"כ כולל מע"מ:</span>
-          <span className="font-bold text-green-600 text-xl">₪{finalTotal.toLocaleString()}</span>
+          <span className="font-bold text-gray-800 dark:text-white">סה"כ כולל מע"מ:</span>
+          <span className="font-bold text-green-600 dark:text-green-400 text-xl">₪{finalTotal.toLocaleString()}</span>
         </div>
       </div>
 
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-semibold text-gray-800 mb-2">פירוט פריטים:</h4>
-        <div className="text-sm text-gray-600">
+      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+        <h4 className="font-semibold text-gray-800 dark:text-white mb-2">פירוט פריטים:</h4>
+        <div className="text-sm text-gray-600 dark:text-gray-300">
           {items.length} פריטים בסך הכל
         </div>
       </div>

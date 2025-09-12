@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
-import { reportsAPI } from '../services/api';
+import { reportsAPI } from '../services/supabaseAPI';
 
 export const MonthlyReport: React.FC = () => {
   const [report, setReport] = useState<MonthlyReportType | null>(null);
@@ -28,7 +28,7 @@ export const MonthlyReport: React.FC = () => {
             name: (wh as any).employees?.name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
             phone: undefined,
             email: undefined,
-            daily_rate: Number((wh as any).employees?.daily_rate ?? wh.daily_rate ?? 0),
+            hourly_rate: Number((wh as any).employees?.hourly_rate ?? wh.hourly_rate ?? 0),
             is_active: true,
             created_at: '',
           });
@@ -40,7 +40,7 @@ export const MonthlyReport: React.FC = () => {
     const summary =
         data?.summary ?? {
           total_hours: work_hours.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
-          total_amount: work_hours.reduce((s, r) => s + Number(r.daily_total || 0), 0),
+          total_amount: work_hours.reduce((s, r) => s + Number(r.total_amount || 0), 0),
           employee_count: employees.length,
         };
 
@@ -102,7 +102,7 @@ export const MonthlyReport: React.FC = () => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">דוח חודשי - {selectedMonth}/{selectedYear}</h2>
 
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap justify-center">
             <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
@@ -138,9 +138,9 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* סיכום עליון */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="p-4 bg-blue-100 rounded">
-            <h3 className="font-semibold">סה"כ שעות</h3>
+            <h3 className="font-semibold">סה"כ ימים</h3>
             <p className="text-2xl">{fmt(report.summary?.total_hours)}</p>
           </div>
           <div className="p-4 bg-green-100 rounded">
@@ -154,14 +154,15 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* טבלת פירוט */}
-        <table className="w-full border-collapse border">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse border min-w-full">
           <thead>
           <tr className="bg-gray-100">
             <th className="border p-2">עובד</th>
             <th className="border p-2">תאריך</th>
-            <th className="border p-2">שעות</th>
-            <th className="border p-2">שכר יומי</th>
-            <th className="border p-2">סה"כ ליום</th>
+            <th className="border p-2">ימים</th>
+            <th className="border p-2">תשלום יומי</th>
+            <th className="border p-2">סה"כ</th>
             <th className="border p-2">הערות</th>
           </tr>
           </thead>
@@ -180,14 +181,15 @@ export const MonthlyReport: React.FC = () => {
                     </td>
                     <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
-                    <td className="border p-2">₪{fmt(row.daily_rate)}</td>
-                    <td className="border p-2">₪{fmt(row.daily_total)}</td>
+                    <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
+                    <td className="border p-2">₪{fmt(row.total_amount)}</td>
                     <td className="border p-2">{row.notes || '-'}</td>
                   </tr>
               ))
           )}
           </tbody>
         </table>
+        </div>
       </div>
   );
 };

@@ -6,7 +6,7 @@
 }
 
 .App-header {
-  background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+
   padding: 20px;
   color: white;
   display: flex;
@@ -160,15 +160,18 @@
   .App-header {
     flex-direction: column;
     gap: 15px;
+    padding: 15px;
   }
   
   .header-content {
     flex-direction: column;
     gap: 10px;
+    width: 100%;
   }
   
   .App-header h1 {
-    font-size: 24px;
+    font-size: 20px;
+    text-align: center;
   }
   
   .header-buttons {
@@ -178,6 +181,85 @@
   
   .btn-primary, .btn-secondary {
     width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  /* Breadcrumbs responsive */
+  nav[aria-label="Breadcrumb"] {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  /* Grid responsive */
+  .grid-cols-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Card responsive */
+  .card {
+    padding: 15px;
+    margin-bottom: 10px;
+  }
+  
+  /* Form responsive */
+  .quote-form-container {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  /* Table responsive */
+  table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 8px 4px;
+  }
+  
+  /* Button responsive */
+  button {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .App-header h1 {
+    font-size: 18px;
+  }
+  
+  .text-3xl {
+    font-size: 1.5rem;
+  }
+  
+  .text-2xl {
+    font-size: 1.25rem;
+  }
+  
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  .mb-8 {
+    margin-bottom: 1rem;
+  }
+  
+  .gap-6 {
+    gap: 1rem;
+  }
+  
+  /* Make buttons stack vertically on very small screens */
+  .flex.gap-2 {
+    flex-direction: column;
+  }
+  
+  .flex.gap-2 button {
+    width: 100%;
+    margin-bottom: 8px;
   }
 }
 
@@ -397,31 +479,4 @@ form h3 {
   padding: 1.5rem;
 }
 /* Sub navigation (tabs) inside EmployeesPage */
-.subnav {
-  display: flex;
-  gap: 10px;
-  margin: 0 0 16px 0;
-  justify-content: center;
-}
-
-.subnav-btn {
-  padding: 10px 16px;
-  border: 2px solid #007bff;
-  background: white;
-  color: #007bff;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.subnav-btn:hover {
-  background: #007bff;
-  color: white;
-}
-
-.subnav-btn.active {
-  background: #007bff;
-  color: white;
-}
 

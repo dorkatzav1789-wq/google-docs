@@ -1,233 +1,160 @@
--- יצירת טבלאות ב-Supabase
+-- Drop the existing users table if it exists
+DROP TABLE IF EXISTS users;
 
--- טבלת פריטים (מחירון)
+-- Create the users table without password_hash
+CREATE TABLE users (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    email VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    role user_role NOT NULL DEFAULT 'user',
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    last_login TIMESTAMP WITH TIME ZONE
+);
+
+-- Add indexes
+CREATE INDEX users_email_idx ON users(email);
+CREATE INDEX users_role_idx ON users(role);
+
+-- Add RLS policies
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own data
+CREATE POLICY "Users can view their own data" ON users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Only admins can create users
+CREATE POLICY "Only admins can create users" ON users
+    FOR INSERT
+    WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+
+-- Only admins can update users
+CREATE POLICY "Only admins can update users" ON users
+    FOR UPDATE
+    USING (auth.jwt() ->> 'role' = 'admin');
+
+-- Only admins can delete users
+CREATE POLICY "Only admins can delete users" ON users
+    FOR DELETE
+    USING (auth.jwt() ->> 'role' = 'admin');
+
+-- Create user_role enum if it doesn't exist
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('admin', 'user');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- Update users table to use the enum
+ALTER TABLE users ALTER COLUMN role TYPE user_role USING role::user_role;
+
+-- Create items table
 CREATE TABLE IF NOT EXISTS items (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  price DECIMAL(10,2) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- טבלת כינויים
+-- Create aliases table
 CREATE TABLE IF NOT EXISTS aliases (
-  id BIGSERIAL PRIMARY KEY,
-  alias TEXT NOT NULL,
-  item_name TEXT NOT NULL,
-  price_override DECIMAL(10,2),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    alias VARCHAR(255) NOT NULL UNIQUE,
+    item_name VARCHAR(255) NOT NULL REFERENCES items(name) ON DELETE CASCADE,
+    price_override DECIMAL(10,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- טבלת לקוחות
+-- Create clients table
 CREATE TABLE IF NOT EXISTS clients (
-  id BIGSERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  phone TEXT,
-  company TEXT,
-  company_id TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    phone VARCHAR(50),
+    company VARCHAR(255),
+    company_id VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- טבלת הצעות מחיר
+-- Create quotes table
 CREATE TABLE IF NOT EXISTS quotes (
-  id BIGSERIAL PRIMARY KEY,
-  client_id BIGINT REFERENCES clients(id),
-  event_name TEXT,
-  event_date TEXT,
-  event_hours TEXT,
-  special_notes TEXT,
-  discount_percent DECIMAL(5,2) DEFAULT 0,
-  total_before_discount DECIMAL(10,2),
-  discount_amount DECIMAL(10,2),
-  total_after_discount DECIMAL(10,2),
-  vat_amount DECIMAL(10,2),
-  final_total DECIMAL(10,2),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    event_name VARCHAR(255) NOT NULL,
+    event_date DATE,
+    event_hours VARCHAR(100),
+    special_notes TEXT,
+    discount_percent DECIMAL(5,2) DEFAULT 0,
+    total_before_discount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    total_after_discount DECIMAL(10,2) DEFAULT 0,
+    vat_amount DECIMAL(10,2) DEFAULT 0,
+    final_total DECIMAL(10,2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- טבלת פריטי הצעה
+-- Create quote_items table
 CREATE TABLE IF NOT EXISTS quote_items (
-  id BIGSERIAL PRIMARY KEY,
-  quote_id BIGINT REFERENCES quotes(id) ON DELETE CASCADE,
-  item_name TEXT NOT NULL,
-  item_description TEXT,
-  unit_price DECIMAL(10,2) NOT NULL,
-  quantity INTEGER NOT NULL,
-  discount DECIMAL(10,2) DEFAULT 0,
-  total DECIMAL(10,2) NOT NULL
+    id SERIAL PRIMARY KEY,
+    quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+    item_name VARCHAR(255) NOT NULL,
+    item_description TEXT,
+    unit_price DECIMAL(10,2) NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    discount DECIMAL(10,2) DEFAULT 0,
+    total DECIMAL(10,2) NOT NULL,
+    sort_order DECIMAL(10,2) DEFAULT 0,
+    parent_item_id INTEGER REFERENCES quote_items(id) ON DELETE CASCADE
 );
 
--- טבלת עובדים
+-- Add sort_order column to existing quote_items table if it doesn't exist
+ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS sort_order DECIMAL(10,2) DEFAULT 0;
+
+-- Update existing items to have proper sort_order based on their id
+UPDATE quote_items SET sort_order = id WHERE sort_order = 0 OR sort_order IS NULL;
+
+-- Create employees table
 CREATE TABLE IF NOT EXISTS employees (
-  id BIGSERIAL PRIMARY KEY,
-  first_name TEXT,
-  last_name TEXT,
-  name TEXT,
-  phone TEXT,
-  email TEXT,
-  daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    name VARCHAR(200) GENERATED ALWAYS AS (COALESCE(first_name || ' ' || last_name, first_name, last_name)) STORED,
+    phone VARCHAR(50),
+    email VARCHAR(255),
+    hourly_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- טבלת שעות עבודה יומיות
+-- Create work_hours table
 CREATE TABLE IF NOT EXISTS work_hours (
-  id BIGSERIAL PRIMARY KEY,
-  employee_id BIGINT REFERENCES employees(id) ON DELETE CASCADE,
-  work_date DATE NOT NULL,
-  hours_worked DECIMAL(4,2) NOT NULL, -- עד 99.99 שעות
-  daily_rate DECIMAL(10,2) NOT NULL, -- השכר היומי באותו יום
-  daily_total DECIMAL(10,2) NOT NULL, -- שעות * שכר יומי
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(employee_id, work_date) -- מניעת כפילות תאריכים לעובד
+    id SERIAL PRIMARY KEY,
+    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    work_date DATE NOT NULL,
+    hours_worked DECIMAL(5,2) NOT NULL,
+    hourly_rate DECIMAL(10,2) NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- יצירת אינדקסים לביצועים טובים יותר
-CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);
--- ייחודיות על שם פריט כדי למנוע כפילויות לוגיות
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_items_name_unique'
-  ) THEN
-    EXECUTE 'CREATE UNIQUE INDEX idx_items_name_unique ON items (name)';
-  END IF;
-END $$;
-CREATE INDEX IF NOT EXISTS idx_aliases_alias ON aliases(alias);
-CREATE INDEX IF NOT EXISTS idx_aliases_item_name ON aliases(item_name);
-CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
-CREATE INDEX IF NOT EXISTS idx_quotes_client_id ON quotes(client_id);
-CREATE INDEX IF NOT EXISTS idx_quotes_created_at ON quotes(created_at);
-CREATE INDEX IF NOT EXISTS idx_quote_items_quote_id ON quote_items(quote_id);
-CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);
-CREATE INDEX IF NOT EXISTS idx_work_hours_employee_id ON work_hours(employee_id);
-CREATE INDEX IF NOT EXISTS idx_work_hours_work_date ON work_hours(work_date);
-CREATE INDEX IF NOT EXISTS idx_work_hours_month_year ON work_hours(EXTRACT(YEAR FROM work_date), EXTRACT(MONTH FROM work_date));
-
--- תיקון רצפים (sequences) במקרה של ייבוא/שינויים ידניים שיצרו חוסר סנכרון
--- קובע את ערך הרצף לערך הגבוה בטבלה + 1
-SELECT setval(pg_get_serial_sequence('items','id'),       COALESCE((SELECT MAX(id) FROM items), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('aliases','id'),     COALESCE((SELECT MAX(id) FROM aliases), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('clients','id'),     COALESCE((SELECT MAX(id) FROM clients), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('quotes','id'),      COALESCE((SELECT MAX(id) FROM quotes), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('quote_items','id'), COALESCE((SELECT MAX(id) FROM quote_items), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('employees','id'),   COALESCE((SELECT MAX(id) FROM employees), 0) + 1, false);
-SELECT setval(pg_get_serial_sequence('work_hours','id'),  COALESCE((SELECT MAX(id) FROM work_hours), 0) + 1, false);
-
--- הוספת עמודות חדשות לטבלת employees אם לא קיימות
-DO $$
-BEGIN
-  -- הוספת first_name אם לא קיים
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'first_name') THEN
-    ALTER TABLE employees ADD COLUMN first_name TEXT;
-  END IF;
-  
-  -- הוספת last_name אם לא קיים
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'last_name') THEN
-    ALTER TABLE employees ADD COLUMN last_name TEXT;
-  END IF;
-  
-  -- שינוי hourly_rate ל-daily_rate אם קיים
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'hourly_rate') THEN
-    ALTER TABLE employees RENAME COLUMN hourly_rate TO daily_rate;
-  END IF;
-  
-  -- הוספת daily_rate אם לא קיים
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'employees' AND column_name = 'daily_rate') THEN
-    ALTER TABLE employees ADD COLUMN daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0;
-  END IF;
-END $$;
-
--- הוספת עמודות חדשות לטבלת work_hours אם לא קיימות
-DO $$
-BEGIN
-  -- שינוי hourly_rate ל-daily_rate אם קיים
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'hourly_rate') THEN
-    ALTER TABLE work_hours RENAME COLUMN hourly_rate TO daily_rate;
-  END IF;
-  
-  -- הוספת daily_rate אם לא קיים
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'daily_rate') THEN
-    ALTER TABLE work_hours ADD COLUMN daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0;
-  END IF;
-  
-  -- עדכון daily_total כדי שיתאים לשכר יומי
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_hours' AND column_name = 'daily_total') THEN
-    -- עדכון הערכים הקיימים
-    UPDATE work_hours SET daily_total = hours_worked * daily_rate WHERE daily_total = 0 OR daily_total IS NULL;
-  END IF;
-END $$;
-
--- הוספת טריגר לעדכון אוטומטי של daily_total
-CREATE OR REPLACE FUNCTION update_daily_total()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.daily_total = NEW.hours_worked * NEW.daily_rate;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- יצירת הטריגר
-DROP TRIGGER IF EXISTS trigger_update_daily_total ON work_hours;
-CREATE TRIGGER trigger_update_daily_total
-  BEFORE INSERT OR UPDATE ON work_hours
-  FOR EACH ROW
-  EXECUTE FUNCTION update_daily_total();
-
--- הוספת אינדקסים חדשים
-CREATE INDEX IF NOT EXISTS idx_employees_daily_rate ON employees(daily_rate);
-CREATE INDEX IF NOT EXISTS idx_work_hours_daily_rate ON work_hours(daily_rate);
-
--- הוספת אינדקסים מורכבים
-CREATE INDEX IF NOT EXISTS idx_work_hours_employee_date ON work_hours(employee_id, work_date);
-CREATE INDEX IF NOT EXISTS idx_work_hours_monthly ON work_hours(EXTRACT(YEAR FROM work_date), EXTRACT(MONTH FROM work_date), employee_id);
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(is_active) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_work_hours_daily_total ON work_hours(daily_total);
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_employees_name_search ON employees USING gin(to_tsvector('hebrew', COALESCE(first_name, '') || ' ' || COALESCE(last_name, '') || ' ' || COALESCE(name, '')));
-CREATE INDEX IF NOT EXISTS idx_work_hours_notes_search ON work_hours USING gin(to_tsvector('hebrew', COALESCE(notes, '')));
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_employees_phone ON employees(phone) WHERE phone IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_employees_email ON employees(email) WHERE email IS NOT NULL;
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_work_hours_employee_active ON work_hours(employee_id) WHERE employee_id IN (SELECT id FROM employees WHERE is_active = true);
-CREATE INDEX IF NOT EXISTS idx_work_hours_daily_rate_range ON work_hours(daily_rate) WHERE daily_rate > 0;
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_work_hours_daily_total_range ON work_hours(daily_total) WHERE daily_total > 0;
-CREATE INDEX IF NOT EXISTS idx_work_hours_hours_worked_range ON work_hours(hours_worked) WHERE hours_worked > 0;
-
--- הוספת אינדקסים נוספים לביצועים
-CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_rate ON work_hours(employee_id, daily_rate);
-CREATE INDEX IF NOT EXISTS idx_work_hours_employee_daily_total ON work_hours(employee_id, daily_total);
-
--- טבלת תזכורות
+-- Create reminders table
 CREATE TABLE IF NOT EXISTS reminders (
-  id BIGSERIAL PRIMARY KEY,
-  quote_id BIGINT REFERENCES quotes(id) ON DELETE CASCADE,
-  reminder_date TIMESTAMP WITH TIME ZONE NOT NULL,
-  reminder_type TEXT NOT NULL DEFAULT 'email', -- 'email', 'sms', 'push'
-  email_addresses TEXT[], -- רשימת כתובות מייל
-  message TEXT, -- הודעה מותאמת אישית
-  is_sent BOOLEAN DEFAULT false,
-  sent_at TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id SERIAL PRIMARY KEY,
+    quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+    reminder_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    reminder_type VARCHAR(20) NOT NULL CHECK (reminder_type IN ('email', 'sms', 'push')),
+    email_addresses TEXT[] DEFAULT '{}',
+    message TEXT,
+    is_sent BOOLEAN DEFAULT false,
+    sent_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- אינדקסים לטבלת תזכורות
-CREATE INDEX IF NOT EXISTS idx_reminders_quote_id ON reminders(quote_id);
-CREATE INDEX IF NOT EXISTS idx_reminders_reminder_date ON reminders(reminder_date);
-CREATE INDEX IF NOT EXISTS idx_reminders_is_sent ON reminders(is_sent);
-CREATE INDEX IF NOT EXISTS idx_reminders_type ON reminders(reminder_type);
-
--- הגדרת RLS (Row Level Security) - אופציונלי
+-- Enable RLS on all tables
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE aliases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
@@ -237,30 +164,82 @@ ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE work_hours ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
 
--- מדיניות גישה ציבורית (לצורך הדגמה - ניתן לשנות בהמשך)
-CREATE POLICY "Allow public read access" ON items FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON aliases FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON clients FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON quotes FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON quote_items FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON employees FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON work_hours FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON reminders FOR SELECT USING (true);
+-- Create policies for items (public read, admin write)
+CREATE POLICY "Anyone can view items" ON items FOR SELECT USING (true);
+CREATE POLICY "Only admins can modify items" ON items FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
 
-CREATE POLICY "Allow public insert access" ON items FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON aliases FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON clients FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON quotes FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON quote_items FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON employees FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON work_hours FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert access" ON reminders FOR INSERT WITH CHECK (true);
+-- Create policies for aliases (public read, admin write)
+CREATE POLICY "Anyone can view aliases" ON aliases FOR SELECT USING (true);
+CREATE POLICY "Only admins can modify aliases" ON aliases FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
 
-CREATE POLICY "Allow public update access" ON items FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON aliases FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON clients FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON quotes FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON quote_items FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON employees FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON work_hours FOR UPDATE USING (true);
-CREATE POLICY "Allow public update access" ON reminders FOR UPDATE USING (true);
+-- Create policies for clients (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view clients" ON clients FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify clients" ON clients FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
+
+-- Create policies for quotes (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view quotes" ON quotes FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify quotes" ON quotes FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
+
+-- Create policies for quote_items (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view quote_items" ON quote_items FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify quote_items" ON quote_items FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
+
+-- Create policies for employees (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view employees" ON employees FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify employees" ON employees FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
+
+-- Create policies for work_hours (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view work_hours" ON work_hours FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify work_hours" ON work_hours FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);
+
+-- Create policies for reminders (authenticated users can read, admin write)
+CREATE POLICY "Authenticated users can view reminders" ON reminders FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Only admins can modify reminders" ON reminders FOR ALL USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = auth.uid() 
+        AND users.role = 'admin'
+    )
+);

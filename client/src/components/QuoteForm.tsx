@@ -4,13 +4,16 @@ import ClientSelector from './ClientSelector';
 import NewClientForm from './NewClientForm';
 import QuoteItemsInput from './QuoteItemsInput';
 import QuoteSummary from './QuoteSummary';
-import { quotesAPI } from '../services/api';
+import { quotesAPI } from '../services/supabaseAPI';
+import { useTheme } from '../context/ThemeContext';
 
 interface QuoteFormProps {
-  onQuoteSaved: () => void;
+  onQuoteSaved?: () => void;
+  onBack: () => void;
 }
 
-const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
+const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
+  const { theme, toggleTheme } = useTheme();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [items, setItems] = useState<QuoteItem[]>([]);
@@ -135,8 +138,11 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
       console.log('Quote saved successfully:', result);
       alert(`הצעת המחיר נשמרה בהצלחה! מספר הצעה: ${result.id}`);
 
-      // עדכון הרשימה במסך ההורה
-      onQuoteSaved();
+      // עדכון הרשימה במסך ההורה וחזרה לרשימה
+      if (onQuoteSaved) {
+        onQuoteSaved();
+      }
+      onBack();
 
       // איפוס טופס (אופציונלי)
       setItems([]);
@@ -158,13 +164,45 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
   };
 
   return (
-      <div className="w-full mx-auto p-6 space-y-6">
+      <div className="w-full mx-auto p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black mb-2">מערכת ניהול הצעות מחיר</h1>
-          <p className="text-black/80">צור הצעת מחיר חדשה</p>
+          {/* Breadcrumbs */}
+          <nav className="flex items-center justify-center space-x-2 text-sm mb-4" aria-label="Breadcrumb">
+            <button 
+              onClick={onBack} 
+              className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+            >
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              הצעות מחיר
+            </button>
+            <span className="text-gray-400 dark:text-gray-500">/</span>
+            <span className="text-gray-600 dark:text-gray-300">הצעה חדשה</span>
+          </nav>
+          
+          <div className="flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded hover:bg-gray-600 dark:hover:bg-gray-700"
+            >
+              חזרה להצעות מחיר
+            </button>
+            <h1 className="text-3xl font-bold text-black dark:text-white">מערכת ניהול הצעות מחיר</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={theme === 'light' ? 'מעבר למצב כהה' : 'מעבר למצב בהיר'}
+              >
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </div>
+          </div>
+          <p className="text-black/80 dark:text-white/80 mt-2">צור הצעת מחיר חדשה</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {/* צד שמאל - בחירת לקוח */}
           <div className="lg:col-span-1">
             {showNewClientForm ? (
@@ -184,11 +222,11 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
           {/* צד ימין - פרטי הצעה */}
           <div className="lg:col-span-2 space-y-6">
             {/* פרטי אירוע */}
-            <div className="card">
-              <h3 className="text-lg font-bold mb-4 text-gray-800">פרטי האירוע</h3>
+            <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">פרטי האירוע</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     שם האירוע *
                   </label>
                   <input
@@ -202,7 +240,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     תאריך האירוע
                   </label>
                   <input
@@ -216,7 +254,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     שעות האירוע
                   </label>
                   <input
@@ -230,7 +268,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved }) => {
                 </div>
               </div>
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   הערות מיוחדות
                 </label>
                 <textarea

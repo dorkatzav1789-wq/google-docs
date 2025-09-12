@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Reminder, NewReminderInput } from '../types';
-import { remindersAPI } from '../services/api';
+import { remindersAPI } from '../services/supabaseAPI';
 
 interface ReminderManagerProps {
   quoteId: number;
@@ -28,11 +28,7 @@ const ReminderManager: React.FC<ReminderManagerProps> = ({
   const [timeInput, setTimeInput] = useState('');
   const [emailInput, setEmailInput] = useState('');
 
-  useEffect(() => {
-    loadReminders();
-  }, [quoteId]);
-
-  const loadReminders = async () => {
+  const loadReminders = useCallback(async () => {
     try {
       setLoading(true);
       const data = await remindersAPI.getByQuote(quoteId);
@@ -42,7 +38,11 @@ const ReminderManager: React.FC<ReminderManagerProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [quoteId]);
+
+  useEffect(() => {
+    loadReminders();
+  }, [loadReminders]);
 
   const handleCreateAutoReminder = async () => {
     try {
@@ -132,12 +132,6 @@ const ReminderManager: React.FC<ReminderManagerProps> = ({
     });
   };
 
-  const calculateReminderDate = () => {
-    if (!eventDate) return '';
-    const eventDateTime = new Date(eventDate);
-    const reminderDateTime = new Date(eventDateTime.getTime() - (72 * 60 * 60 * 1000));
-    return reminderDateTime.toISOString().slice(0, 16);
-  };
 
   if (loading) {
     return (

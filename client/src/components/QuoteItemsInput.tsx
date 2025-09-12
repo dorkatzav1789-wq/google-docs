@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { QuoteItem, Item } from '../types';
-import { quotesAPI, itemsAPI, aliasesAPI } from '../services/api';
+import { quotesAPI, itemsAPI, aliasesAPI } from '../services/supabaseAPI';
 
 interface QuoteItemsInputProps {
   items: QuoteItem[];

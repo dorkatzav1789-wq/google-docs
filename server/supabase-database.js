@@ -309,11 +309,41 @@ const dbFunctions = {
     }
   },
 
+  getUserByEmail: async (email) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getEmployeeByEmail: async (email) => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   getAllEmployees: async () => {
     try {
       const {data, error} = await supabase
           .from('employees')
-          .select('id, first_name, last_name, phone, email, daily_rate, is_active, created_at')
+          .select('id, first_name, last_name, phone, email, hourly_rate, is_active, created_at')
           .order('first_name', {ascending: true})
           .order('last_name', {ascending: true});
 
@@ -335,6 +365,30 @@ const dbFunctions = {
 
       if (error) throw error;
       return data[0];
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  deleteEmployee: async (id) => {
+    try {
+      // מחיקת שעות העבודה של העובד
+      const {error: workHoursError} = await supabase
+          .from('work_hours')
+          .delete()
+          .eq('employee_id', id);
+      
+      if (workHoursError) throw workHoursError;
+
+      // מחיקת העובד עצמו
+      const {error: employeeError} = await supabase
+          .from('employees')
+          .delete()
+          .eq('id', id);
+
+      if (employeeError) throw employeeError;
+
+      return true;
     } catch (error) {
       throw error;
     }
@@ -378,18 +432,25 @@ const dbFunctions = {
       // טווח חודש [start, end)
       const mm = String(month).padStart(2, '0');
       const start = `${year}-${mm}-01`;
-      const endDate = new Date(Date.UTC(year, month, 1)); // חודש הבא (because month is 1-based)
+      const endDate = new Date(Date.UTC(year, month, 0)); // Last day of the current month
       const end = endDate.toISOString().slice(0, 10);
+
+      console.log('Monthly report date range:', { start, end });
 
       // 1) מביאים שעות עבודה לחודש
       const {data: wh, error: whErr} = await supabase
           .from('work_hours')
-          .select('id, employee_id, work_date, hours_worked, daily_rate, daily_total, notes')
+          .select('id, employee_id, work_date, hours_worked, hourly_rate, total_amount, notes')
           .gte('work_date', start)
-          .lt('work_date', end)
+          .lte('work_date', end)
           .order('work_date', {ascending: true});
 
-      if (whErr) throw whErr;
+      if (whErr) {
+        console.error('Error fetching work hours:', whErr);
+        throw whErr;
+      }
+
+      console.log('Work hours data:', wh);
 
       const workHours = wh || [];
 
@@ -406,7 +467,7 @@ const dbFunctions = {
       const ids = Array.from(new Set(workHours.map(r => r.employee_id))).filter(Boolean);
               const {data: emps, error: empErr} = await supabase
             .from('employees')
-            .select('id, first_name, last_name, daily_rate')
+            .select('id, first_name, last_name, hourly_rate')
             .in('id', ids);
 
       if (empErr) throw empErr;
@@ -425,7 +486,7 @@ const dbFunctions = {
         const emp = byId.get(row.employee_id);
         return {
           ...row,
-          employees: emp ? {name: fullName(emp), daily_rate: emp.daily_rate} : null,
+          employees: emp ? {name: fullName(emp), hourly_rate: emp.hourly_rate} : null,
           employee_name: emp ? fullName(emp) : null,
         };
       });
@@ -433,7 +494,7 @@ const dbFunctions = {
       // 4) סיכומים
       const summary = {
         total_hours: enriched.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
-        total_amount: enriched.reduce((s, r) => s + Number(r.daily_total || 0), 0),
+        total_amount: enriched.reduce((s, r) => s + Number(r.total_amount || 0), 0),
         employee_count: ids.length,
       };
 
