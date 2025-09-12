@@ -206,11 +206,70 @@ export const quotesAPI = {
       unit_price: number | null;
     }>;
   }> => {
-    // This is a simplified version - in a real app you'd want to implement text parsing
-    // For now, we'll return empty arrays
+    // פירוש טקסט בפורמט: כמות שם_פריט מחיר|
+    const lines = text.trim().split('\n').filter(line => line.trim());
+    const items: QuoteItem[] = [];
+    const unknown: Array<{
+      line: string;
+      quantity: number;
+      raw_text: string;
+      unit_price: number | null;
+    }> = [];
+
+    // קבלת כל הפריטים מהקטלוג
+    const allItems = await itemsAPI.getAll();
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // פורמט: כמות שם_פריט מחיר|
+      const match = trimmedLine.match(/^(\d+)\s+(.+?)\s+(\d+)\|?$/);
+      
+      if (match) {
+        const quantity = parseInt(match[1]);
+        const name = match[2].trim();
+        const unitPrice = parseInt(match[3]);
+        
+        // בדיקה אם הפריט קיים בקטלוג
+        const existingItem = allItems.find(item => 
+          item.name.toLowerCase().includes(name.toLowerCase()) ||
+          name.toLowerCase().includes(item.name.toLowerCase())
+        );
+
+        if (existingItem) {
+          // פריט קיים - הוסף לרשימה
+          items.push({
+            name: existingItem.name,
+            description: existingItem.description,
+            unit_price: unitPrice,
+            quantity: quantity,
+            discount: 0,
+            total: unitPrice * quantity,
+          });
+        } else {
+          // פריט לא קיים - הוסף ל-unknown
+          unknown.push({
+            line: trimmedLine,
+            quantity: quantity,
+            raw_text: name,
+            unit_price: unitPrice,
+          });
+        }
+      } else {
+        // פורמט לא תקין - הוסף ל-unknown
+        unknown.push({
+          line: trimmedLine,
+          quantity: 1,
+          raw_text: trimmedLine,
+          unit_price: null,
+        });
+      }
+    }
+
     return {
-      items: [],
-      unknown: [],
+      items,
+      unknown,
     };
   },
 
