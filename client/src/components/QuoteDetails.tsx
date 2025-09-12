@@ -31,8 +31,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       const allItems = data.items || [];
       
       // הפרדת פריטים רגילים מפיצולים
-      const regularItems = allItems.filter((it: any) => !it.item_name?.startsWith('פיצול '));
-      const splitItems = allItems.filter((it: any) => it.item_name?.startsWith('פיצול '));
+      const regularItems = allItems.filter((it: any) => !it.name?.startsWith('פיצול '));
+      const splitItems = allItems.filter((it: any) => it.name?.startsWith('פיצול '));
       
       // יצירת מפה של פיצולים לפי מיקום (פשוט יותר)
       const splitsMap: { [key: number]: any[] } = {};
@@ -45,8 +45,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             splitsMap[currentItemIndex] = [];
           }
           splitsMap[currentItemIndex].push({
-            name: split.item_name,
-            description: split.item_description,
+            name: split.name,
+            description: split.description,
             unit_price: Number(split.unit_price),
             quantity: Number(split.quantity),
             discount: Number(split.discount),
@@ -57,8 +57,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       });
       
       const normalizedItems = regularItems.map((it: any, index: number) => ({
-        name: it.item_name ?? '',
-        description: it.item_description ?? '',
+        name: it.name ?? '',
+        description: it.description ?? '',
         unit_price: Number(it.unit_price ?? 0),
         quantity: Number(it.quantity ?? 0),
         discount: Number(it.discount ?? 0),
