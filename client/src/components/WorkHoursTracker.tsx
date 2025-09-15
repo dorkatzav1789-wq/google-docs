@@ -10,7 +10,9 @@ export const WorkHoursTracker: React.FC = () => {
   const [workHours, setWorkHours] = useState({
     work_date: new Date().toISOString().split('T')[0],
     hours_worked: 0,
-    notes: ''
+    notes: '',
+    event_type: 'business' as 'business' | 'personal',
+    overtime_amount: 0
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -63,7 +65,10 @@ export const WorkHoursTracker: React.FC = () => {
         work_date: workHours.work_date,
         hours_worked: days, // נשתמש באותו שדה אבל נכניס 1
         hourly_rate: rate,
+        daily_total: (days * rate) + workHours.overtime_amount, // חישוב הסכום הכולל כולל שעות נוספות
+        overtime_amount: workHours.overtime_amount,
         notes: workHours.notes,
+        event_type: workHours.event_type,
       };
 
       await workHoursAPI.create(workHoursData);
@@ -72,6 +77,8 @@ export const WorkHoursTracker: React.FC = () => {
         work_date: new Date().toISOString().split('T')[0],
         hours_worked: 0,
         notes: '',
+        event_type: 'business',
+        overtime_amount: 0,
       });
       alert('יום העבודה נוסף בהצלחה!');
     } catch (error) {
@@ -127,6 +134,44 @@ export const WorkHoursTracker: React.FC = () => {
             />
 
 
+            <select
+                value={workHours.event_type}
+                onChange={(e) => setWorkHours({ ...workHours, event_type: e.target.value as 'business' | 'personal' })}
+                className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
+                required
+                title="סוג אירוע"
+                aria-label="סוג אירוע"
+            >
+              <option value="business">אירוע עסקי</option>
+              <option value="personal">אירוע פרטי</option>
+            </select>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-green-700 dark:text-green-400">
+                💰 שעות נוספות (₪)
+              </label>
+              <input
+                  type="number"
+                  placeholder="הזן סכום שעות נוספות"
+                  value={workHours.overtime_amount}
+                  onChange={(e) => setWorkHours({ ...workHours, overtime_amount: Number(e.target.value) || 0 })}
+                  className="w-full p-2 border border-gray-300 dark:border-gray-600 bg-green-50 dark:bg-green-900/20 text-black dark:text-black rounded font-medium"
+                  title="שעות נוספות"
+                  aria-label="שעות נוספות"
+                  min="0"
+                  step="0.01"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                    borderColor: '#22c55e',
+                    boxShadow: '0 0 0 1px #22c55e20',
+                    color: '#000000'
+                  }}
+              />
+              <p className="text-xs text-green-600 dark:text-green-400">
+                סכום נוסף שיתווסף למשכורת היומית
+              </p>
+            </div>
+
             <input
                 type="text"
                 placeholder="הערות"
@@ -137,6 +182,32 @@ export const WorkHoursTracker: React.FC = () => {
                 aria-label="הערות"
             />
           </div>
+
+          {/* הצגת סכום כולל */}
+          {selectedEmployee && (
+            <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">סכום יומי:</span>
+                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                  ₪{Number(employees.find(emp => emp.id === selectedEmployee)?.hourly_rate || 0).toLocaleString('he-IL')}
+                </span>
+              </div>
+              {workHours.overtime_amount > 0 && (
+                <div className="flex justify-between items-center mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-700">
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">💰 שעות נוספות:</span>
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    +₪{workHours.overtime_amount.toLocaleString('he-IL')}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-gray-300 dark:border-gray-600">
+                <span className="text-xl font-bold text-gray-900 dark:text-white">סה"כ ליום:</span>
+                <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  ₪{((Number(employees.find(emp => emp.id === selectedEmployee)?.hourly_rate || 0)) + workHours.overtime_amount).toLocaleString('he-IL')}
+                </span>
+              </div>
+            </div>
+          )}
 
           <button
               type="submit"

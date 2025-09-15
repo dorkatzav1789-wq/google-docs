@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
-import { reportsAPI } from '../services/supabaseAPI';
+import { reportsAPI, employeesAPI } from '../services/supabaseAPI';
+import html2pdf from 'html2pdf.js';
 
 export const MonthlyReport: React.FC = () => {
   const [report, setReport] = useState<MonthlyReportType | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const normalizeReport = (data: any): MonthlyReportType => {
     const work_hours: WorkHours[] = Array.isArray(data?.work_hours)
@@ -21,11 +25,15 @@ export const MonthlyReport: React.FC = () => {
     if (employees.length === 0 && work_hours.length > 0) {
       const map = new Map<string | number, Employee>();
       for (const wh of work_hours) {
-        const key = (wh as any).employees?.name ?? (wh as any).employee_name ?? wh.employee_id;
+        const key = (wh as any).employees?.first_name ?? (wh as any).employee_name ?? wh.employee_id;
         if (!map.has(key)) {
+          const firstName = (wh as any).employees?.first_name ?? '';
+          const lastName = (wh as any).employees?.last_name ?? '';
+          const fullName = `${firstName} ${lastName}`.trim() || `#${wh.employee_id}`;
+          
           map.set(key, {
             id: Number(wh.employee_id),
-            name: (wh as any).employees?.name ?? (wh as any).employee_name ?? `#${wh.employee_id}`,
+            name: fullName,
             phone: undefined,
             email: undefined,
             hourly_rate: Number((wh as any).employees?.hourly_rate ?? wh.hourly_rate ?? 0),
@@ -40,17 +48,27 @@ export const MonthlyReport: React.FC = () => {
     const summary =
         data?.summary ?? {
           total_hours: work_hours.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
-          total_amount: work_hours.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+          daily_total: work_hours.reduce((s, r) => s + Number(r.daily_total || 0), 0),
           employee_count: employees.length,
         };
 
     return { work_hours, employees, summary };
   };
 
+  const loadEmployees = async () => {
+    try {
+      const data = await employeesAPI.getAll();
+      setEmployees(data || []);
+    } catch (e) {
+      console.error('Error loading employees:', e);
+      setEmployees([]);
+    }
+  };
+
   const loadReport = async () => {
     try {
       setLoading(true);
-      const data = await reportsAPI.getMonthly(selectedYear, selectedMonth);
+      const data = await reportsAPI.getMonthly(selectedYear, selectedMonth, selectedEmployee);
       setReport(normalizeReport(data));
     } catch (e) {
       console.error('Error loading report:', e);
@@ -58,7 +76,7 @@ export const MonthlyReport: React.FC = () => {
       setReport({
         work_hours: [],
         employees: [],
-        summary: { total_hours: 0, total_amount: 0, employee_count: 0 },
+        summary: { total_hours: 0, daily_total: 0, employee_count: 0 },
       });
     } finally {
       setLoading(false);
@@ -66,22 +84,36 @@ export const MonthlyReport: React.FC = () => {
   };
 
   useEffect(() => {
+    loadEmployees();
+  }, []);
+
+  useEffect(() => {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, selectedEmployee]);
 
   const exportToPDF = async () => {
+    if (!reportRef.current) return;
+    
     try {
       setExporting(true);
-      const blob = await reportsAPI.exportMonthlyPdf(selectedYear, selectedMonth);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `work-hours-report-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      
+      const selectedEmployeeName = selectedEmployee 
+        ? employees.find(emp => emp.id === selectedEmployee)?.first_name + ' ' + employees.find(emp => emp.id === selectedEmployee)?.last_name
+        : '';
+      
+      const employeeSuffix = selectedEmployee ? `-${selectedEmployeeName?.trim()}` : '';
+      const filename = `work-hours-report-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}.pdf`;
+      
+      const opt = {
+        margin: 1,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+      
+      await html2pdf().set(opt).from(reportRef.current).save();
     } catch (e) {
       console.error('Export PDF failed:', e);
       alert('שגיאה ביצוא PDF');
@@ -127,6 +159,24 @@ export const MonthlyReport: React.FC = () => {
               ))}
             </select>
 
+            <select
+                value={selectedEmployee ?? ''}
+                onChange={(e) => setSelectedEmployee(e.target.value ? parseInt(e.target.value, 10) : null)}
+                className="p-2 border rounded"
+                title="בחר עובד"
+                aria-label="בחר עובד"
+            >
+              <option value="">כל העובדים</option>
+              {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.first_name && employee.last_name 
+                      ? `${employee.first_name} ${employee.last_name}`.trim()
+                      : employee.name || `עובד #${employee.id}`
+                    }
+                  </option>
+              ))}
+            </select>
+
             <button
                 onClick={exportToPDF}
                 disabled={exporting}
@@ -138,14 +188,18 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* סיכום עליון */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="p-4 bg-blue-100 rounded">
             <h3 className="font-semibold">סה"כ ימים</h3>
             <p className="text-2xl">{fmt(report.summary?.total_hours)}</p>
           </div>
           <div className="p-4 bg-green-100 rounded">
             <h3 className="font-semibold">סה"כ תשלום</h3>
-            <p className="text-2xl">₪{fmt(report.summary?.total_amount)}</p>
+            <p className="text-2xl">₪{fmt(report.summary?.daily_total)}</p>
+          </div>
+          <div className="p-4 bg-purple-100 rounded">
+            <h3 className="font-semibold">סה"כ שעות נוספות</h3>
+            <p className="text-2xl">₪{fmt(report.work_hours.reduce((sum, row) => sum + (row.overtime_amount || 0), 0))}</p>
           </div>
           <div className="p-4 bg-yellow-100 rounded">
             <h3 className="font-semibold">מספר עובדים</h3>
@@ -154,14 +208,29 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* טבלת פירוט */}
-        <div className="overflow-x-auto">
+        <div ref={reportRef} className="overflow-x-auto">
+          {/* כותרת לדוח */}
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold mb-2">דוח שעות עבודה</h1>
+            <h2 className="text-xl text-gray-600">
+              חודש {selectedMonth}/{selectedYear}
+              {selectedEmployee && employees.find(emp => emp.id === selectedEmployee) && (
+                <span className="block text-lg mt-1">
+                  עובד: {employees.find(emp => emp.id === selectedEmployee)?.first_name} {employees.find(emp => emp.id === selectedEmployee)?.last_name}
+                </span>
+              )}
+            </h2>
+          </div>
+          
           <table className="w-full border-collapse border min-w-full">
           <thead>
           <tr className="bg-gray-100">
             <th className="border p-2">עובד</th>
             <th className="border p-2">תאריך</th>
+            <th className="border p-2">סוג אירוע</th>
             <th className="border p-2">ימים</th>
             <th className="border p-2">תשלום יומי</th>
+            <th className="border p-2">שעות נוספות</th>
             <th className="border p-2">סה"כ</th>
             <th className="border p-2">הערות</th>
           </tr>
@@ -169,7 +238,7 @@ export const MonthlyReport: React.FC = () => {
           <tbody>
           {report.work_hours.length === 0 ? (
               <tr>
-                <td className="border p-2 text-center text-gray-500" colSpan={6}>
+                <td className="border p-2 text-center text-gray-500" colSpan={8}>
                   אין נתונים לחודש שנבחר
                 </td>
               </tr>
@@ -177,12 +246,33 @@ export const MonthlyReport: React.FC = () => {
               report.work_hours.map((row) => (
                   <tr key={row.id}>
                     <td className="border p-2">
-                      {(row as any).employees?.name ?? (row as any).employee_name ?? `#${row.employee_id}`}
+                      {(() => {
+                        const firstName = (row as any).employees?.first_name ?? '';
+                        const lastName = (row as any).employees?.last_name ?? '';
+                        const fullName = `${firstName} ${lastName}`.trim();
+                        return fullName || (row as any).employee_name || `#${row.employee_id}`;
+                      })()}
                     </td>
                     <td className="border p-2">{row.work_date}</td>
+                    <td className="border p-2">
+                      <span className={`px-2 py-1 rounded text-sm ${
+                        row.event_type === 'business' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
+                      </span>
+                    </td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
                     <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
-                    <td className="border p-2">₪{fmt(row.total_amount)}</td>
+                    <td className="border p-2">
+                      {row.overtime_amount > 0 ? (
+                        <span className="text-green-600 font-medium">+₪{fmt(row.overtime_amount)}</span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="border p-2">₪{fmt(row.daily_total)}</td>
                     <td className="border p-2">{row.notes || '-'}</td>
                   </tr>
               ))

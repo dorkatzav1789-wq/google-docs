@@ -723,6 +723,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                               value={editForm.unit_price}
                               onChange={(e) => setEditForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
                               className="w-20 p-1 border rounded text-black text-center"
+                              title="מחיר יחידה"
+                              aria-label="מחיר יחידה"
                             />
                           ) : (
                             formatCurrency(item.unit_price)
@@ -736,6 +738,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                               onChange={(e) => setEditForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
                               className="w-16 p-1 border rounded text-black text-center"
                               min="1"
+                              title="כמות"
+                              aria-label="כמות"
                             />
                           ) : (
                             item.quantity
@@ -749,6 +753,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                               onChange={(e) => setEditForm(prev => ({ ...prev, discount: Number(e.target.value) }))}
                               className="w-20 p-1 border rounded text-black text-center"
                               min="0"
+                              title="הנחה"
+                              aria-label="הנחה"
                             />
                           ) : (
                             item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'
@@ -1099,6 +1105,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             value={editForm.unit_price}
                             onChange={(e) => setEditForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
                             className="w-20 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
+                            title="מחיר יחידה"
+                            aria-label="מחיר יחידה"
                           />
                         ) : (
                           formatCurrency(item.unit_price)
@@ -1112,6 +1120,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             onChange={(e) => setEditForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
                             className="w-16 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
                             min="1"
+                            title="כמות"
+                            aria-label="כמות"
                           />
                         ) : (
                           item.quantity
@@ -1119,13 +1129,48 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {editingItem === index ? (
-                          <input
-                            type="number"
-                            value={editForm.discount}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, discount: Number(e.target.value) }))}
-                            className="w-20 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
-                            min="0"
-                          />
+                          <div className="space-y-2">
+                            <input
+                              type="number"
+                              value={editForm.discount}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, discount: Number(e.target.value) }))}
+                              className="w-20 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
+                              min="0"
+                              placeholder="0"
+                            />
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const discount5 = Math.round(editForm.unit_price * editForm.quantity * 0.05);
+                                  setEditForm(prev => ({ ...prev, discount: discount5 }));
+                                }}
+                                className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                                title="5% הנחה"
+                              >
+                                5%
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const discount10 = Math.round(editForm.unit_price * editForm.quantity * 0.10);
+                                  setEditForm(prev => ({ ...prev, discount: discount10 }));
+                                }}
+                                className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded hover:bg-green-200 dark:hover:bg-green-800"
+                                title="10% הנחה"
+                              >
+                                10%
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditForm(prev => ({ ...prev, discount: 0 }))}
+                                className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                                title="אין הנחה"
+                              >
+                                אין
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'
                         )}

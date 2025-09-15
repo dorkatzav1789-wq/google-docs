@@ -78,8 +78,10 @@ export interface WorkHours {
   work_date: string;
   hours_worked: number;
   hourly_rate: number;
-  total_amount: number;
+  daily_total: number;
+  overtime_amount: number;
   notes?: string;
+  event_type: 'business' | 'personal';
 
   // כשמחזירים מ-Supabase עם join:
   employees?: {
@@ -96,7 +98,7 @@ export interface MonthlyReport {
   employees: Employee[];
   summary: {
     total_hours: number;
-    total_amount: number;
+    daily_total: number;
     employee_count: number;
   };
 }
@@ -105,7 +107,10 @@ export type NewWorkHoursInput = {
   work_date: string;
   hours_worked: number;
   hourly_rate: number;
+  daily_total: number;
+  overtime_amount: number;
   notes?: string;
+  event_type: 'business' | 'personal';
 };
 
 export interface Reminder {

@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS work_hours (
     hours_worked DECIMAL(5,2) NOT NULL,
     hourly_rate DECIMAL(10,2) NOT NULL,
     total_amount DECIMAL(10,2) NOT NULL,
+    overtime_amount DECIMAL(10,2) DEFAULT 0,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

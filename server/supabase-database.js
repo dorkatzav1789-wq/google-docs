@@ -427,7 +427,7 @@ const dbFunctions = {
   },
 
 // ===== getMonthlyReport: בחירה לפי טווח תאריכים, לא EXTRACT =====
-  getMonthlyReport: async (year, month) => {
+  getMonthlyReport: async (year, month, employeeId = null) => {
     try {
       // טווח חודש [start, end)
       const mm = String(month).padStart(2, '0');
@@ -438,12 +438,18 @@ const dbFunctions = {
       console.log('Monthly report date range:', { start, end });
 
       // 1) מביאים שעות עבודה לחודש
-      const {data: wh, error: whErr} = await supabase
+      let query = supabase
           .from('work_hours')
-          .select('id, employee_id, work_date, hours_worked, hourly_rate, total_amount, notes')
+          .select('id, employee_id, work_date, hours_worked, hourly_rate, daily_total, overtime_amount, notes, event_type')
           .gte('work_date', start)
-          .lte('work_date', end)
-          .order('work_date', {ascending: true});
+          .lte('work_date', end);
+
+      // Add employee filter if specified
+      if (employeeId) {
+        query = query.eq('employee_id', employeeId);
+      }
+
+      const {data: wh, error: whErr} = await query.order('work_date', {ascending: true});
 
       if (whErr) {
         console.error('Error fetching work hours:', whErr);
@@ -459,7 +465,7 @@ const dbFunctions = {
         return {
           work_hours: [],
           employees: [],
-          summary: {total_hours: 0, total_amount: 0, employee_count: 0}
+          summary: {total_hours: 0, daily_total: 0, employee_count: 0}
         };
       }
 
@@ -494,7 +500,7 @@ const dbFunctions = {
       // 4) סיכומים
       const summary = {
         total_hours: enriched.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
-        total_amount: enriched.reduce((s, r) => s + Number(r.total_amount || 0), 0),
+        daily_total: enriched.reduce((s, r) => s + Number(r.daily_total || 0), 0),
         employee_count: ids.length,
       };
 

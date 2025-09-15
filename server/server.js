@@ -608,7 +608,7 @@ ${pdf2Base64 ? `<img src="data:image/png;base64,${pdf2Base64}" alt="header-img" 
 
 
 // ===== HTML generator for Monthly Work Hours PDF =====
-function renderMonthlyReportHTML(report, year, month) {
+function renderMonthlyReportHTML(report, year, month, employeeId = null) {
   const safe = (v) => (v ?? '').toString();
   const fmtNum = (n) =>
       Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 });
@@ -621,33 +621,57 @@ function renderMonthlyReportHTML(report, year, month) {
       (report?.work_hours || []).reduce((s, wh) => s + Number(wh.hours_worked || 0), 0);
 
   const totalAmount =
-      report?.summary?.total_amount ??
+      report?.summary?.daily_total ??
       (report?.work_hours || []).reduce((s, wh) => s + Number(wh.daily_total || 0), 0);
 
   const employeeCount =
       report?.summary?.employee_count ??
-      new Set((report?.work_hours || []).map((wh) => wh.employees?.name || wh.employee_id)).size;
+      new Set((report?.work_hours || []).map((wh) => {
+        const firstName = wh.employees?.first_name || '';
+        const lastName = wh.employees?.last_name || '';
+        return `${firstName} ${lastName}`.trim() || wh.employee_id;
+      })).size;
 
   const rows = (report?.work_hours || [])
       .map(
-          (wh) => `
+          (wh) => {
+            // Build employee name from first_name and last_name
+            const firstName = wh.employees?.first_name || '';
+            const lastName = wh.employees?.last_name || '';
+            const employeeName = `${firstName} ${lastName}`.trim() || 'לא ידוע';
+            
+            return `
         <tr>
-          <td>${safe(wh.employees?.name || 'לא ידוע')}</td>
+          <td>${safe(employeeName)}</td>
           <td>${safe(wh.work_date)}</td>
+          <td>${wh.event_type === 'business' ? 'עסקי' : 'פרטי'}</td>
           <td>${fmtNum(wh.hours_worked)}</td>
-          <td>${fmtNis(wh.daily_rate)}</td>
+          <td>${fmtNis(wh.hourly_rate)}</td>
+          <td>${wh.overtime_amount > 0 ? `+${fmtNis(wh.overtime_amount)}` : '-'}</td>
           <td>${fmtNis(wh.daily_total)}</td>
           <td>${safe(wh.notes || '-')}</td>
         </tr>
-      `
+      `;
+          }
       )
       .join('');
+
+  // Get employee name if filtering by specific employee
+  let employeeName = '';
+  if (employeeId && report.work_hours && report.work_hours.length > 0) {
+    const firstWorkHour = report.work_hours[0];
+    if (firstWorkHour.employees) {
+      const firstName = firstWorkHour.employees.first_name || '';
+      const lastName = firstWorkHour.employees.last_name || '';
+      employeeName = `${firstName} ${lastName}`.trim();
+    }
+  }
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
   <meta charset="utf-8" />
-  <title>דוח שעות עבודה - ${month}/${year}</title>
+  <title>דוח שעות עבודה - ${month}/${year}${employeeName ? ` - ${employeeName}` : ''}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: Arial, "Segoe UI", Tahoma, sans-serif; margin: 20px; color: #111827; background: #fff; }
@@ -670,7 +694,7 @@ function renderMonthlyReportHTML(report, year, month) {
 <body>
   <div class="header">
     <h1>דוח שעות עבודה</h1>
-    <h2>חודש ${month}/${year}</h2>
+    <h2>חודש ${month}/${year}${employeeName ? ` - ${employeeName}` : ''}</h2>
   </div>
 
   <div class="summary">
@@ -693,14 +717,16 @@ function renderMonthlyReportHTML(report, year, month) {
       <tr>
         <th>עובד</th>
         <th>תאריך</th>
+        <th>סוג אירוע</th>
         <th>שעות</th>
         <th>שכר יומי</th>
+        <th>שעות נוספות</th>
         <th>סה"כ ליום</th>
         <th>הערות</th>
       </tr>
     </thead>
     <tbody>
-      ${rows || `<tr><td colspan="6" style="text-align:center;color:#6b7280;">אין נתונים לחודש שנבחר</td></tr>`}
+      ${rows || `<tr><td colspan="8" style="text-align:center;color:#6b7280;">אין נתונים לחודש שנבחר</td></tr>`}
     </tbody>
   </table>
 
@@ -963,9 +989,11 @@ app.get('/api/work-hours/employee/:id', async (req, res) => {
 
 app.get('/api/reports/monthly/:year/:month', async (req, res) => {
   try {
+    const employeeId = req.query.employeeId ? parseInt(req.query.employeeId) : null;
     const report = await dbFunctions.getMonthlyReport(
       parseInt(req.params.year), 
-      parseInt(req.params.month)
+      parseInt(req.params.month),
+      employeeId
     );
     res.json(report);
   } catch (error) {
@@ -976,9 +1004,10 @@ app.get('/api/reports/monthly/:year/:month/pdf', async (req, res) => {
   try {
     const year  = Number(req.params.year);
     const month = Number(req.params.month);
+    const employeeId = req.query.employeeId ? parseInt(req.query.employeeId) : null;
 
-    const report = await dbFunctions.getMonthlyReport(year, month);
-    const html = renderMonthlyReportHTML(report, year, month); // פונקציה שיוצרת HTML
+    const report = await dbFunctions.getMonthlyReport(year, month, employeeId);
+    const html = renderMonthlyReportHTML(report, year, month, employeeId); // פונקציה שיוצרת HTML
 
     const browser = await puppeteer.launch({
       args: chromium.args,

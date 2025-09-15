@@ -480,23 +480,32 @@ export const workHoursAPI = {
 
 // ---------- Reports ----------
 export const reportsAPI = {
-  getMonthly: async (year: number, month: number): Promise<MonthlyReport> => {
+  getMonthly: async (year: number, month: number, employeeId?: number | null): Promise<MonthlyReport> => {
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = `${year}-${month.toString().padStart(2, '0')}-31`;
+    // Calculate the last day of the month properly
+    const lastDay = new Date(year, month, 0).getDate(); // month is 1-based, so this gives us the last day of the previous month
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
 
-    // Get work hours for the month
-    const { data: workHoursData, error: workHoursError } = await getSupabaseClient()
+    // Build query with optional employee filter
+    let query = getSupabaseClient()
       .from('work_hours')
       .select(`
         *,
         employees (
-          name,
+          first_name,
+          last_name,
           hourly_rate
         )
       `)
       .gte('work_date', startDate)
-      .lte('work_date', endDate)
-      .order('work_date');
+      .lte('work_date', endDate);
+
+    // Add employee filter if specified
+    if (employeeId) {
+      query = query.eq('employee_id', employeeId);
+    }
+
+    const { data: workHoursData, error: workHoursError } = await query.order('work_date');
 
     if (workHoursError) throw workHoursError;
 
@@ -514,7 +523,7 @@ export const reportsAPI = {
     
     const summary = {
       total_hours: workHours.reduce((sum: number, wh: any) => sum + (wh.hours_worked || 0), 0),
-      total_amount: workHours.reduce((sum: number, wh: any) => sum + (wh.total_amount || 0), 0),
+      daily_total: workHours.reduce((sum: number, wh: any) => sum + (wh.daily_total || 0), 0),
       employee_count: employees.length,
     };
 
@@ -525,9 +534,16 @@ export const reportsAPI = {
     };
   },
 
-  exportMonthlyPdf: async (year: number, month: number): Promise<Blob> => {
-    // This would need to be implemented as a Supabase Edge Function
-    throw new Error('PDF export not implemented yet');
+  exportMonthlyPdf: async (year: number, month: number, employeeId?: number | null): Promise<Blob> => {
+    // Use the server API for PDF export
+    const url = employeeId 
+      ? `/api/reports/monthly/${year}/${month}/pdf?employeeId=${employeeId}`
+      : `/api/reports/monthly/${year}/${month}/pdf`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('PDF export failed');
+    }
+    return response.blob();
   },
 };
 
