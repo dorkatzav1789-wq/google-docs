@@ -235,7 +235,7 @@ app.post("/api/parse-quote", async (req, res) => {
 
       const [, qtyStr, itemText, priceStr] = m;
       const quantity = parseInt(qtyStr, 10);
-      const typedUnit = parseInt(priceStr, 10); // ⬅️ פירוש חדש: מחיר ליחידה שנכתב
+      const typedUnit = parseInt(priceStr, 10);
 
       const alias = aliases.find(a =>
           a.alias.toLowerCase() === itemText.toLowerCase() ||
@@ -253,7 +253,7 @@ app.post("/api/parse-quote", async (req, res) => {
       }
 
       if (item) {
-        // מחיר ליחידה בפועל: עדיפות למה שהמשתמש כתב, אח״כ דריסת אליאס, אחרת מחיר הבסיס
+
         const unitBase = Number(item.price || 0);
         const unitFromAlias = alias?.price_override ?? null;
         const appliedUnit = Number.isFinite(typedUnit)
@@ -322,7 +322,7 @@ app.post("/api/export-pdf", async (req, res) => {
     } catch (error) {
       console.error("❌ שגיאה בטעינת תמונות:", error);
       console.error("📋 פרטי השגיאה:", error.message);
-      // אם התמונות לא קיימות, השתמש בתמונות ריקות או הסר אותן
+
       pdf1Base64 = "";
       pdf2Base64 = "";
     }
@@ -347,7 +347,7 @@ app.post("/api/export-pdf", async (req, res) => {
         }
         : {
           headless: "new",
-          // בלוקאלי puppeteer מלא יודע להביא executablePath לבד; אל תגדיר אם לא צריך
+
         };
 
     const browser = await puppeteer.launch(launchOptions);
@@ -375,7 +375,7 @@ app.post("/api/export-pdf", async (req, res) => {
 });
 
 // ===================== React Fallback ===================== //
-// אם זה שרת פרונט+בק – החזרת index.html לראוטים שאינם API/סטטי
+
 app.get("*", (req, res, next) => {
   if (req.path.startsWith("/api/") || req.path.startsWith("/static/")) return next();
   try {
@@ -396,11 +396,10 @@ function generateQuoteHTML(quote, items, pdf1Base64, pdf2Base64) {
     return isNaN(d.getTime()) ? "לא צוין" : d.toLocaleDateString("he-IL");
   };
 
-  // אם יש לכם פרטי בנק ב-quote.bank
   const bank = quote?.bank || null;
 
-  // חשוב: שימוש ב-/static/pdf1.png כדי שהדפדפן של Puppeteer ימצא את הקובץ
-  // שים את התמונה ב: server/static/pdf1.png
+
+
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>

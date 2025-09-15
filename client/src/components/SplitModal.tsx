@@ -10,7 +10,7 @@ interface SplitModalProps {
 const SplitModal: React.FC<SplitModalProps> = ({ isOpen, onClose, onSelectSplit, itemName }) => {
   if (!isOpen) return null;
 
-  const splitTypes = ['A', 'B', 'C', 'D', 'E'];
+  const splitTypes = ['A', 'B', 'C', 'D', 'E', 'F'];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -49,5 +49,7 @@ const SplitModal: React.FC<SplitModalProps> = ({ isOpen, onClose, onSelectSplit,
 };
 
 export default SplitModal;
+
+
 
 

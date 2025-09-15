@@ -152,6 +152,7 @@ export const quotesAPI = {
 
     const mappedItems = (itemsData || []).map((item: any) => {
       console.log('Mapping item from DB:', { 
+        id: item.id,
         item_name: item.item_name, 
         item_description: item.item_description,
         unit_price: item.unit_price 

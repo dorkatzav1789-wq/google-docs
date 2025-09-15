@@ -70,22 +70,47 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       item.discount = editForm.discount;
       item.total = (editForm.unit_price * editForm.quantity) - editForm.discount;
       
-      // עדכון במסד הנתונים
-      await quotesAPI.updateItem(item.id, {
-        item_name: editForm.name,
-        item_description: editForm.description,
-        unit_price: editForm.unit_price,
-        quantity: editForm.quantity,
-        discount: editForm.discount,
-        total: item.total
-      });
+      // עדכון במסד הנתונים - רק אם יש ID
+      if (item.id) {
+        console.log('Updating item in database:', item.id, {
+          item_name: editForm.name,
+          item_description: editForm.description,
+          unit_price: editForm.unit_price,
+          quantity: editForm.quantity,
+          discount: editForm.discount,
+          total: item.total
+        });
+        
+        try {
+          await quotesAPI.updateItem(item.id, {
+            item_name: editForm.name,
+            item_description: editForm.description,
+            unit_price: editForm.unit_price,
+            quantity: editForm.quantity,
+            discount: editForm.discount,
+            total: item.total
+          });
+          
+          console.log('Item updated successfully in database');
+          
+          // טעינה מחדש של הנתונים מהמסד כדי לוודא שהעדכון נשמר
+          await loadQuoteDetails();
+        } catch (updateError) {
+          console.error('Database update failed:', updateError);
+          throw updateError; // נזרוק את השגיאה כדי שהטיפול הכללי יתמודד איתה
+        }
+      } else {
+        console.warn('Cannot update item - no ID found:', item);
+        alert('שגיאה: לא ניתן לעדכן פריט ללא מזהה');
+        return;
+      }
       
-      setQuoteData({ ...quoteData, items: updatedItems });
       setEditingItem(null);
       alert('הפריט עודכן בהצלחה!');
     } catch (error) {
       console.error('שגיאה בעדכון פריט:', error);
-      alert('שגיאה בעדכון הפריט');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`שגיאה בעדכון הפריט: ${errorMessage}`);
     }
   };
 
@@ -130,10 +155,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       const normalizedItems = regularItems.map((it: any, index: number) => {
         console.log('Normalizing item:', { 
           original: it, 
+          id: it.id,
           name: it.name, 
           description: it.description 
         }); // לוג לבדיקה
         return {
+          id: it.id, // חשוב לשמור את ה-ID!
           name: it.name ?? '',
           description: it.description ?? '',
           unit_price: Number(it.unit_price ?? 0),
@@ -189,7 +216,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       };
 
       // עדכון הפריט עם הפיצול החדש
-      const updatedItems = [...items];
+      const updatedItems = [...quoteData.items];
       if (!updatedItems[selectedItemIndex].splits) {
         updatedItems[selectedItemIndex].splits = [];
       }
@@ -217,14 +244,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
     if (!quoteData) return;
 
-    const splitToDelete = items[itemIndex].splits![splitIndex];
+    const splitToDelete = quoteData.items[itemIndex].splits![splitIndex];
     
     try {
       // מחיקת הפיצול מהמסד הנתונים
       await quotesAPI.deleteSplit(quoteId, splitToDelete.name);
       
       // עדכון ה-UI
-      const updatedItems = [...items];
+      const updatedItems = [...quoteData.items];
       if (updatedItems[itemIndex].splits) {
         updatedItems[itemIndex].splits!.splice(splitIndex, 1);
         
@@ -647,14 +674,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               `}
             </style>
             <div className="avoid-page-break">
-              <div className="mb-4">
-                <button 
-                  onClick={() => setEditingItem(0)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                >
-                  ערוך פריטים
-                </button>
-              </div>
               <table className={`invoice-table ${items.length > 6 ? 'compact' : ''}`}>
                 <thead>
                 <tr>
@@ -663,10 +682,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <th>כמות</th>
                   <th>הנחה</th>
                   <th>סה"כ</th>
-                  <th>פעולות</th>
                 </tr>
                 </thead>
-                {console.log('Table header rendered')}
                 <tbody>
                 {items.map((item, index) => {
                   console.log('Rendering item:', index, item); // לוג לבדיקה
@@ -742,34 +759,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             formatCurrency((editForm.unit_price * editForm.quantity) - editForm.discount)
                           ) : (
                             formatCurrency(item.total)
-                          )}
-                        </td>
-                        <td>
-                          {editingItem === index ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={saveEdit}
-                                className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                              >
-                                שמור
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
-                              >
-                                ביטול
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                console.log('Edit button clicked for index:', index);
-                                startEdit(index);
-                              }}
-                              className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                            >
-                              ערוך
-                            </button>
                           )}
                         </td>
                       </tr>
@@ -1061,6 +1050,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">כמות</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">הנחה</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">סה"כ</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">פעולות</th>
               </tr>
               </thead>
               <tbody>
@@ -1068,39 +1058,116 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <React.Fragment key={index}>
                     <tr className="border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 group">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white relative">
-                        <div className="flex items-center justify-between">
-                          <span>{item.name}</span>
-                          <button
-                            onClick={() => handleAddSplit(index)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-600 rounded"
-                            title="הוסף פיצול"
-                          >
-                            ➕
-                          </button>
-                        </div>
+                        {editingItem === index ? (
+                          <input
+                            type="text"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full p-2 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="שם הפריט"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span>{item.name}</span>
+                            <button
+                              onClick={() => handleAddSplit(index)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-600 rounded"
+                              title="הוסף פיצול"
+                            >
+                              ➕
+                            </button>
+                          </div>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{item.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatCurrency(item.unit_price)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.quantity}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                        {editingItem === index ? (
+                          <textarea
+                            value={editForm.description}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                            className="w-full p-2 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600"
+                            placeholder="תיאור הפריט"
+                            rows={2}
+                          />
+                        ) : (
+                          item.description
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                        {item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'}
+                        {editingItem === index ? (
+                          <input
+                            type="number"
+                            value={editForm.unit_price}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, unit_price: Number(e.target.value) }))}
+                            className="w-20 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
+                          />
+                        ) : (
+                          formatCurrency(item.unit_price)
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(item.total)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {editingItem === index ? (
+                          <input
+                            type="number"
+                            value={editForm.quantity}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                            className="w-16 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
+                            min="1"
+                          />
+                        ) : (
+                          item.quantity
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        {editingItem === index ? (
+                          <input
+                            type="number"
+                            value={editForm.discount}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, discount: Number(e.target.value) }))}
+                            className="w-20 p-1 border rounded text-black dark:text-white dark:bg-gray-700 dark:border-gray-600 text-center"
+                            min="0"
+                          />
+                        ) : (
+                          item.discount > 0 ? `-${formatCurrency(item.discount)}` : '-'
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">
+                        {editingItem === index ? (
+                          formatCurrency((editForm.unit_price * editForm.quantity) - editForm.discount)
+                        ) : (
+                          formatCurrency(item.total)
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {editingItem === index ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={saveEdit}
+                              className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                            >
+                              שמור
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600"
+                            >
+                              ביטול
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEdit(index)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                          >
+                            ערוך
+                          </button>
+                        )}
+                      </td>
                     </tr>
                     {/* הוספת פיצולים מתחת לפריט הנוכחי */}
                     {item.splits && item.splits.map((split: any, splitIndex: number) => (
                       <tr key={`split-${index}-${splitIndex}`} className="border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 group">
                         <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white pl-8">
-                          <div className="flex items-center justify-between">
-                            <span className="text-blue-600 dark:text-blue-400">{split.name}</span>
-                            <button
-                              onClick={() => handleDeleteSplit(index, splitIndex)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 p-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-600 rounded"
-                              title="מחק פיצול"
-                            >
-                              🗑️
-                            </button>
-                          </div>
+                          <span className="text-blue-600 dark:text-blue-400">{split.name}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{split.description}</td>
                         <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatCurrency(split.unit_price)}</td>
@@ -1109,6 +1176,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                           {split.discount > 0 ? `-${formatCurrency(split.discount)}` : '-'}
                         </td>
                         <td className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(split.total)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            onClick={() => handleDeleteSplit(index, splitIndex)}
+                            className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                          >
+                            מחק
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </React.Fragment>
