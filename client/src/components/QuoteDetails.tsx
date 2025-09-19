@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { QuoteWithItems } from '../types';
 import { quotesAPI, itemsAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
@@ -34,6 +34,21 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     discount: 0
   });
   const pdfRef = useRef<HTMLDivElement>(null);
+
+  // Calculate totals from current items - must be before any early returns
+  const totals = useMemo(() => {
+    if (!quoteData) {
+      return { subtotal: 0, discountAmount: 0, totalAfterDiscount: 0, vatAmount: 0, finalTotal: 0 };
+    }
+    const items = quoteData.items || [];
+    const subtotal = items.reduce((sum, it) => sum + Number(it.total || 0), 0);
+    const discountPercent = Number(quoteData.quote.discount_percent || 0);
+    const discountAmount = Math.round(subtotal * (discountPercent / 100));
+    const totalAfterDiscount = subtotal - discountAmount;
+    const vatAmount = Math.round(totalAfterDiscount * 0.18);
+    const finalTotal = totalAfterDiscount + vatAmount;
+    return { subtotal, discountAmount, totalAfterDiscount, vatAmount, finalTotal };
+  }, [quoteData]);
 
   const startEdit = (index: number) => {
     const item = quoteData?.items[index];
@@ -855,7 +870,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td></td>
                   <td></td>
                   <td></td>
-                  <td>{formatCurrency(quote.total_before_discount)}</td>
+                  <td>{formatCurrency(totals.subtotal)}</td>
                 </tr>
 
                 {hasDiscount && (
@@ -865,8 +880,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       <td className="item-description">הנחה ){quote.discount_percent}%(</td>
                       <td></td>
                       <td></td>
-                      <td>-{formatCurrency(quote.discount_amount)}</td>
-                      <td>-{formatCurrency(quote.discount_amount)}</td>
+                      <td>-{formatCurrency(totals.discountAmount)}</td>
+                      <td>-{formatCurrency(totals.discountAmount)}</td>
                     </tr>
 
 
@@ -876,7 +891,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       <td></td>
                       <td></td>
                       <td></td>
-                      <td>{formatCurrency(quote.total_after_discount)}</td>
+                      <td>{formatCurrency(totals.totalAfterDiscount)}</td>
                     </tr>
                     </>
                 )}
@@ -888,7 +903,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td></td>
                   <td></td>
                   <td></td>
-                  <td>{formatCurrency(quote.vat_amount)}</td>
+                  <td>{formatCurrency(totals.vatAmount)}</td>
                 </tr>
 
                 <tr className="final-total summary-row-orange">
@@ -896,7 +911,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td></td>
                   <td></td>
                   <td></td>
-                  <td>{formatCurrency(quote.final_total - extraVatDiscountAmount(quote.final_total))}</td>
+                  <td>{formatCurrency(totals.finalTotal - extraVatDiscountAmount(totals.finalTotal))}</td>
                 </tr>
                 </tbody>
               </table>
@@ -1073,23 +1088,23 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-700 dark:text-gray-300">סה"כ לפני הנחה:</span>
-                <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(quote.total_before_discount)}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(totals.subtotal)}</span>
               </div>
               {quote.discount_percent > 0 && (
                 <>
                   <div className="flex justify-between">
                     <span className="text-gray-700 dark:text-gray-300">הנחה ({quote.discount_percent}%):</span>
-                    <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(quote.discount_amount)}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(totals.discountAmount)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-2">
                     <span className="text-gray-700 dark:text-gray-300">סה"כ אחרי הנחה:</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(quote.total_after_discount)}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(totals.totalAfterDiscount)}</span>
                   </div>
                 </>
               )}
               <div className="flex justify-between">
                 <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">+{formatCurrency(quote.vat_amount)}</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">+{formatCurrency(totals.vatAmount)}</span>
               </div>
               <div className="flex items-center justify-between border-t pt-2">
                 <div className="flex items-center gap-2">
@@ -1103,7 +1118,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                         if (quoteData?.quote?.id) {
                           await quotesAPI.update(quoteData.quote.id, {
                             extra_vat_discount_percent: val,
-                            extra_vat_discount_amount: Math.round((quote.final_total || 0) * (val / 100)),
+                            extra_vat_discount_amount: Math.round((totals.finalTotal || 0) * (val / 100)),
                           });
                         }
                       } catch (err) {
@@ -1119,11 +1134,11 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     <option value={10}>10%</option>
                   </select>
                 </div>
-                <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraVatDiscountAmount(quote.final_total))}</span>
+                <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraVatDiscountAmount(totals.finalTotal))}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg">
                 <span className="font-bold text-gray-800 dark:text-white">סה"כ לתשלום:</span>
-                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(quote.final_total - extraVatDiscountAmount(quote.final_total))}</span>
+                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(totals.finalTotal - extraVatDiscountAmount(totals.finalTotal))}</span>
               </div>
             </div>
           </div>
