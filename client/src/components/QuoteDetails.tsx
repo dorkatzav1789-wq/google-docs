@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QuoteWithItems } from '../types';
-import { quotesAPI } from '../services/supabaseAPI';
+import { quotesAPI, itemsAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
 import SplitModal from './SplitModal';
 import { useTheme } from '../context/ThemeContext';
@@ -17,10 +17,15 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [quoteData, setQuoteData] = useState<QuoteWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [extraVatDiscountPercent, setExtraVatDiscountPercent] = useState<number>(0);
   const [showReminderManager, setShowReminderManager] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<number | null>(null);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogItems, setCatalogItems] = useState<Array<{ id: number; name: string; description: string; price: number }>>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
@@ -185,12 +190,24 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     loadQuoteDetails();
   }, [quoteId, loadQuoteDetails]);
 
-  const formatCurrency = (amount: number) => `₪${amount.toLocaleString('he-IL')}`;
+  // Sync extra VAT discount from DB when quote loads
+  useEffect(() => {
+    if (quoteData?.quote) {
+      const percent = Number(quoteData.quote.extra_vat_discount_percent || 0);
+      setExtraVatDiscountPercent(percent);
+    }
+  }, [quoteData?.quote?.extra_vat_discount_percent]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'לא צוין';
     const date = new Date(dateString);
     return date.toLocaleDateString('he-IL');
+  };
+
+  const formatCurrency = (amount: number) => `₪${amount.toLocaleString('he-IL')}`;
+
+  const extraVatDiscountAmount = (finalTotal: number) => {
+    return Math.round((Number(finalTotal) || 0) * (extraVatDiscountPercent / 100));
   };
 
   const handleAddSplit = (itemIndex: number) => {
@@ -315,6 +332,52 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       }
     } finally {
       setExportingPDF(false);
+    }
+  };
+
+  const openAddItemModal = async () => {
+    try {
+      setShowAddItemModal(true);
+      setCatalogLoading(true);
+      const items = await itemsAPI.getAll();
+      setCatalogItems(items as any);
+    } catch (e) {
+      console.error('Failed to load catalog items', e);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const handleCatalogSearch = async (q: string) => {
+    setCatalogSearch(q);
+    try {
+      setCatalogLoading(true);
+      const items = q.trim() ? await itemsAPI.search(q.trim()) : await itemsAPI.getAll();
+      setCatalogItems(items as any);
+    } catch (e) {
+      console.error('Search failed', e);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const addCatalogItemToQuote = async (item: { id: number; name: string; description: string; price: number }) => {
+    if (!quoteData?.quote?.id) return;
+    try {
+      await quotesAPI.addItem({
+        quote_id: quoteData.quote.id,
+        item_name: item.name,
+        item_description: item.description || '',
+        unit_price: Number(item.price) || 0,
+        quantity: 1,
+        discount: 0,
+        total: Number(item.price) || 0,
+      });
+      await loadQuoteDetails();
+      setShowAddItemModal(false);
+    } catch (e) {
+      console.error('Failed adding item to quote', e);
+      alert('שגיאה בהוספת פריט להצעה');
     }
   };
 
@@ -833,7 +896,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td></td>
                   <td></td>
                   <td></td>
-                  <td>{formatCurrency(quote.final_total)}</td>
+                  <td>{formatCurrency(quote.final_total - extraVatDiscountAmount(quote.final_total))}</td>
                 </tr>
                 </tbody>
               </table>
@@ -1028,9 +1091,39 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
                 <span className="font-bold text-blue-600 dark:text-blue-400">+{formatCurrency(quote.vat_amount)}</span>
               </div>
+              <div className="flex items-center justify-between border-t pt-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-800 dark:text-white">הנחה למחיר סופי:</span>
+                  <select
+                    value={extraVatDiscountPercent}
+                    onChange={async (e) => {
+                      const val = parseInt(e.target.value);
+                      setExtraVatDiscountPercent(val);
+                      try {
+                        if (quoteData?.quote?.id) {
+                          await quotesAPI.update(quoteData.quote.id, {
+                            extra_vat_discount_percent: val,
+                            extra_vat_discount_amount: Math.round((quote.final_total || 0) * (val / 100)),
+                          });
+                        }
+                      } catch (err) {
+                        console.error('Failed saving extra VAT discount:', err);
+                      }
+                    }}
+                    className="px-2 py-1 border border-gray-300 rounded text-sm"
+                    title='בחר אחוז הנחה על הסה"כ כולל מע"מ'
+                    aria-label='בחר אחוז הנחה על הסה"כ כולל מע"מ'
+                  >
+                    <option value={0}>ללא</option>
+                    <option value={5}>5%</option>
+                    <option value={10}>10%</option>
+                  </select>
+                </div>
+                <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraVatDiscountAmount(quote.final_total))}</span>
+              </div>
               <div className="flex justify-between border-t pt-2 text-lg">
-                <span className="font-bold text-gray-800 dark:text-white">סה"כ כולל מע"מ:</span>
-                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(quote.final_total)}</span>
+                <span className="font-bold text-gray-800 dark:text-white">סה"כ לתשלום:</span>
+                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(quote.final_total - extraVatDiscountAmount(quote.final_total))}</span>
               </div>
             </div>
           </div>
@@ -1046,6 +1139,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
         {/* טבלת פריטים */}
         <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 pt-4">
+            <div className="text-sm font-semibold text-gray-800 dark:text-white">שם הפריט	תיאור</div>
+            <button onClick={openAddItemModal} className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">הוסף פריט</button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse bg-white dark:bg-gray-800">
               <thead>
@@ -1197,6 +1294,23 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             >
                               ביטול
                             </button>
+                            <button
+                              onClick={async () => {
+                                if (!item.id) return;
+                                if (!window.confirm('למחוק את הפריט מההצעה?')) return;
+                                try {
+                                  await quotesAPI.deleteItem(item.id);
+                                  await loadQuoteDetails();
+                                  setEditingItem(null);
+                                } catch (e) {
+                                  console.error('Delete item failed', e);
+                                  alert('שגיאה במחיקת פריט');
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                            >
+                              מחק
+                            </button>
                           </div>
                         ) : (
                           <button
@@ -1256,8 +1370,59 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             setSelectedItemIndex(null);
           }}
           onSelectSplit={handleSelectSplit}
-          itemName={quoteData && selectedItemIndex !== null ? items[selectedItemIndex]?.name || '' : ''}
+          itemName={quoteData && selectedItemIndex !== null ? items[selectedItemIndex as number]?.name || '' : ''}
         />
+
+        {showAddItemModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">הוסף פריט מהקטלוג</h3>
+                <button onClick={() => setShowAddItemModal(false)} className="text-gray-600 dark:text-gray-300 hover:text-gray-900">✕</button>
+              </div>
+              <input
+                type="text"
+                value={catalogSearch}
+                onChange={(e) => handleCatalogSearch(e.target.value)}
+                className="w-full input-field mb-3"
+                placeholder="חפש פריט..."
+              />
+              <div className="max-h-80 overflow-y-auto border rounded">
+                {catalogLoading ? (
+                  <div className="p-4 text-center text-gray-600 dark:text-gray-300">טוען...</div>
+                ) : catalogItems.length === 0 ? (
+                  <div className="p-4 text-center text-gray-600 dark:text-gray-300">לא נמצאו פריטים</div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-700 text-right">
+                        <th className="px-3 py-2">שם</th>
+                        <th className="px-3 py-2">תיאור</th>
+                        <th className="px-3 py-2">מחיר</th>
+                        <th className="px-3 py-2">פעולה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catalogItems.map((it) => (
+                        <tr key={it.id} className="border-t dark:border-gray-700">
+                          <td className="px-3 py-2">{it.name}</td>
+                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{it.description}</td>
+                          <td className="px-3 py-2">{formatCurrency(Number(it.price) || 0)}</td>
+                          <td className="px-3 py-2 text-left">
+                            <button onClick={() => addCatalogItemToQuote(it)} className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600">הוסף</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="mt-3 text-left">
+                <button onClick={() => setShowAddItemModal(false)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">סגור</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
   );

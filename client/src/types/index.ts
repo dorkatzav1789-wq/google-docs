@@ -48,6 +48,9 @@ export interface Quote {
   total_after_discount: number;
   vat_amount: number;
   final_total: number;
+  // Extra discount applied on total including VAT (persisted on details page)
+  extra_vat_discount_percent?: number;
+  extra_vat_discount_amount?: number;
   created_at?: string;
   client_name?: string;
   client_company?: string;

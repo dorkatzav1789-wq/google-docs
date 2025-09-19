@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS quotes (
     total_after_discount DECIMAL(10,2) DEFAULT 0,
     vat_amount DECIMAL(10,2) DEFAULT 0,
     final_total DECIMAL(10,2) DEFAULT 0,
+    extra_vat_discount_percent DECIMAL(5,2) DEFAULT 0,
+    extra_vat_discount_amount DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

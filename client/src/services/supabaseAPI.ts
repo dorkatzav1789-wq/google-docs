@@ -178,6 +178,8 @@ export const quotesAPI = {
         client_company: quoteData.clients?.company,
         client_phone: quoteData.clients?.phone,
         client_company_id: quoteData.clients?.company_id,
+        extra_vat_discount_percent: quoteData.extra_vat_discount_percent ?? 0,
+        extra_vat_discount_amount: quoteData.extra_vat_discount_amount ?? 0,
       },
       items: mappedItems,
     };
@@ -199,6 +201,8 @@ export const quotesAPI = {
         total_after_discount: quote.total_after_discount,
         vat_amount: quote.vat_amount,
         final_total: quote.final_total,
+        extra_vat_discount_percent: quote.extra_vat_discount_percent ?? 0,
+        extra_vat_discount_amount: quote.extra_vat_discount_amount ?? 0,
       }])
       .select('id')
       .single();
@@ -227,6 +231,17 @@ export const quotesAPI = {
     if (itemsError) throw itemsError;
 
     return { id: quoteData.id, message: 'Quote created successfully' };
+  },
+
+  update: async (id: number, body: Partial<Quote>): Promise<Quote> => {
+    const { data, error } = await getSupabaseAdmin()
+      .from('quotes')
+      .update(body)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as Quote;
   },
 
   parseText: async (text: string): Promise<{
@@ -366,6 +381,41 @@ export const quotesAPI = {
       .eq('quote_id', quoteId)
       .eq('item_name', splitName);
     
+    if (error) throw error;
+    return { ok: true };
+  },
+
+  addItem: async (payload: {
+    quote_id: number;
+    item_name: string;
+    item_description?: string;
+    unit_price: number;
+    quantity: number;
+    discount?: number;
+    total: number;
+  }): Promise<{ id: number }> => {
+    const { data, error } = await getSupabaseAdmin()
+      .from('quote_items')
+      .insert([{
+        quote_id: payload.quote_id,
+        item_name: payload.item_name,
+        item_description: payload.item_description ?? '',
+        unit_price: payload.unit_price,
+        quantity: payload.quantity,
+        discount: payload.discount ?? 0,
+        total: payload.total,
+      }])
+      .select('id')
+      .single();
+    if (error) throw error;
+    return { id: data.id };
+  },
+
+  deleteItem: async (itemId: number): Promise<{ ok: boolean }> => {
+    const { error } = await getSupabaseAdmin()
+      .from('quote_items')
+      .delete()
+      .eq('id', itemId);
     if (error) throw error;
     return { ok: true };
   },
