@@ -50,6 +50,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="input-field w-full"
         />
+
       </div>
 
 
