@@ -1,42 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://nykeobeablrlgdjvhoud.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTA5NzIsImV4cCI6MjA3NjEyNjk3Mn0.lpf59C_I8YD6WVRjizw6dIR038uUpbj2VMBBvewmPC8';
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDU1MDk3MiwiZXhwIjoyMDc2MTI2OTcyfQ.891Dl55DlGDiQBYsr5cfGwN5hjnuA__Xu4jwCWiuSpE';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://qatbimtrciwwoqoiiejo.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdGJpbXRyY2l3d29xb2lpZWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEzODYzODUsImV4cCI6MjA3Njk2MjM4NX0._79TytNLo3sEbLzlyLTsaj67nViI3MT9F18p1tiaEjI';
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdGJpbXRyY2l3d29xb2lpZWpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTM4NjM4NSwiZXhwIjoyMDc2OTYyMzg1fQ.C17lSsAeQnwBGcTLthUmTINctolKx4cGx6ukmveAm0g';
 
-// Singleton pattern to prevent multiple instances
-let _supabase: any = null;
-let _supabaseAdmin: any = null;
+// Client for auth operations
+console.log('Creating Supabase client with:', {
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey.slice(0, 20) + '...' // Only log part of the key for security
+});
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const getSupabaseClient = () => {
-  if (!_supabase) {
-    console.log('Creating Supabase client with:', {
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey.slice(0, 20) + '...' // Only log part of the key for security
-    });
-    
-    _supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    });
-  }
-  return _supabase;
-};
+// Client with service role for admin operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-export const getSupabaseAdmin = () => {
-  if (!_supabaseAdmin) {
-    console.log('Creating Supabase admin client');
-    _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-  }
-  return _supabaseAdmin;
-};
-
-// Export instances for backward compatibility - but only when needed
-export const supabase = getSupabaseClient();
-export const supabaseAdmin = getSupabaseAdmin();
+// Helper functions to get the clients
+export const getSupabaseClient = () => supabase;
+export const getSupabaseAdmin = () => supabaseAdmin;
 
 // Auth context types
 export type AuthUser = {
