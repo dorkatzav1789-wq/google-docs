@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // פרטי החיבור ל-Supabase
-const supabaseUrl = 'https://nxukhhhdkuhdxmwbqmfr.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54dWtoaGhka3VoZHhtd2JxbWZyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg1MDgwOSwiZXhwIjoyMDcxNDI2ODA5fQ.yhWr-A0oZ1jmWJ3tWSfhCG8WEwrghNgNZDDZubyNlfI';
+const supabaseUrl = 'https://nykeobeablrlgdjvhoud.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDU1MDk3MiwiZXhwIjoyMDc2MTI2OTcyfQ.891Dl55DlGDiQBYsr5cfGwN5hjnuA__Xu4jwCWiuSpE';
 
 // יצירת לקוח Supabase
 const supabase = createClient(supabaseUrl, supabaseKey);

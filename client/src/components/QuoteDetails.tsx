@@ -211,7 +211,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       const percent = Number(quoteData.quote.extra_vat_discount_percent || 0);
       setExtraVatDiscountPercent(percent);
     }
-  }, [quoteData?.quote?.extra_vat_discount_percent]);
+  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'לא צוין';

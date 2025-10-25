@@ -14,7 +14,7 @@ interface EmployeesPageProps {
 
 const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme(); // eslint-disable-line @typescript-eslint/no-unused-vars
   // משתמש רגיל יראה ישירות את טאב רישום שעות
   const [tab, setTab] = useState<Tab>(user?.role === 'admin' ? 'manage' : 'hours');
 

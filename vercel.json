@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "client/build",
+  "installCommand": "npm install",
+  "env": {
+    "REACT_APP_SUPABASE_URL": "https://nykeobeablrlgdjvhoud.supabase.co",
+    "REACT_APP_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTA5NzIsImV4cCI6MjA3NjEyNjk3Mn0.lpf59C_I8YD6WVRjizw6dIR038uUpbj2VMBBvewmPC8"
+  }
+}
+
+

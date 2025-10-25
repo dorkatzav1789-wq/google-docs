@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://nxukhhhdkuhdxmwbqmfr.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54dWtoaGhka3VoZHhtd2JxbWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NTA4MDksImV4cCI6MjA3MTQyNjgwOX0._Iss6f-KEyheF4nAsq7skCiFZtLhfdWWHjtggSe0vZY';
-const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54dWtoaGhka3VoZHhtd2JxbWZyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg1MDgwOSwiZXhwIjoyMDcxNDI2ODA5fQ.yhWr-A0oZ1jmWJ3tWSfhCG8WEwrghNgNZDDZubyNlfI';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://nykeobeablrlgdjvhoud.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTA5NzIsImV4cCI6MjA3NjEyNjk3Mn0.lpf59C_I8YD6WVRjizw6dIR038uUpbj2VMBBvewmPC8';
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55a2VvYmVhYmxybGdkanZob3VkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDU1MDk3MiwiZXhwIjoyMDc2MTI2OTcyfQ.891Dl55DlGDiQBYsr5cfGwN5hjnuA__Xu4jwCWiuSpE';
 
 // Singleton pattern to prevent multiple instances
 let _supabase: any = null;

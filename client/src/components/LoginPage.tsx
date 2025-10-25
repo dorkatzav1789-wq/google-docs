@@ -64,16 +64,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (signUpError) throw signUpError;
 
       if (user) {
-        // עדכון הקונטקסט (הרשומה ב-public.users נוצרת ע"י טריגר במסד)
+        // 2. הוספת הפרטים לטבלת users
+        try {
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              first_name: firstName,
+              last_name: lastName
+            })
+            .eq('id', user.id);
+
+          if (updateError) {
+            console.error('Error updating user details:', updateError);
+          }
+        } catch (updateErr) {
+          console.error('Error updating user details:', updateErr);
+        }
+
+        // 3. עדכון הקונטקסט
         setUser({
           id: user.id,
           email: user.email,
           role: 'user'
         });
 
-        alert('נרשמת בהצלחה! נשלח אליך מייל אימות. אנא אשר אותו לפני ההתחברות.');
+        alert('נרשמת בהצלחה!');
         setActiveTab('signin');
         setPassword('');
+        setFirstName('');
+        setLastName('');
       }
     } catch (err: any) {
       console.error('Error signing up:', err);

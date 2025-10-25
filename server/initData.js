@@ -210,7 +210,7 @@ async function initializeDatabase() {
       last_name: 'קצב',
       phone: '052-489-1025',
       email: 'Dor.katzav.valley@gmail.com',
-      daily_rate: 800,
+      hourly_rate: 100, // 800 שקל ליום = 100 שקל לשעה
       is_active: true
     });
 
