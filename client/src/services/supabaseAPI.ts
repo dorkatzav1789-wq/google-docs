@@ -305,7 +305,7 @@ export const quotesAPI = {
           if (existingItem) {
             items.push({
               name: existingItem.name, // השם הרשמי של הפריט
-              description: aliasMatch.alias, // הכינוי שהמשתמש כתב יופיע בתיאור
+              description: existingItem.description, // התיאור הרשמי של הפריט
               unit_price: finalPrice,
               quantity: quantity,
               discount: 0,
