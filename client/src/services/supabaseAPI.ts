@@ -265,6 +265,9 @@ export const quotesAPI = {
 
     // קבלת כל הפריטים מהקטלוג
     const allItems = await itemsAPI.getAll();
+    
+    // קבלת כל ה-aliases
+    const allAliases = await aliasesAPI.getAll();
 
     for (const line of lines) {
       const trimmedLine = line.trim();
@@ -278,30 +281,70 @@ export const quotesAPI = {
         const name = match[2].trim();
         const unitPrice = parseInt(match[3]);
         
-        // בדיקה אם הפריט קיים בקטלוג
-        const existingItem = allItems.find(item => 
-          item.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(item.name.toLowerCase())
+        // בדיקה אם זה alias
+        const aliasMatch = allAliases.find(alias => 
+          alias.alias.toLowerCase() === name.toLowerCase()
         );
 
-        if (existingItem) {
-          // פריט קיים - הוסף לרשימה
-          items.push({
-            name: existingItem.name,
-            description: existingItem.description,
-            unit_price: unitPrice,
-            quantity: quantity,
-            discount: 0,
-            total: unitPrice * quantity,
-          });
+        let existingItem;
+        let finalPrice = unitPrice;
+
+        if (aliasMatch) {
+          // זה alias - מצא את הפריט המקושר
+          existingItem = allItems.find(item => item.name === aliasMatch.item_name);
+          
+          // קביעת המחיר: מחיר שהמשתמש כתב > מחיר override של alias > מחיר קטלוג
+          if (unitPrice > 0) {
+            finalPrice = unitPrice;
+          } else if (aliasMatch.price_override && aliasMatch.price_override > 0) {
+            finalPrice = aliasMatch.price_override;
+          } else if (existingItem) {
+            finalPrice = existingItem.price;
+          }
+
+          if (existingItem) {
+            items.push({
+              name: existingItem.name, // השם הרשמי של הפריט
+              description: aliasMatch.alias, // הכינוי שהמשתמש כתב יופיע בתיאור
+              unit_price: finalPrice,
+              quantity: quantity,
+              discount: 0,
+              total: finalPrice * quantity,
+            });
+          } else {
+            unknown.push({
+              line: trimmedLine,
+              quantity: quantity,
+              raw_text: name,
+              unit_price: unitPrice,
+            });
+          }
         } else {
-          // פריט לא קיים - הוסף ל-unknown
-          unknown.push({
-            line: trimmedLine,
-            quantity: quantity,
-            raw_text: name,
-            unit_price: unitPrice,
-          });
+          // לא alias - בדיקת פריט בקטלוג
+          existingItem = allItems.find(item => 
+            item.name.toLowerCase().includes(name.toLowerCase()) ||
+            name.toLowerCase().includes(item.name.toLowerCase())
+          );
+
+          if (existingItem) {
+            // פריט קיים - הוסף לרשימה
+            items.push({
+              name: existingItem.name,
+              description: existingItem.description,
+              unit_price: unitPrice,
+              quantity: quantity,
+              discount: 0,
+              total: unitPrice * quantity,
+            });
+          } else {
+            // פריט לא קיים - הוסף ל-unknown
+            unknown.push({
+              line: trimmedLine,
+              quantity: quantity,
+              raw_text: name,
+              unit_price: unitPrice,
+            });
+          }
         }
       } else {
         // פורמט לא תקין - הוסף ל-unknown

@@ -16,34 +16,30 @@ export interface EmailData {
 export const emailService = {
   async sendEmail(to: string[], subject: string, body: string): Promise<void> {
     try {
-      // שליחה לכל כתובת מייל
-      for (const email of to) {
-        await emailjs.send(SERVICE_ID, TEMPLATE_ID, {
-          name: email,
-          message: body,
-        }, PUBLIC_KEY);
-      }
-      
-      console.log('מיילים נשלחו בהצלחה!', {
-        service_id: SERVICE_ID,
-        template_id: TEMPLATE_ID,
-        public_key: PUBLIC_KEY,
-        to: to,
-        subject: subject,
-        body: body
-      });
+      await Promise.all(
+          to.map((addr) =>
+              emailjs.send(
+                  SERVICE_ID,
+                  TEMPLATE_ID,
+                  {
+                    title: subject,              // {{title}} בתבנית (Subject)
+                    name: 'מערכת התזכורות',     // {{name}} (From Name)
+                    message: body,               // {{message}} (תוכן)
+                    email: addr,                 // {{email}}  (Reply-To)
+                    to_email: addr               // {{to_email}} (הנמען בפועל)
+                  },
+                  PUBLIC_KEY
+              )
+          )
+      );
+
+      console.log('מיילים נשלחו בהצלחה!', { to, subject });
     } catch (error) {
-      console.error('שגיאה בשליחת מיילים:', error, {
-        service_id: SERVICE_ID,
-        template_id: TEMPLATE_ID,
-        public_key: PUBLIC_KEY,
-        to: to,
-        subject: subject,
-        body: body
-      });
+      console.error('שגיאה בשליחת מיילים:', error, { to, subject, body });
       throw error;
     }
   },
+
 
   // יצירת תוכן מייל לתזכורת
   createReminderEmail: (eventName: string, eventDate: string, specialNotes?: string, customMessage?: string): EmailData => {
