@@ -11,8 +11,8 @@ export const WorkHoursTracker: React.FC = () => {
     work_date: new Date().toISOString().split('T')[0],
     hours_worked: 0,
     notes: '',
-    event_type: 'business' as 'business' | 'personal',
-    overtime_amount: 0
+    overtime_amount: 0,
+    event_type: 'business' as 'business' | 'personal'
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -65,7 +65,7 @@ export const WorkHoursTracker: React.FC = () => {
         work_date: workHours.work_date,
         hours_worked: days, // נשתמש באותו שדה אבל נכניס 1
         hourly_rate: rate,
-        daily_total: (days * rate) + workHours.overtime_amount, // חישוב הסכום הכולל כולל שעות נוספות
+        total_amount: (days * rate) + workHours.overtime_amount, // חישוב הסכום הכולל כולל שעות נוספות
         overtime_amount: workHours.overtime_amount,
         notes: workHours.notes,
         event_type: workHours.event_type,
@@ -77,8 +77,8 @@ export const WorkHoursTracker: React.FC = () => {
         work_date: new Date().toISOString().split('T')[0],
         hours_worked: 0,
         notes: '',
-        event_type: 'business',
         overtime_amount: 0,
+        event_type: 'business' as 'business' | 'personal'
       });
       alert('יום העבודה נוסף בהצלחה!');
     } catch (error) {
@@ -132,7 +132,6 @@ export const WorkHoursTracker: React.FC = () => {
                 title="תאריך עבודה"
                 aria-label="תאריך עבודה"
             />
-
 
             <select
                 value={workHours.event_type}

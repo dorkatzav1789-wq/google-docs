@@ -81,7 +81,7 @@ export interface WorkHours {
   work_date: string;
   hours_worked: number;
   hourly_rate: number;
-  daily_total: number;
+  total_amount: number;
   overtime_amount: number;
   notes?: string;
   event_type: 'business' | 'personal';
@@ -101,7 +101,7 @@ export interface MonthlyReport {
   employees: Employee[];
   summary: {
     total_hours: number;
-    daily_total: number;
+    total_amount: number;
     employee_count: number;
   };
 }
@@ -110,7 +110,7 @@ export type NewWorkHoursInput = {
   work_date: string;
   hours_worked: number;
   hourly_rate: number;
-  daily_total: number;
+  total_amount: number;
   overtime_amount: number;
   notes?: string;
   event_type: 'business' | 'personal';

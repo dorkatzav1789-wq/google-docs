@@ -48,7 +48,7 @@ export const MonthlyReport: React.FC = () => {
     const summary =
         data?.summary ?? {
           total_hours: work_hours.reduce((s, r) => s + Number(r.hours_worked || 0), 0),
-          daily_total: work_hours.reduce((s, r) => s + Number(r.daily_total || 0), 0),
+          total_amount: work_hours.reduce((s, r) => s + Number(r.total_amount || 0), 0),
           employee_count: employees.length,
         };
 
@@ -76,7 +76,7 @@ export const MonthlyReport: React.FC = () => {
       setReport({
         work_hours: [],
         employees: [],
-        summary: { total_hours: 0, daily_total: 0, employee_count: 0 },
+        summary: { total_hours: 0, total_amount: 0, employee_count: 0 },
       });
     } finally {
       setLoading(false);
@@ -195,7 +195,7 @@ export const MonthlyReport: React.FC = () => {
           </div>
           <div className="p-4 bg-green-100 rounded">
             <h3 className="font-semibold">סה"כ תשלום</h3>
-            <p className="text-2xl">₪{fmt(report.summary?.daily_total)}</p>
+            <p className="text-2xl">₪{fmt(report.summary?.total_amount)}</p>
           </div>
           <div className="p-4 bg-purple-100 rounded">
             <h3 className="font-semibold">סה"כ שעות נוספות</h3>
@@ -254,15 +254,7 @@ export const MonthlyReport: React.FC = () => {
                       })()}
                     </td>
                     <td className="border p-2">{row.work_date}</td>
-                    <td className="border p-2">
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        row.event_type === 'business' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
-                      </span>
-                    </td>
+                    <td className="border p-2">{row.event_type === 'business' ? 'עסקי' : 'פרטי'}</td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
                     <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
                     <td className="border p-2">
@@ -272,7 +264,7 @@ export const MonthlyReport: React.FC = () => {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="border p-2">₪{fmt(row.daily_total)}</td>
+                    <td className="border p-2">₪{fmt(row.total_amount)}</td>
                     <td className="border p-2">{row.notes || '-'}</td>
                   </tr>
               ))

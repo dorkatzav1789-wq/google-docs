@@ -682,7 +682,7 @@ export const reportsAPI = {
     
     const summary = {
       total_hours: workHours.reduce((sum: number, wh: any) => sum + (wh.hours_worked || 0), 0),
-      daily_total: workHours.reduce((sum: number, wh: any) => sum + (wh.daily_total || 0), 0),
+      total_amount: workHours.reduce((sum: number, wh: any) => sum + (wh.total_amount || 0), 0),
       employee_count: employees.length,
     };
 
