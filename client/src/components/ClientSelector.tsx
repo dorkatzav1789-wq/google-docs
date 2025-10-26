@@ -19,7 +19,6 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [deletingClient, setDeletingClient] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', company_id: '' });
 
   useEffect(() => {
@@ -72,7 +71,6 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     try {
       await clientsAPI.delete(clientId);
       await loadClients();
-      setDeletingClient(null);
       if (onClientUpdate) onClientUpdate();
     } catch (error) {
       console.error('שגיאה במחיקת לקוח:', error);
