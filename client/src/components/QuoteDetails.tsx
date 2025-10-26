@@ -17,6 +17,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [quoteData, setQuoteData] = useState<QuoteWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingWord, setExportingWord] = useState(false);
   const [extraVatDiscountPercent, setExtraVatDiscountPercent] = useState<number>(0);
   const [showReminderManager, setShowReminderManager] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -350,6 +351,104 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     }
   };
 
+  const handleExportWord = async () => {
+    if (!quoteData || !pdfRef.current) return;
+
+    try {
+      setExportingWord(true);
+
+      const element = pdfRef.current;
+
+      // המרת תמונות ל-Base64
+      const convertImagesToBase64 = async (html: string): Promise<string> => {
+        const imgRegex = /<img[^>]+src="([^"]+)"/g;
+        const images = html.match(imgRegex);
+        
+        if (!images) return html;
+
+        let convertedHtml = html;
+        
+        for (const imgTag of images) {
+          const srcMatch = imgTag.match(/src="([^"]+)"/);
+          if (!srcMatch) continue;
+          
+          const src = srcMatch[1];
+          
+          // דלג על תמונות שכבר Base64
+          if (src.startsWith('data:')) continue;
+
+          try {
+            // טעינת התמונה
+            const response = await fetch(src);
+            const blob = await response.blob();
+            
+            // המרה ל-Base64
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+
+            // החלפת ה-src
+            convertedHtml = convertedHtml.replace(
+              new RegExp(`src="${src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`),
+              `src="${base64}"`
+            );
+          } catch (error) {
+            console.error('Error converting image:', error);
+          }
+        }
+
+        return convertedHtml;
+      };
+
+      const elementHTML = element.innerHTML;
+      const htmlWithImages = await convertImagesToBase64(elementHTML);
+
+      // יצירת HTML מותאם ל-Word
+      const htmlContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+        xmlns:w="urn:schemas-microsoft-com:office:word"
+        xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8">
+          <title>${quoteData.quote.event_name}</title>
+          <style>
+            body { direction: rtl; font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+            th { background-color: #ccc; }
+          </style>
+        </head>
+        <body>
+          ${htmlWithImages}
+        </body>
+        </html>
+      `;
+
+      // המרה ל-blob והורדה
+      const blob = new Blob(['\ufeff', htmlContent], {
+        type: 'application/msword'
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      alert('Word יוצא בהצלחה!');
+    } catch (error) {
+      console.error('שגיאה בייצוא Word:', error);
+      alert('שגיאה בייצוא Word');
+    } finally {
+      setExportingWord(false);
+    }
+  };
+
   const openAddItemModal = async () => {
     try {
       setShowAddItemModal(true);
@@ -461,6 +560,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             <div className="mt-4 flex gap-2">
               <button onClick={handleExportPDF} disabled={exportingPDF} className="btn-success">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}
+              </button>
+              <button onClick={handleExportWord} disabled={exportingWord} className="btn-success">
+                {exportingWord ? 'מייצא...' : '📝 ייצא Word'}
               </button>
               <button 
                 onClick={() => setShowReminderManager(true)} 
@@ -919,7 +1021,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 </div>
 
             {/* דף שני ל-PDF */}
-            <div className="mt-16" style={{pageBreakBefore: 'always'}}>
+            <div className="mt-8" style={{pageBreakBefore: 'auto'}}>
               <div className="text-center mb-8">
                 <img src="/pdf3.png" alt="header-img" style={{
                   maxWidth: '200px',

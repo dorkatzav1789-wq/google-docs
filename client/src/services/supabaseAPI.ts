@@ -24,6 +24,24 @@ export const clientsAPI = {
     if (error) throw error;
     return { id: data.id, message: 'Client created successfully' };
   },
+
+  update: async (id: number, updates: Partial<Client>): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('clients')
+      .update(updates)
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('clients')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
 };
 
 // ---------- Items ----------
@@ -62,6 +80,24 @@ export const itemsAPI = {
     
     if (error) throw error;
     return data;
+  },
+
+  update: async (id: number, updates: Partial<Item>): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('items')
+      .update(updates)
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('items')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   },
 };
 

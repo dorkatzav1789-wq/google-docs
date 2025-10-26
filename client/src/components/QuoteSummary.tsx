@@ -31,6 +31,7 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
         <div className="flex justify-between items-center">
           <span className="text-gray-700 dark:text-gray-300">הנחה כללית:</span>
           <div className="flex items-center space-x-2 space-x-reverse">
+            {/*
             <select
               value={discountPercent}
               onChange={(e) => onDiscountChange(parseInt(e.target.value))}
@@ -42,6 +43,7 @@ const QuoteSummary: React.FC<QuoteSummaryProps> = ({
               <option value={5}>5%</option>
               <option value={10}>10%</option>
             </select>
+            */}
             <span className="font-bold text-red-600">-₪{discountAmount.toLocaleString()}</span>
           </div>
         </div>

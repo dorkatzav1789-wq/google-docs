@@ -4,6 +4,7 @@ import ClientSelector from './ClientSelector';
 import NewClientForm from './NewClientForm';
 import QuoteItemsInput from './QuoteItemsInput';
 import QuoteSummary from './QuoteSummary';
+import ItemsManager from './ItemsManager';
 import { quotesAPI } from '../services/supabaseAPI';
 import { useTheme } from '../context/ThemeContext';
 
@@ -217,9 +218,9 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
           <p className="text-black/80 dark:text-white/80 mt-2">צור הצעת מחיר חדשה</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-          {/* צד שמאל - בחירת לקוח */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {/* צד שמאל - בחירת לקוח וניהול פריטים */}
+          <div className="lg:col-span-1 space-y-6">
             {showNewClientForm ? (
                 <NewClientForm
                     onClientCreated={handleClientCreated}
@@ -232,10 +233,13 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
                     onNewClient={handleNewClient}
                 />
             )}
+            
+            {/* ניהול פריטים */}
+            <ItemsManager />
           </div>
 
           {/* צד ימין - פרטי הצעה */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* פרטי אירוע */}
             <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">פרטי האירוע</h3>
