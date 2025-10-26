@@ -594,7 +594,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
 
           {/* תמונה גדולה מעל פרטי האירוע */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-3">
             <img src="/pdf1.png" alt="header-img" style={{
               maxWidth: '600px',
               width: '100%',
@@ -604,8 +604,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           </div>
 
           {/* --- כותרת שם האירוע מחוץ ל-border --- */}
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold">{quote.event_name}</h2>
+          <div className="text-center mb-3">
+            <h2 className="text-lg font-bold">{quote.event_name}</h2>
           </div>
 
           {/* עיצוב מותאם ל-PDF */}
@@ -615,8 +615,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           border-radius: 12px;
           border: 1px solid #e2e8f0;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          padding: 24px;
-          margin-bottom: 16px;
+          padding: 16px;
+          margin-bottom: 12px;
         }
         .pdf-card-content { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
         .pdf-section { display: flex; flex-direction: column; }
@@ -624,7 +624,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
           font-size: 14px; font-weight: 700; color: #1a202c;
           margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0;
         }
-        .pdf-field { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .pdf-field { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .pdf-field:last-child { margin-bottom: 0; }
         .pdf-label { font-size: 11px; color: #718096; }
         .pdf-value { font-size: 11px; font-weight: 500; color: #2d3748; }
@@ -695,8 +695,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             </div>
           </div>
 
-          {/* טבלת פריטים */}
-          <div className="mb-8">
+          {/* טבלת פריטים - תמיד תהיה בעמוד 1 */}
+          <div className="mb-8" style={{marginTop: '-10px'}}>
 
             <style>
               {`
@@ -809,18 +809,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   font-size: 8px;
                   line-height: 1.2;
                 }
-                .avoid-page-break {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-.avoid-page-break table,
-.avoid-page-break tr,
-.avoid-page-break td,
-.avoid-page-break th {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-* צבעים קיימים */
+
+                /* צבעים קיימים */
 .summary-row-green { background-color: #e6f3d8 !important; }
 .summary-row-orange { background-color: #fde8d7 !important; }
 .summary-row-green td, .summary-row-orange td { font-weight: bold; }
@@ -853,8 +843,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 }
               `}
             </style>
-            <div className="avoid-page-break">
-              <table className={`invoice-table ${items.length > 6 ? 'compact' : ''}`}>
+            <table className={`invoice-table ${items.length > 6 ? 'compact' : ''}`}>
                 <thead>
                 <tr>
                   <th style={{width: '50%'}}>תיאור הפריט</th>
@@ -1017,11 +1006,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 </tr>
                 </tbody>
               </table>
-            </div>
-</div>
+          </div>
 
-            {/* דף שני ל-PDF */}
-            <div className="mt-8" style={{pageBreakBefore: 'auto'}}>
+          {/* דף שני ל-PDF */}
+          <div className="mt-16" style={{pageBreakBefore: 'always'}}>
               <div className="text-center mb-8">
                 <img src="/pdf3.png" alt="header-img" style={{
                   maxWidth: '200px',

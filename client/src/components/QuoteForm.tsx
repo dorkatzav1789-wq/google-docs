@@ -5,6 +5,7 @@ import NewClientForm from './NewClientForm';
 import QuoteItemsInput from './QuoteItemsInput';
 import QuoteSummary from './QuoteSummary';
 import ItemsManager from './ItemsManager';
+import AliasesManager from './AliasesManager';
 import { quotesAPI } from '../services/supabaseAPI';
 import { useTheme } from '../context/ThemeContext';
 
@@ -236,6 +237,9 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
             
             {/* ניהול פריטים */}
             <ItemsManager />
+            
+            {/* ניהול כינויים */}
+            <AliasesManager />
           </div>
 
           {/* צד ימין - פרטי הצעה */}

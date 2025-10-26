@@ -127,6 +127,24 @@ export const aliasesAPI = {
     if (error) throw error;
     return data;
   },
+
+  update: async (id: number, updates: Partial<Alias>): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('aliases')
+      .update(updates)
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('aliases')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  },
 };
 
 // ---------- Quotes ----------
@@ -309,33 +327,52 @@ export const quotesAPI = {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
 
-      // פורמט: כמות שם_פריט מחיר| או שם_פריט מחיר|
-      const match = trimmedLine.match(/^(?:(\d+)\s+)?(.+?)\s+(\d+)\|?$/);
+      // פורמט: כמות שם_פריט מחיר| או שם_פריט מחיר| או שם_פריט בלבד
+      const matchWithPrice = trimmedLine.match(/^(?:(\d+)\s+)?(.+?)\s+(\d+)\|?$/);
       
-      if (match) {
-        const quantity = match[1] ? parseInt(match[1]) : 1; // ברירת מחדל 1 אם לא כתבת כמות
-        const name = match[2].trim();
-        const unitPrice = parseInt(match[3]);
-        
+      let quantity = 1;
+      let name = '';
+      let unitPrice = 0;
+      let hasPrice = false;
+      
+      if (matchWithPrice) {
+        // יש מחיר בפורמט
+        quantity = matchWithPrice[1] ? parseInt(matchWithPrice[1]) : 1;
+        name = matchWithPrice[2].trim();
+        unitPrice = parseInt(matchWithPrice[3]);
+        hasPrice = true;
+      } else {
+        // אין מחיר - נסה למצוא שם בלבד
+        const matchWithoutPrice = trimmedLine.match(/^(?:(\d+)\s+)?(.+)$/);
+        if (matchWithoutPrice) {
+          quantity = matchWithoutPrice[1] ? parseInt(matchWithoutPrice[1]) : 1;
+          name = matchWithoutPrice[2].trim();
+          hasPrice = false;
+        } else {
+          name = trimmedLine;
+        }
+      }
+      
+      if (name) {
         // בדיקה אם זה alias
         const aliasMatch = allAliases.find(alias => 
           alias.alias.toLowerCase() === name.toLowerCase()
         );
 
         let existingItem;
-        let finalPrice = unitPrice;
+        let finalPrice = hasPrice ? unitPrice : 0;
 
         if (aliasMatch) {
           // זה alias - מצא את הפריט המקושר
           existingItem = allItems.find(item => item.name === aliasMatch.item_name);
           
-          // קביעת המחיר: מחיר שהמשתמש כתב > מחיר override של alias > מחיר קטלוג
-          if (unitPrice > 0) {
+          // קביעת המחיר: מחיר שהמשתמש כתב > מחיר קטלוג > מחיר override של alias
+          if (hasPrice && unitPrice > 0) {
             finalPrice = unitPrice;
-          } else if (aliasMatch.price_override && aliasMatch.price_override > 0) {
-            finalPrice = aliasMatch.price_override;
           } else if (existingItem) {
             finalPrice = existingItem.price;
+          } else if (aliasMatch.price_override && aliasMatch.price_override > 0) {
+            finalPrice = aliasMatch.price_override;
           }
 
           if (existingItem) {
@@ -352,7 +389,7 @@ export const quotesAPI = {
               line: trimmedLine,
               quantity: quantity,
               raw_text: name,
-              unit_price: unitPrice,
+              unit_price: hasPrice ? unitPrice : null,
             });
           }
         } else {
@@ -364,13 +401,14 @@ export const quotesAPI = {
 
           if (existingItem) {
             // פריט קיים - הוסף לרשימה
+            const priceToUse = hasPrice ? unitPrice : existingItem.price;
             items.push({
               name: existingItem.name,
               description: existingItem.description,
-              unit_price: unitPrice,
+              unit_price: priceToUse,
               quantity: quantity,
               discount: 0,
-              total: unitPrice * quantity,
+              total: priceToUse * quantity,
             });
           } else {
             // פריט לא קיים - הוסף ל-unknown
@@ -378,18 +416,10 @@ export const quotesAPI = {
               line: trimmedLine,
               quantity: quantity,
               raw_text: name,
-              unit_price: unitPrice,
+              unit_price: hasPrice ? unitPrice : null,
             });
           }
         }
-      } else {
-        // פורמט לא תקין - הוסף ל-unknown
-        unknown.push({
-          line: trimmedLine,
-          quantity: 1,
-          raw_text: trimmedLine,
-          unit_price: null,
-        });
       }
     }
 
