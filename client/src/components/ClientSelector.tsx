@@ -41,7 +41,7 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
     e.stopPropagation();
     setEditingClient(client);
     setEditForm({
-      name: client.name,
+      name: client.name || '',
       phone: client.phone || '',
       company: client.company || '',
       company_id: client.company_id || ''
@@ -79,8 +79,8 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
   };
 
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.company.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (client.company?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -150,9 +150,9 @@ const ClientSelector: React.FC<ClientSelectorProps> = ({
               ) : (
                 <div className="flex justify-between items-start">
                   <div onClick={() => onClientSelect(client)} className="flex-1 cursor-pointer">
-                    <div className="font-semibold text-gray-800 dark:text-white">{client.name}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-300">{client.company}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{client.phone}</div>
+                    <div className="font-semibold text-gray-800 dark:text-white">{client.name || 'ללא שם'}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">{client.company || 'ללא חברה'}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{client.phone || 'ללא טלפון'}</div>
                   </div>
                   <div className="flex gap-2 mr-2">
                     <button

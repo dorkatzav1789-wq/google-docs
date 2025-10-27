@@ -1,9 +1,9 @@
 export interface Client {
   id: number;
-  name: string;
-  phone: string;
-  company: string;
-  company_id: string;
+  name: string | null;
+  phone: string | null;
+  company: string | null;
+  company_id: string | null;
   created_at: string;
 }
 
