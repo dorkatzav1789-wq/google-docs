@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
 import { reportsAPI, employeesAPI } from '../services/supabaseAPI';
+import { useAuth } from '../context/AuthContext';
 import html2pdf from 'html2pdf.js';
 
 export const MonthlyReport: React.FC = () => {
+  const { user } = useAuth();
   const [report, setReport] = useState<MonthlyReportType | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -57,8 +59,16 @@ export const MonthlyReport: React.FC = () => {
 
   const loadEmployees = async () => {
     try {
-      const data = await employeesAPI.getAll();
-      setEmployees(data || []);
+      if (user?.role === 'admin') {
+        const data = await employeesAPI.getAll();
+        setEmployees(data || []);
+      } else {
+        const data = await employeesAPI.getCurrentUserEmployee();
+        setEmployees(data ? [data] : []);
+        if (data) {
+          setSelectedEmployee(data.id);
+        }
+      }
     } catch (e) {
       console.error('Error loading employees:', e);
       setEmployees([]);
@@ -85,7 +95,8 @@ export const MonthlyReport: React.FC = () => {
 
   useEffect(() => {
     loadEmployees();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
 
   useEffect(() => {
     loadReport();
@@ -159,23 +170,25 @@ export const MonthlyReport: React.FC = () => {
               ))}
             </select>
 
-            <select
-                value={selectedEmployee ?? ''}
-                onChange={(e) => setSelectedEmployee(e.target.value ? parseInt(e.target.value, 10) : null)}
-                className="p-2 border rounded"
-                title="בחר עובד"
-                aria-label="בחר עובד"
-            >
-              <option value="">כל העובדים</option>
-              {employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.first_name && employee.last_name 
-                      ? `${employee.first_name} ${employee.last_name}`.trim()
-                      : employee.name || `עובד #${employee.id}`
-                    }
-                  </option>
-              ))}
-            </select>
+            {user?.role === 'admin' && (
+              <select
+                  value={selectedEmployee ?? ''}
+                  onChange={(e) => setSelectedEmployee(e.target.value ? parseInt(e.target.value, 10) : null)}
+                  className="p-2 border rounded"
+                  title="בחר עובד"
+                  aria-label="בחר עובד"
+              >
+                <option value="">כל העובדים</option>
+                {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.first_name && employee.last_name 
+                        ? `${employee.first_name} ${employee.last_name}`.trim()
+                        : employee.name || `עובד #${employee.id}`
+                      }
+                    </option>
+                ))}
+              </select>
+            )}
 
             <button
                 onClick={exportToPDF}
@@ -254,7 +267,15 @@ export const MonthlyReport: React.FC = () => {
                       })()}
                     </td>
                     <td className="border p-2">{row.work_date}</td>
-                    <td className="border p-2">{row.event_type === 'business' ? 'עסקי' : 'פרטי'}</td>
+                    <td className="border p-2">
+                      <span className={`px-2 py-1 rounded text-sm ${
+                        row.event_type === 'business' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
+                      </span>
+                    </td>
                     <td className="border p-2">{fmt(row.hours_worked)}</td>
                     <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
                     <td className="border p-2">

@@ -645,6 +645,33 @@ export const reportsAPI = {
     const lastDay = new Date(year, month, 0).getDate(); // month is 1-based, so this gives us the last day of the previous month
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
 
+    // Get current user's role
+    const { data: { user } } = await getSupabaseClient().auth.getUser();
+    let isAdmin = false;
+    let userEmployeeId: number | null = null;
+
+    if (user) {
+      // Get user role
+      const { data: userData } = await getSupabaseClient()
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      
+      isAdmin = userData?.role === 'admin';
+
+      // If not admin, get current user's employee ID
+      if (!isAdmin) {
+        const { data: employeeData } = await getSupabaseClient()
+          .from('employees')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+        
+        userEmployeeId = employeeData?.id || null;
+      }
+    }
+
     // Build query with optional employee filter
     let query = getSupabaseClient()
       .from('work_hours')
@@ -659,20 +686,27 @@ export const reportsAPI = {
       .gte('work_date', startDate)
       .lte('work_date', endDate);
 
-    // Add employee filter if specified
-    if (employeeId) {
-      query = query.eq('employee_id', employeeId);
+    // Filter by employee: either the specified employeeId, or for non-admin users, their own employeeId
+    const filterEmployeeId = employeeId || (!isAdmin && userEmployeeId ? userEmployeeId : null);
+    if (filterEmployeeId) {
+      query = query.eq('employee_id', filterEmployeeId);
     }
 
     const { data: workHoursData, error: workHoursError } = await query.order('work_date');
 
     if (workHoursError) throw workHoursError;
 
-    // Get all employees
-    const { data: employeesData, error: employeesError } = await getSupabaseClient()
+    // Get employees - filter for non-admin users
+    let employeesQuery = getSupabaseClient()
       .from('employees')
       .select('*')
       .eq('is_active', true);
+    
+    if (!isAdmin && userEmployeeId) {
+      employeesQuery = employeesQuery.eq('id', userEmployeeId);
+    }
+
+    const { data: employeesData, error: employeesError } = await employeesQuery;
 
     if (employeesError) throw employeesError;
 
