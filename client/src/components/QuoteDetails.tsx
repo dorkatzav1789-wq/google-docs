@@ -70,7 +70,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     if (!Number.isNaN(percent) && percent !== extraVatDiscountPercent) {
       setExtraVatDiscountPercent(percent);
     }
-  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote]);
+  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote, extraVatDiscountPercent]);
 
   // Cooldown readiness after discount/total changes to avoid exporting stale DOM
   useEffect(() => {
