@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { QuoteWithItems } from '../types';
 import { quotesAPI, itemsAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
@@ -18,6 +19,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingWord, setExportingWord] = useState(false);
+  const [exportReady, setExportReady] = useState(true);
+  const exportReadyRef = useRef(true);
+  useEffect(() => { exportReadyRef.current = exportReady; }, [exportReady]);
   const [extraVatDiscountPercent, setExtraVatDiscountPercent] = useState<number>(0);
   const [showReminderManager, setShowReminderManager] = useState(false);
   const [showSplitModal, setShowSplitModal] = useState(false);
@@ -50,6 +54,31 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     const finalTotal = totalAfterDiscount + vatAmount;
     return { subtotal, discountAmount, totalAfterDiscount, vatAmount, finalTotal };
   }, [quoteData]);
+
+  const finalAfterExtraDiscount = useMemo(() => {
+    const finalTotal = totals.finalTotal || 0;
+    const discount = Math.round(finalTotal * (extraVatDiscountPercent / 100));
+    return finalTotal - discount;
+  }, [totals.finalTotal, extraVatDiscountPercent]);
+
+  // Sync extra VAT discount from DB when quote loads, but avoid overwriting user changes with undefined
+  useEffect(() => {
+    if (!quoteData?.quote) return;
+    const dbVal = (quoteData.quote as any).extra_vat_discount_percent;
+    if (dbVal === null || dbVal === undefined) return;
+    const percent = Number(dbVal);
+    if (!Number.isNaN(percent) && percent !== extraVatDiscountPercent) {
+      setExtraVatDiscountPercent(percent);
+    }
+  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote]);
+
+  // Cooldown readiness after discount/total changes to avoid exporting stale DOM
+  useEffect(() => {
+    // when discount percent or final total changes, start a short cooldown
+    setExportReady(false);
+    const id = setTimeout(() => setExportReady(true), 450);
+    return () => clearTimeout(id);
+  }, [extraVatDiscountPercent, totals.finalTotal]);
 
   const startEdit = (index: number) => {
     const item = quoteData?.items[index];
@@ -206,14 +235,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     loadQuoteDetails();
   }, [quoteId, loadQuoteDetails]);
 
-  // Sync extra VAT discount from DB when quote loads
-  useEffect(() => {
-    if (quoteData?.quote) {
-      const percent = Number(quoteData.quote.extra_vat_discount_percent || 0);
-      setExtraVatDiscountPercent(percent);
-    }
-  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const formatDate = (dateString: string) => {
     if (!dateString) return 'לא צוין';
     const date = new Date(dateString);
@@ -309,28 +330,45 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
       const element = pdfRef.current;
 
+      // If not ready yet, wait until exportReady is true
+      let guardCount = 0;
+      while (!exportReadyRef.current && guardCount < 10) {
+        await new Promise<void>((r) => setTimeout(r, 60));
+        guardCount++;
+      }
+
+      // Ensure any pending React updates are flushed
+      flushSync(() => {});
+
       // הצג את הקונטיינר ל-PDF
       element.style.display = 'block';
 
-      const opt = {
-        margin: [10, 10, 10, 10],
-        filename: `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: 'a4',
-          orientation: 'portrait'
-        },
-        pagebreak: {
-          mode: ['css', 'avoid-all'],
-          avoid: '.avoid-page-break'
-        },
-      };
+      // המתנה למיקרוטסק, טיימאאוט קצר ושתי מסגרות רינדור כדי להבטיח שה-DOM מעודכן
+      await Promise.resolve();
+      await new Promise<void>((r) => setTimeout(r, 0));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      // כפיית reflow
+      void element.offsetHeight;
+ 
+       const opt = {
+         margin: [10, 10, 10, 10],
+         filename: `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.pdf`,
+         image: { type: 'jpeg', quality: 0.98 },
+         html2canvas: {
+           scale: 2,
+           useCORS: true,
+           allowTaint: true
+         },
+         jsPDF: {
+           unit: 'mm',
+           format: 'a4',
+           orientation: 'portrait'
+         },
+         pagebreak: {
+           mode: ['css', 'avoid-all'],
+           avoid: '.avoid-page-break'
+         },
+       };
 
       await html2pdf().set(opt).from(element).save();
 
@@ -558,7 +596,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
             <h1 className="text-3xl font-bold text-black dark:text-white mb-2">פרטי הצעת מחיר</h1>
             <p className="text-black/80 dark:text-white/80">הצעה #{quote.id}</p>
             <div className="mt-4 flex gap-2">
-              <button onClick={handleExportPDF} disabled={exportingPDF} className="btn-success">
+              <button onClick={handleExportPDF} disabled={exportingPDF || !exportReady} className="btn-success">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}
               </button>
               <button onClick={handleExportWord} disabled={exportingWord} className="btn-success">
@@ -997,12 +1035,22 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td>{formatCurrency(totals.vatAmount)}</td>
                 </tr>
 
+                {extraVatDiscountPercent > 0 && (
+                  <tr className="summary-row-green">
+                    <td className="item-description">הנחה למחיר סופי ){extraVatDiscountPercent}%(</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>-{formatCurrency(extraVatDiscountAmount(totals.finalTotal))}</td>
+                  </tr>
+                )}
+
                 <tr className="final-total summary-row-orange">
                   <td className="item-description">סה"כ כולל מע"מ</td>
                   <td></td>
                   <td></td>
                   <td></td>
-                  <td>{formatCurrency(totals.finalTotal - extraVatDiscountAmount(totals.finalTotal))}</td>
+                  <td>{formatCurrency(finalAfterExtraDiscount)}</td>
                 </tr>
                 </tbody>
               </table>
@@ -1203,8 +1251,18 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     value={extraVatDiscountPercent}
                     onChange={async (e) => {
                       const val = parseInt(e.target.value);
-                      setExtraVatDiscountPercent(val);
+                      const previous = extraVatDiscountPercent;
+                      // Confirm with user
+                      const ok = window.confirm(`להחיל הנחה סופית של ${val}%?`);
+                      if (!ok) {
+                        // revert UI selection
+                        e.target.value = String(previous);
+                        return;
+                      }
                       try {
+                        // update UI first so calculations/PDF reflect immediately
+                        setExtraVatDiscountPercent(val);
+                        // persist in DB (best-effort)
                         if (quoteData?.quote?.id) {
                           await quotesAPI.update(quoteData.quote.id, {
                             extra_vat_discount_percent: val,
@@ -1213,6 +1271,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                         }
                       } catch (err) {
                         console.error('Failed saving extra VAT discount:', err);
+                        alert('שמירת ההנחה נכשלה. הערך יוחזר לקודם.');
+                        // revert both UI and select value
+                        setExtraVatDiscountPercent(previous);
+                        e.target.value = String(previous);
                       }
                     }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1228,7 +1290,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               </div>
               <div className="flex justify-between border-t pt-2 text-lg">
                 <span className="font-bold text-gray-800 dark:text-white">סה"כ לתשלום:</span>
-                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(totals.finalTotal - extraVatDiscountAmount(totals.finalTotal))}</span>
+                <span className="font-bold text-green-600 dark:text-green-400 text-xl">{formatCurrency(finalAfterExtraDiscount)}</span>
               </div>
             </div>
           </div>
