@@ -21,6 +21,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   const [exportingWord, setExportingWord] = useState(false);
   const [exportReady, setExportReady] = useState(true);
   const exportReadyRef = useRef(true);
+  const lastSyncedExtraFromDbRef = useRef<number | null>(null);
   useEffect(() => { exportReadyRef.current = exportReady; }, [exportReady]);
   const [extraVatDiscountPercent, setExtraVatDiscountPercent] = useState<number>(0);
   const [showReminderManager, setShowReminderManager] = useState(false);
@@ -61,16 +62,17 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     return finalTotal - discount;
   }, [totals.finalTotal, extraVatDiscountPercent]);
 
-  // Sync extra VAT discount from DB when quote loads, but avoid overwriting user changes with undefined
+  // Sync extra VAT discount from DB only when quote loads/changes; don't overwrite recent UI changes
   useEffect(() => {
     if (!quoteData?.quote) return;
     const dbVal = (quoteData.quote as any).extra_vat_discount_percent;
     if (dbVal === null || dbVal === undefined) return;
     const percent = Number(dbVal);
-    if (!Number.isNaN(percent) && percent !== extraVatDiscountPercent) {
+    if (!Number.isNaN(percent) && lastSyncedExtraFromDbRef.current !== percent) {
+      lastSyncedExtraFromDbRef.current = percent;
       setExtraVatDiscountPercent(percent);
     }
-  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote, extraVatDiscountPercent]);
+  }, [quoteData?.quote?.extra_vat_discount_percent, quoteData?.quote]);
 
   // Cooldown readiness after discount/total changes to avoid exporting stale DOM
   useEffect(() => {
@@ -1268,6 +1270,16 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             extra_vat_discount_percent: val,
                             extra_vat_discount_amount: Math.round((totals.finalTotal || 0) * (val / 100)),
                           });
+                          // Update local quoteData to reflect saved value and avoid sync overwrite
+                          setQuoteData((prev) => prev ? {
+                            ...prev,
+                            quote: {
+                              ...prev.quote,
+                              extra_vat_discount_percent: val,
+                              extra_vat_discount_amount: Math.round((totals.finalTotal || 0) * (val / 100)),
+                            }
+                          } : prev);
+                          lastSyncedExtraFromDbRef.current = val;
                         }
                       } catch (err) {
                         console.error('Failed saving extra VAT discount:', err);
