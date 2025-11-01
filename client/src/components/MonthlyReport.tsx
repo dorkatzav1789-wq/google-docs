@@ -142,8 +142,6 @@ export const MonthlyReport: React.FC = () => {
       
       // Replace the main table with employee-grouped content
       const tempContainer = document.createElement('div');
-      const origContainer = reportRef.current;
-      const headerHTML = origContainer.querySelector('.text-center')?.outerHTML || '';
       
       let groupedTableHTML = '<div style="margin-top: 20px;">';
       
@@ -246,7 +244,6 @@ export const MonthlyReport: React.FC = () => {
       
       // Replace original table content
       const originalTableStart = detailedHTML.indexOf('<table');
-      const originalTableEnd = detailedHTML.indexOf('</table>') + 8;
       const originalSummaryStart = detailedHTML.indexOf('<div className="mt-6">');
       const originalSummaryEnd = detailedHTML.indexOf('</div>', originalSummaryStart) + 6;
       
