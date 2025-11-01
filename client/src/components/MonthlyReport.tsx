@@ -103,6 +103,180 @@ export const MonthlyReport: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear, selectedMonth, selectedEmployee]);
 
+  const exportDetailedPDFByEmployee = async () => {
+    if (!reportRef.current || !report) return;
+    
+    try {
+      setExporting(true);
+      
+      // Group work hours by employee
+      const byEmployee = new Map<string, { name: string; business: WorkHours[]; personal: WorkHours[]; }>();
+      
+      report.work_hours.forEach(row => {
+        const firstName = (row as any).employees?.first_name ?? '';
+        const lastName = (row as any).employees?.last_name ?? '';
+        const fullName = `${firstName} ${lastName}`.trim();
+        const key = fullName || (row as any).employee_name || `#${row.employee_id}`;
+        
+        if (!byEmployee.has(key)) {
+          byEmployee.set(key, { name: key, business: [], personal: [] });
+        }
+        
+        const emp = byEmployee.get(key)!;
+        if (row.event_type === 'business') {
+          emp.business.push(row);
+        } else {
+          emp.personal.push(row);
+        }
+      });
+      
+      // Build detailed HTML
+      const selectedEmployeeName = selectedEmployee 
+        ? employees.find(emp => emp.id === selectedEmployee)?.first_name + ' ' + employees.find(emp => emp.id === selectedEmployee)?.last_name
+        : '';
+      
+      const employeeSuffix = selectedEmployee ? `-${selectedEmployeeName?.trim()}` : '';
+      const filename = `work-hours-detailed-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}.pdf`;
+      
+      let detailedHTML = reportRef.current.innerHTML;
+      
+      // Replace the main table with employee-grouped content
+      const tempContainer = document.createElement('div');
+      const origContainer = reportRef.current;
+      const headerHTML = origContainer.querySelector('.text-center')?.outerHTML || '';
+      
+      let groupedTableHTML = '<div style="margin-top: 20px;">';
+      
+      byEmployee.forEach((empData, empName) => {
+        const businessTotal = empData.business.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+        const personalTotal = empData.personal.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+        const overallTotal = businessTotal + personalTotal;
+        
+        groupedTableHTML += `
+          <div style="margin-bottom: 40px; page-break-inside: avoid;">
+            <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #ccc; padding-bottom: 10px;">${empName}</h3>
+            
+            <!-- Business Events -->
+            <div style="margin-bottom: 20px;">
+              <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #1e40af;">אירועים עסקיים</h4>
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 15px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #000; padding: 8px;">תאריך</th>
+                    <th style="border: 1px solid #000; padding: 8px;">ימים</th>
+                    <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
+                    <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
+                    <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${empData.business.length > 0 ? empData.business.map(row => `
+                    <tr>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.work_date}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${fmt(row.hours_worked)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="5" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים עסקיים</td></tr>'}
+                  <tr style="background-color: #dbeafe; font-weight: bold;">
+                    <td colspan="4" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים עסקיים</td>
+                    <td style="border: 1px solid #000; padding: 8px;">₪${fmt(businessTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Personal Events -->
+            <div style="margin-bottom: 20px;">
+              <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #059669;">אירועים פרטיים</h4>
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 15px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #000; padding: 8px;">תאריך</th>
+                    <th style="border: 1px solid #000; padding: 8px;">ימים</th>
+                    <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
+                    <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
+                    <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${empData.personal.length > 0 ? empData.personal.map(row => `
+                    <tr>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.work_date}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${fmt(row.hours_worked)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="5" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים פרטיים</td></tr>'}
+                  <tr style="background-color: #d1fae5; font-weight: bold;">
+                    <td colspan="4" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים פרטיים</td>
+                    <td style="border: 1px solid #000; padding: 8px;">₪${fmt(personalTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Employee Summary -->
+            <div style="background-color: #f9fafb; padding: 15px; border: 2px solid #374151; border-radius: 8px; margin-top: 20px;">
+              <h4 style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">סיכום כספי - ${empName}</h4>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tbody>
+                  <tr>
+                    <td style="padding: 5px; font-weight: 600;">אירועים עסקיים:</td>
+                    <td style="padding: 5px; text-align: left;">₪${fmt(businessTotal)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px; font-weight: 600;">אירועים פרטיים:</td>
+                    <td style="padding: 5px; text-align: left;">₪${fmt(personalTotal)}</td>
+                  </tr>
+                  <tr style="background-color: #e5e7eb;">
+                    <td style="padding: 10px; font-weight: bold; font-size: 16px;">סה"כ לתשלום:</td>
+                    <td style="padding: 10px; text-align: left; font-weight: bold; font-size: 18px;">₪${fmt(overallTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      });
+      
+      groupedTableHTML += '</div>';
+      
+      // Replace original table content
+      const originalTableStart = detailedHTML.indexOf('<table');
+      const originalTableEnd = detailedHTML.indexOf('</table>') + 8;
+      const originalSummaryStart = detailedHTML.indexOf('<div className="mt-6">');
+      const originalSummaryEnd = detailedHTML.indexOf('</div>', originalSummaryStart) + 6;
+      
+      detailedHTML = detailedHTML.substring(0, originalTableStart) + 
+                     groupedTableHTML + 
+                     detailedHTML.substring(originalSummaryEnd);
+      
+      tempContainer.innerHTML = detailedHTML;
+      
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css'] }
+      };
+      
+      await html2pdf().set(opt).from(tempContainer).save();
+      
+      // Cleanup
+      document.body.removeChild(tempContainer);
+      
+    } catch (e) {
+      console.error('Detailed PDF export failed:', e);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const exportToPDF = async (eventType?: 'business' | 'personal') => {
     if (!reportRef.current) return;
     
@@ -281,6 +455,14 @@ export const MonthlyReport: React.FC = () => {
                 className="px-4 py-2 bg-purple-500 text-white rounded"
             >
               {exporting ? 'מייצא...' : 'PDF פרטי'}
+            </button>
+            <button
+                onClick={exportDetailedPDFByEmployee}
+                disabled={exporting}
+                className="px-4 py-2 bg-orange-500 text-white rounded"
+                title="ייצא PDF מפורט לפי עובדים"
+            >
+              {exporting ? 'מייצא...' : 'PDF מפורט'}
             </button>
           </div>
         </div>
