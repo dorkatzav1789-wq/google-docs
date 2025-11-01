@@ -16,6 +16,13 @@ export const WorkHoursTracker: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [showCreateEmployeeForm, setShowCreateEmployeeForm] = useState<boolean>(false);
+  const [newEmployeeForm, setNewEmployeeForm] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    hourly_rate: 100
+  });
 
   const loadEmployees = useCallback(async () => {
     try {
@@ -32,6 +39,11 @@ export const WorkHoursTracker: React.FC = () => {
       } else {
         const data = await employeesAPI.getCurrentUserEmployee();
         setEmployees(data ? [data] : []);
+        if (data) {
+          setSelectedEmployee(data.id);
+        } else {
+          setShowCreateEmployeeForm(true);
+        }
       }
     } catch (error) {
       console.error('Error loading employees:', error);
@@ -84,6 +96,30 @@ export const WorkHoursTracker: React.FC = () => {
     } catch (error) {
       console.error('Error adding work hours:', error);
       alert('שגיאה בהוספת יום העבודה');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSubmitting(true);
+      await employeesAPI.create({
+        first_name: newEmployeeForm.first_name,
+        last_name: newEmployeeForm.last_name,
+        phone: newEmployeeForm.phone || null,
+        email: user?.email || null,
+        hourly_rate: newEmployeeForm.hourly_rate,
+        is_active: true
+      });
+      
+      await loadEmployees();
+      setShowCreateEmployeeForm(false);
+      alert('העובד נוסף בהצלחה! כעת תוכל לרשום ימי עבודה.');
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      alert('שגיאה ביצירת עובד');
     } finally {
       setSubmitting(false);
     }
@@ -220,6 +256,57 @@ export const WorkHoursTracker: React.FC = () => {
         {loading && <div className="text-gray-500 dark:text-gray-400">טוען עובדים...</div>}
         {!loading && (employees ?? []).length === 0 && (
             <div className="text-gray-600 dark:text-gray-400">אין עובדים במערכת עדיין.</div>
+        )}
+
+        {showCreateEmployeeForm && (
+          <div className="mb-8 p-6 border border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-lg shadow-sm">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">הוסף פרטים אישיים</h3>
+            <p className="mb-4 text-gray-700 dark:text-gray-300">
+              כדי להתחיל לרשום ימי עבודה, נדרשים פרטיך האישיים.
+            </p>
+            <form onSubmit={handleCreateEmployee} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="שם פרטי"
+                  value={newEmployeeForm.first_name}
+                  onChange={(e) => setNewEmployeeForm({...newEmployeeForm, first_name: e.target.value})}
+                  className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="שם משפחה"
+                  value={newEmployeeForm.last_name}
+                  onChange={(e) => setNewEmployeeForm({...newEmployeeForm, last_name: e.target.value})}
+                  className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="טלפון (אופציונלי)"
+                  value={newEmployeeForm.phone}
+                  onChange={(e) => setNewEmployeeForm({...newEmployeeForm, phone: e.target.value})}
+                  className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
+                />
+                <input
+                  type="number"
+                  placeholder="שכר יומי"
+                  value={newEmployeeForm.hourly_rate}
+                  onChange={(e) => setNewEmployeeForm({...newEmployeeForm, hourly_rate: Number(e.target.value) || 0})}
+                  className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
+                disabled={submitting}
+              >
+                {submitting ? 'שומר...' : 'שמור פרטים והתחל לרשום'}
+              </button>
+            </form>
+          </div>
         )}
       </div>
   );

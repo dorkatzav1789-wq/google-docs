@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, supabaseAdmin, AuthUser, AuthContextType } from '../services/supabaseClient';
+import { employeesAPI } from '../services/api';
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -228,6 +229,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           console.log('Setting user after sign in:', newUser);
           setInternalUser(newUser);
+          
+          // בדיקה אם המשתמש הוא עובד - אם לא, נוסיף אותו
+          try {
+            const existingEmployee = await employeesAPI.getCurrentUserEmployee();
+            if (!existingEmployee && userData?.role === 'user') {
+              console.log('User is not an employee, creating automatically...');
+              await employeesAPI.create({
+                first_name: authUser.user_metadata?.first_name || '',
+                last_name: authUser.user_metadata?.last_name || '',
+                email: authUser.email,
+                hourly_rate: 100, // ערך ברירת מחדל
+                is_active: true
+              });
+              console.log('Employee created automatically for new user');
+            }
+          } catch (employeeError) {
+            console.error('Error checking/creating employee:', employeeError);
+            // לא נכשל את ההתחברות אם זה נכשל
+          }
+          
           return newUser;
         } catch (roleTimeoutError) {
           console.error('Role query timeout in signIn, using fallback:', roleTimeoutError);
