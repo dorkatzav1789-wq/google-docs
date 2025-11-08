@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
-import { reportsAPI, employeesAPI } from '../services/supabaseAPI';
+import { reportsAPI, employeesAPI, workHoursAPI } from '../services/supabaseAPI';
 import { useAuth } from '../context/AuthContext';
 import html2pdf from 'html2pdf.js';
 
@@ -13,7 +13,19 @@ export const MonthlyReport: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [exporting, setExporting] = useState<boolean>(false);
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    work_date: '',
+    event_type: 'business' as 'business' | 'personal',
+    hours_worked: '',
+    hourly_rate: '',
+    overtime_amount: '',
+    total_amount: '',
+    notes: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const isAdmin = user?.role === 'admin';
 
   const normalizeReport = (data: any): MonthlyReportType => {
     const work_hours: WorkHours[] = Array.isArray(data?.work_hours)
@@ -102,6 +114,85 @@ export const MonthlyReport: React.FC = () => {
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear, selectedMonth, selectedEmployee]);
+
+  const startEditRow = (row: WorkHours) => {
+    setEditingRowId(row.id);
+    setEditDraft({
+      work_date: row.work_date,
+      event_type: row.event_type,
+      hours_worked: String(row.hours_worked ?? 0),
+      hourly_rate: String(row.hourly_rate ?? 0),
+      overtime_amount: String(row.overtime_amount ?? 0),
+      total_amount: String(row.total_amount ?? 0),
+      notes: row.notes ?? '',
+    });
+  };
+
+  const cancelEditRow = () => {
+    setEditingRowId(null);
+    setEditDraft({
+      work_date: '',
+      event_type: 'business',
+      hours_worked: '',
+      hourly_rate: '',
+      overtime_amount: '',
+      total_amount: '',
+      notes: '',
+    });
+  };
+
+  const handleEditFieldChange = (field: keyof typeof editDraft, value: string) => {
+    setEditDraft((prev) => {
+      const next = {
+        ...prev,
+        [field]: field === 'event_type' ? (value as 'business' | 'personal') : value,
+      };
+
+      const hours = Number(field === 'hours_worked' ? value : next.hours_worked) || 0;
+      const rate = Number(field === 'hourly_rate' ? value : next.hourly_rate) || 0;
+      const overtime = Number(field === 'overtime_amount' ? value : next.overtime_amount) || 0;
+      next.total_amount = String(hours * rate + overtime);
+      return next;
+    });
+  };
+
+  const saveEditRow = async () => {
+    if (!editingRowId) return;
+
+    try {
+      setSavingEdit(true);
+      await workHoursAPI.update(editingRowId, {
+        work_date: editDraft.work_date,
+        event_type: editDraft.event_type,
+        hours_worked: Number(editDraft.hours_worked) || 0,
+        hourly_rate: Number(editDraft.hourly_rate) || 0,
+        overtime_amount: Number(editDraft.overtime_amount) || 0,
+        total_amount: Number(editDraft.total_amount) || 0,
+        notes: editDraft.notes.trim() ? editDraft.notes.trim() : null,
+      });
+      await loadReport();
+      cancelEditRow();
+    } catch (error) {
+      console.error('Error updating work hours:', error);
+      alert('שגיאה בעדכון שורת הדוח');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const hideAdminColumns = (root: HTMLElement) => {
+    const affected: Array<{ el: HTMLElement; display: string }> = [];
+    root.querySelectorAll('.admin-actions-column').forEach((node) => {
+      const el = node as HTMLElement;
+      affected.push({ el, display: el.style.display });
+      el.style.display = 'none';
+    });
+    return () => {
+      affected.forEach(({ el, display }) => {
+        el.style.display = display;
+      });
+    };
+  };
 
   const exportDetailedPDFByEmployee = async () => {
     if (!reportRef.current || !report) return;
@@ -252,6 +343,8 @@ export const MonthlyReport: React.FC = () => {
                      detailedHTML.substring(originalSummaryEnd);
       
       tempContainer.innerHTML = detailedHTML;
+      document.body.appendChild(tempContainer);
+      const restoreAdminColumns = hideAdminColumns(tempContainer);
       
       const opt = {
         margin: [10, 10, 10, 10],
@@ -265,7 +358,10 @@ export const MonthlyReport: React.FC = () => {
       await html2pdf().set(opt).from(tempContainer).save();
       
       // Cleanup
-      document.body.removeChild(tempContainer);
+      restoreAdminColumns();
+      if (tempContainer.parentElement) {
+        document.body.removeChild(tempContainer);
+      }
       
     } catch (e) {
       console.error('Detailed PDF export failed:', e);
@@ -291,6 +387,8 @@ export const MonthlyReport: React.FC = () => {
       // Temporarily clone and filter the content if eventType is specified
       let contentToExport = reportRef.current;
       let tempContainer: HTMLDivElement | null = null;
+
+      let restoreAdminColumns: (() => void) | null = null;
 
       if (eventType) {
         tempContainer = document.createElement('div');
@@ -350,7 +448,12 @@ export const MonthlyReport: React.FC = () => {
         `;
         tempContainer.appendChild(summaryDiv);
 
+        document.body.appendChild(tempContainer);
+        restoreAdminColumns = hideAdminColumns(tempContainer);
         contentToExport = tempContainer;
+      }
+      if (!tempContainer && isAdmin) {
+        restoreAdminColumns = hideAdminColumns(contentToExport as HTMLElement);
       }
       
       const opt = {
@@ -364,7 +467,10 @@ export const MonthlyReport: React.FC = () => {
       await html2pdf().set(opt).from(contentToExport).save();
       
       // Cleanup
-      if (tempContainer) {
+      if (restoreAdminColumns) {
+        restoreAdminColumns();
+      }
+      if (tempContainer && tempContainer.parentElement) {
         document.body.removeChild(tempContainer);
       }
     } catch (e) {
@@ -510,12 +616,13 @@ export const MonthlyReport: React.FC = () => {
             <th className="border p-2">שעות נוספות</th>
             <th className="border p-2">סה"כ</th>
             <th className="border p-2">הערות</th>
+            {isAdmin && <th className="border p-2 admin-actions-column">פעולות</th>}
           </tr>
           </thead>
           <tbody>
           {report.work_hours.length === 0 ? (
               <tr>
-                <td className="border p-2 text-center text-gray-500" colSpan={8}>
+                <td className="border p-2 text-center text-gray-500" colSpan={isAdmin ? 9 : 8}>
                   אין נתונים לחודש שנבחר
                 </td>
               </tr>
@@ -530,27 +637,132 @@ export const MonthlyReport: React.FC = () => {
                         return fullName || (row as any).employee_name || `#${row.employee_id}`;
                       })()}
                     </td>
-                    <td className="border p-2">{row.work_date}</td>
                     <td className="border p-2">
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        row.event_type === 'business' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
-                      </span>
+                      {editingRowId === row.id ? (
+                        <input
+                          type="date"
+                          value={editDraft.work_date}
+                          onChange={(e) => handleEditFieldChange('work_date', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                        />
+                      ) : (
+                        row.work_date
+                      )}
                     </td>
-                    <td className="border p-2">{fmt(row.hours_worked)}</td>
-                    <td className="border p-2">₪{fmt(row.hourly_rate)}</td>
                     <td className="border p-2">
-                      {row.overtime_amount > 0 ? (
+                      {editingRowId === row.id ? (
+                        <select
+                          value={editDraft.event_type}
+                          onChange={(e) => handleEditFieldChange('event_type', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                        >
+                          <option value="business">אירוע עסקי</option>
+                          <option value="personal">אירוע פרטי</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`px-2 py-1 rounded text-sm ${
+                            row.event_type === 'business'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
+                        </span>
+                      )}
+                    </td>
+                    <td className="border p-2">
+                      {editingRowId === row.id ? (
+                        <input
+                          type="number"
+                          value={editDraft.hours_worked}
+                          onChange={(e) => handleEditFieldChange('hours_worked', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                          step="0.1"
+                        />
+                      ) : (
+                        fmt(row.hours_worked)
+                      )}
+                    </td>
+                    <td className="border p-2">
+                      {editingRowId === row.id ? (
+                        <input
+                          type="number"
+                          value={editDraft.hourly_rate}
+                          onChange={(e) => handleEditFieldChange('hourly_rate', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                          step="0.1"
+                        />
+                      ) : (
+                        <>₪{fmt(row.hourly_rate)}</>
+                      )}
+                    </td>
+                    <td className="border p-2">
+                      {editingRowId === row.id ? (
+                        <input
+                          type="number"
+                          value={editDraft.overtime_amount}
+                          onChange={(e) => handleEditFieldChange('overtime_amount', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                          step="0.1"
+                        />
+                      ) : row.overtime_amount > 0 ? (
                         <span className="text-green-600 font-medium">+₪{fmt(row.overtime_amount)}</span>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="border p-2">₪{fmt(row.total_amount)}</td>
-                    <td className="border p-2">{row.notes || '-'}</td>
+                    <td className="border p-2">
+                      {editingRowId === row.id ? (
+                        <>₪{fmt(Number(editDraft.total_amount) || 0)}</>
+                      ) : (
+                        <>₪{fmt(row.total_amount)}</>
+                      )}
+                    </td>
+                    <td className="border p-2">
+                      {editingRowId === row.id ? (
+                        <input
+                          type="text"
+                          value={editDraft.notes}
+                          onChange={(e) => handleEditFieldChange('notes', e.target.value)}
+                          className="w-full p-1 border border-gray-300 rounded"
+                        />
+                      ) : (
+                        row.notes || '-'
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td className="border p-2 admin-actions-column">
+                        {editingRowId === row.id ? (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={saveEditRow}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-sm"
+                              disabled={savingEdit}
+                            >
+                              {savingEdit ? 'שומר...' : 'שמור'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditRow}
+                              className="px-2 py-1 bg-gray-300 text-gray-800 rounded text-sm"
+                              disabled={savingEdit}
+                            >
+                              ביטול
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEditRow(row)}
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm"
+                          >
+                            עריכה
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
               ))
           )}

@@ -635,6 +635,29 @@ export const workHoursAPI = {
     if (error) throw error;
     return data || [];
   },
+
+  update: async (
+    id: number,
+    body: Partial<{
+      work_date: string;
+      event_type: 'business' | 'personal';
+      hours_worked: number;
+      hourly_rate: number;
+      total_amount: number;
+      overtime_amount: number;
+      notes?: string | null;
+    }>
+  ): Promise<WorkHours> => {
+    const { data, error } = await getSupabaseAdmin()
+      .from('work_hours')
+      .update(body)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as WorkHours;
+  },
 };
 
 // ---------- Reports ----------
