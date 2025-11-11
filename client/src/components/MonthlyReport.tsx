@@ -753,13 +753,32 @@ export const MonthlyReport: React.FC = () => {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => startEditRow(row)}
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm"
-                          >
-                            עריכה
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditRow(row)}
+                              className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm"
+                            >
+                              עריכה
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm('האם למחוק את רשומת השעות הזו?')) {
+                                  try {
+                                    await workHoursAPI.delete(row.id);
+                                    await loadReport();
+                                  } catch (error) {
+                                    console.error('Error deleting work hours:', error);
+                                    alert('שגיאה במחיקת רשומה');
+                                  }
+                                }
+                              }}
+                              className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm"
+                            >
+                              מחיקה
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}

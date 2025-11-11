@@ -658,6 +658,16 @@ export const workHoursAPI = {
     if (error) throw error;
     return data as WorkHours;
   },
+
+  delete: async (id: number): Promise<{ success: boolean }> => {
+    const { error } = await getSupabaseAdmin()
+      .from('work_hours')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  },
 };
 
 // ---------- Reports ----------

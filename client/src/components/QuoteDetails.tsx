@@ -56,11 +56,23 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
     return { subtotal, discountAmount, totalAfterDiscount, vatAmount, finalTotal };
   }, [quoteData]);
 
+  const extraDiscountAmount = useMemo(() => {
+    const base = totals.totalAfterDiscount || 0;
+    return Math.round(base * (extraVatDiscountPercent / 100));
+  }, [totals.totalAfterDiscount, extraVatDiscountPercent]);
+
+  const totalAfterExtraDiscount = useMemo(() => {
+    const base = totals.totalAfterDiscount || 0;
+    return Math.max(base - extraDiscountAmount, 0);
+  }, [totals.totalAfterDiscount, extraDiscountAmount]);
+
+  const vatAfterExtraDiscount = useMemo(() => {
+    return Math.round(totalAfterExtraDiscount * 0.18);
+  }, [totalAfterExtraDiscount]);
+
   const finalAfterExtraDiscount = useMemo(() => {
-    const finalTotal = totals.finalTotal || 0;
-    const discount = Math.round(finalTotal * (extraVatDiscountPercent / 100));
-    return finalTotal - discount;
-  }, [totals.finalTotal, extraVatDiscountPercent]);
+    return totalAfterExtraDiscount + vatAfterExtraDiscount;
+  }, [totalAfterExtraDiscount, vatAfterExtraDiscount]);
 
   // Sync extra VAT discount from DB only when quote loads/changes; don't overwrite recent UI changes
   useEffect(() => {
@@ -244,10 +256,6 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
   };
 
   const formatCurrency = (amount: number) => `₪${amount.toLocaleString('he-IL')}`;
-
-  const extraVatDiscountAmount = (finalTotal: number) => {
-    return Math.round((Number(finalTotal) || 0) * (extraVatDiscountPercent / 100));
-  };
 
   const handleAddSplit = (itemIndex: number) => {
     setSelectedItemIndex(itemIndex);
@@ -1026,26 +1034,23 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     </tr>
                     </>
                 )}
-
-
-
-                <tr className="summary-row-orange">
-                  <td className="item-description">18% מע"מ</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td>{formatCurrency(totals.vatAmount)}</td>
-                </tr>
-
                 {extraVatDiscountPercent > 0 && (
                   <tr className="summary-row-green">
                     <td className="item-description">הנחה למחיר סופי ){extraVatDiscountPercent}%(</td>
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td>-{formatCurrency(extraVatDiscountAmount(totals.finalTotal))}</td>
+                    <td>-{formatCurrency(extraDiscountAmount)}</td>
                   </tr>
                 )}
+
+                <tr className="summary-row-orange">
+                  <td className="item-description">18% מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(vatAfterExtraDiscount)}</td>
+                </tr>
 
                 <tr className="final-total summary-row-orange">
                   <td className="item-description">סה"כ כולל מע"מ</td>
@@ -1236,17 +1241,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     <span className="text-gray-700 dark:text-gray-300">הנחה ({quote.discount_percent}%):</span>
                     <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(totals.discountAmount)}</span>
                   </div>
-                  <div className="flex justify-between border-t pt-2">
-                    <span className="text-gray-700 dark:text-gray-300">סה"כ אחרי הנחה:</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(totals.totalAfterDiscount)}</span>
-                  </div>
                 </>
               )}
-              <div className="flex justify-between">
-                <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">+{formatCurrency(totals.vatAmount)}</span>
-              </div>
-              <div className="flex items-center justify-between border-t pt-2">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-800 dark:text-white">הנחה למחיר סופי:</span>
                   <select
@@ -1254,29 +1251,25 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     onChange={async (e) => {
                       const val = parseInt(e.target.value);
                       const previous = extraVatDiscountPercent;
-                      // Confirm with user
                       const ok = window.confirm(`להחיל הנחה סופית של ${val}%?`);
                       if (!ok) {
-                        // revert UI selection
                         e.target.value = String(previous);
                         return;
                       }
                       try {
-                        // update UI first so calculations/PDF reflect immediately
+                        const newAmount = Math.round((totals.totalAfterDiscount || 0) * (val / 100));
                         setExtraVatDiscountPercent(val);
-                        // persist in DB (best-effort)
                         if (quoteData?.quote?.id) {
                           await quotesAPI.update(quoteData.quote.id, {
                             extra_vat_discount_percent: val,
-                            extra_vat_discount_amount: Math.round((totals.finalTotal || 0) * (val / 100)),
+                            extra_vat_discount_amount: newAmount,
                           });
-                          // Update local quoteData to reflect saved value and avoid sync overwrite
                           setQuoteData((prev) => prev ? {
                             ...prev,
                             quote: {
                               ...prev.quote,
                               extra_vat_discount_percent: val,
-                              extra_vat_discount_amount: Math.round((totals.finalTotal || 0) * (val / 100)),
+                              extra_vat_discount_amount: newAmount,
                             }
                           } : prev);
                           lastSyncedExtraFromDbRef.current = val;
@@ -1284,21 +1277,24 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       } catch (err) {
                         console.error('Failed saving extra VAT discount:', err);
                         alert('שמירת ההנחה נכשלה. הערך יוחזר לקודם.');
-                        // revert both UI and select value
                         setExtraVatDiscountPercent(previous);
                         e.target.value = String(previous);
                       }
                     }}
                     className="px-2 py-1 border border-gray-300 rounded text-sm"
-                    title='בחר אחוז הנחה על הסה"כ כולל מע"מ'
-                    aria-label='בחר אחוז הנחה על הסה"כ כולל מע"מ'
+                    title='בחר אחוז הנחה על הסכום לפני מע"מ'
+                    aria-label='בחר אחוז הנחה על הסכום לפני מע"מ'
                   >
                     <option value={0}>ללא</option>
                     <option value={5}>5%</option>
                     <option value={10}>10%</option>
                   </select>
                 </div>
-                <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraVatDiscountAmount(totals.finalTotal))}</span>
+                <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraDiscountAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">+{formatCurrency(vatAfterExtraDiscount)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg">
                 <span className="font-bold text-gray-800 dark:text-white">סה"כ לתשלום:</span>
