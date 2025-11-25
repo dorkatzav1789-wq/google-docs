@@ -375,8 +375,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
            orientation: 'portrait'
          },
          pagebreak: {
-           mode: ['css', 'avoid-all'],
-           avoid: '.avoid-page-break'
+           mode: ['css', 'legacy'],
+           avoid: ['.avoid-page-break', '.item-group']
          },
        };
 
@@ -889,6 +889,54 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   font-size: 7px;
                   line-height: 1.1;
                 }
+                
+                /* מניעת שבירת עמוד בתוך פריט (פריט + פיצולים שלו) */
+                .avoid-page-break {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+                
+                /* קבוצת פריט - כל הפריט והפיצולים שלו נשארים יחד */
+                .item-group {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                  display: table-row-group;
+                }
+                
+                /* כל שורה בתוך קבוצת פריט */
+                .item-group tr {
+                  page-break-inside: avoid;
+                }
+                
+                /* שמירה על שורות פיצולים יחד עם הפריט הראשי */
+                .invoice-table tbody tr.split-row {
+                  page-break-before: avoid;
+                  break-before: avoid;
+                }
+                
+                /* שמירה על שורות סיכום יחד */
+                .summary-group {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                  display: table-row-group;
+                }
+                
+                .invoice-table tbody tr.summary-row-orange,
+                .invoice-table tbody tr.summary-row-green {
+                  page-break-inside: avoid;
+                  break-inside: avoid;
+                }
+                
+                /* הטבלה עצמה יכולה להישבר בין שורות */
+                .invoice-table {
+                  page-break-inside: auto;
+                }
+                
+                /* אפשר שבירה בין פריטים */
+                .invoice-table tbody tr:not(.split-row):not(.summary-row-orange):not(.summary-row-green) {
+                  page-break-after: auto;
+                  page-break-before: auto;
+                }
               `}
             </style>
             <table className={`invoice-table ${items.length > 6 ? 'compact' : ''}`}>
@@ -901,13 +949,12 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <th>סה"כ</th>
                 </tr>
                 </thead>
-                <tbody>
                 {items.map((item, index) => {
                   console.log('Rendering item:', index, item); // לוג לבדיקה
                   return (
-                    <React.Fragment key={index}>
+                    <tbody key={index} className="item-group">
                       {/* פריט ראשי */}
-                      <tr>
+                      <tr className="avoid-page-break">
                         <td className="item-description">
                           {editingItem === index ? (
                             <div className="space-y-2">
@@ -987,7 +1034,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       </tr>
                       {/* פיצולים מתחת לפריט הראשי */}
                       {item.splits && item.splits.map((split: any, splitIndex: number) => (
-                          <tr key={`split-${index}-${splitIndex}`} className="split-row"
+                          <tr key={`split-${index}-${splitIndex}`} className="split-row avoid-page-break"
                               style={{backgroundColor: '#f8f9fa'}}>
                             <td className="item-description">
                               <div className="item-title">{split.name}</div>
@@ -999,12 +1046,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                             <td>{formatCurrency(split.total)}</td>
                           </tr>
                       ))}
-                    </React.Fragment>
+                    </tbody>
                   );
                 })}
 
                 {/* שורות סיכום */}
-                <tr className="summary-row-orange">
+                <tbody className="summary-group">
+                <tr className="summary-row-orange avoid-page-break">
                   <td className="item-description">סה"כ לפני מע"מ</td>
                   <td></td>
                   <td></td>
@@ -1015,7 +1063,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                 {hasDiscount && (
                     <>
 
-                    <tr className="summary-row-green">
+                    <tr className="summary-row-green avoid-page-break">
                       <td className="item-description">הנחה ){quote.discount_percent}%(</td>
                       <td></td>
                       <td></td>
@@ -1025,7 +1073,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
 
 
 
-                    <tr className="summary-row-orange">
+                    <tr className="summary-row-orange avoid-page-break">
                       <td className="item-description">סה"כ לאחר הנחה</td>
                       <td></td>
                       <td></td>
@@ -1035,7 +1083,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                     </>
                 )}
                 {extraVatDiscountPercent > 0 && (
-                  <tr className="summary-row-green">
+                  <tr className="summary-row-green avoid-page-break">
                     <td className="item-description">הנחה למחיר סופי ){extraVatDiscountPercent}%(</td>
                     <td></td>
                     <td></td>
@@ -1044,7 +1092,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   </tr>
                 )}
 
-                <tr className="summary-row-orange">
+                <tr className="summary-row-orange avoid-page-break">
                   <td className="item-description">18% מע"מ</td>
                   <td></td>
                   <td></td>
@@ -1052,7 +1100,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                   <td>{formatCurrency(vatAfterExtraDiscount)}</td>
                 </tr>
 
-                <tr className="final-total summary-row-orange">
+                <tr className="final-total summary-row-orange avoid-page-break">
                   <td className="item-description">סה"כ כולל מע"מ</td>
                   <td></td>
                   <td></td>
