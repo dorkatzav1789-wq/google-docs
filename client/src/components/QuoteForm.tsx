@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Client, Quote, QuoteItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Client, Quote, QuoteItem, QuoteWithItems } from '../types';
 import ClientSelector from './ClientSelector';
 import NewClientForm from './NewClientForm';
 import QuoteItemsInput from './QuoteItemsInput';
@@ -12,9 +12,10 @@ import { useTheme } from '../context/ThemeContext';
 interface QuoteFormProps {
   onQuoteSaved?: () => void;
   onBack: () => void;
+  duplicateData?: QuoteWithItems;
 }
 
-const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
+const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack, duplicateData }) => {
   const { theme, toggleTheme } = useTheme();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
@@ -27,6 +28,25 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack }) => {
     special_notes: '',
   });
   const [loading, setLoading] = useState(false);
+
+  // טעינת נתונים משוכפלים אם קיימים
+  useEffect(() => {
+    if (duplicateData) {
+      const { quote, items } = duplicateData;
+      // לא מעתיקים את ה-client - צריך לבחור לקוח חדש
+      setItems(items.map(item => ({
+        ...item,
+        id: undefined // מסירים את ה-id כדי שייווצר כחדש
+      })));
+      setDiscountPercent(quote.discount_percent || 0);
+      setEventDetails({
+        event_name: quote.event_name || '',
+        event_date: quote.event_date || '',
+        event_hours: quote.event_hours || '',
+        special_notes: quote.special_notes || '',
+      });
+    }
+  }, [duplicateData]);
 
   // === תנאי הפעלה של הכפתור ===
   const canSave =
