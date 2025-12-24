@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
+import { QuoteWithItems } from './types';
 import QuotesList from './components/QuotesList';
 import QuoteForm from './components/QuoteForm';
 import QuoteDetails from './components/QuoteDetails';
 import EmployeeManagement from './components/EmployeeManagement';
+import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
   const [showEmployees, setShowEmployees] = useState(false);
   const [showNewQuote, setShowNewQuote] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [duplicateQuoteData, setDuplicateQuoteData] = useState<QuoteWithItems | null>(null);
 
   const handleQuoteSelect = (quoteId: number) => {
     setSelectedQuoteId(quoteId);
@@ -38,6 +42,14 @@ function App() {
     setSelectedQuoteId(null);
     setShowNewQuote(false);
     setShowEmployees(false);
+    setShowDashboard(false);
+    setDuplicateQuoteData(null);
+  };
+
+  const handleDuplicateQuote = (quoteData: QuoteWithItems) => {
+    setDuplicateQuoteData(quoteData);
+    setSelectedQuoteId(null);
+    setShowNewQuote(true);
   };
 
   const [showLogin, setShowLogin] = useState(!user);
@@ -80,15 +92,17 @@ function App() {
           </div>
         </div>
       </header>
-      {showEmployees ? (
+      {showDashboard ? (
+        <AdminDashboard onBack={handleBack} />
+      ) : showEmployees ? (
         <>
           <EmployeeManagement onBack={handleBack} />
         </>
       ) : selectedQuoteId || showNewQuote ? (
         showNewQuote ? (
-          <QuoteForm onBack={handleBack} />
+          <QuoteForm onBack={handleBack} duplicateData={duplicateQuoteData || undefined} />
         ) : (
-          <QuoteDetails quoteId={selectedQuoteId!} onBack={handleBack} />
+          <QuoteDetails quoteId={selectedQuoteId!} onBack={handleBack} onDuplicate={handleDuplicateQuote} />
         )
       ) : (
         <>
@@ -101,12 +115,20 @@ function App() {
                 👥 {user?.role === 'admin' ? 'ניהול עובדים' : 'רישום שעות'}
               </button>
               {user?.role === 'admin' && (
-                <button
-                  onClick={handleNewQuote}
-                  className="px-6 py-3 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
-                >
-                  📝 הצעת מחיר חדשה
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowDashboard(true)}
+                    className="px-6 py-3 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
+                  >
+                    ⚙️ דשבורד ניהול
+                  </button>
+                  <button
+                    onClick={handleNewQuote}
+                    className="px-6 py-3 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
+                  >
+                    📝 הצעת מחיר חדשה
+                  </button>
+                </>
               )}
             </div>
           </div>

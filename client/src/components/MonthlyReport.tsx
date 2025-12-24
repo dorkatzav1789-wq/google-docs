@@ -26,6 +26,7 @@ export const MonthlyReport: React.FC = () => {
   const [savingEdit, setSavingEdit] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
+  const canEditRows = !!user; // כל משתמש מחובר יכול לערוך את השורות שהוא רואה (אדמין רואה הכל, עובד רק את עצמו)
 
   const normalizeReport = (data: any): MonthlyReportType => {
     const work_hours: WorkHours[] = Array.isArray(data?.work_hours)
@@ -256,6 +257,7 @@ export const MonthlyReport: React.FC = () => {
                     <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
                     <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
                     <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
+                    <th style="border: 1px solid #000; padding: 8px;">הערות</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -266,10 +268,11 @@ export const MonthlyReport: React.FC = () => {
                       <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
                       <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
                       <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.notes || '-'}</td>
                     </tr>
-                  `).join('') : '<tr><td colspan="5" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים עסקיים</td></tr>'}
+                  `).join('') : '<tr><td colspan="6" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים עסקיים</td></tr>'}
                   <tr style="background-color: #dbeafe; font-weight: bold;">
-                    <td colspan="4" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים עסקיים</td>
+                    <td colspan="5" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים עסקיים</td>
                     <td style="border: 1px solid #000; padding: 8px;">₪${fmt(businessTotal)}</td>
                   </tr>
                 </tbody>
@@ -287,6 +290,7 @@ export const MonthlyReport: React.FC = () => {
                     <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
                     <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
                     <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
+                    <th style="border: 1px solid #000; padding: 8px;">הערות</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,10 +301,11 @@ export const MonthlyReport: React.FC = () => {
                       <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
                       <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
                       <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
+                      <td style="border: 1px solid #000; padding: 8px;">${row.notes || '-'}</td>
                     </tr>
-                  `).join('') : '<tr><td colspan="5" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים פרטיים</td></tr>'}
+                  `).join('') : '<tr><td colspan="6" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים פרטיים</td></tr>'}
                   <tr style="background-color: #d1fae5; font-weight: bold;">
-                    <td colspan="4" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים פרטיים</td>
+                    <td colspan="5" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים פרטיים</td>
                     <td style="border: 1px solid #000; padding: 8px;">₪${fmt(personalTotal)}</td>
                   </tr>
                 </tbody>
@@ -616,13 +621,13 @@ export const MonthlyReport: React.FC = () => {
             <th className="border p-2">שעות נוספות</th>
             <th className="border p-2">סה"כ</th>
             <th className="border p-2">הערות</th>
-            {isAdmin && <th className="border p-2 admin-actions-column">פעולות</th>}
+            {canEditRows && <th className="border p-2 admin-actions-column">פעולות</th>}
           </tr>
           </thead>
           <tbody>
           {report.work_hours.length === 0 ? (
               <tr>
-                <td className="border p-2 text-center text-gray-500" colSpan={isAdmin ? 9 : 8}>
+                <td className="border p-2 text-center text-gray-500" colSpan={canEditRows ? 9 : 8}>
                   אין נתונים לחודש שנבחר
                 </td>
               </tr>
@@ -731,7 +736,7 @@ export const MonthlyReport: React.FC = () => {
                         row.notes || '-'
                       )}
                     </td>
-                    {isAdmin && (
+                    {canEditRows && (
                       <td className="border p-2 admin-actions-column">
                         {editingRowId === row.id ? (
                           <div className="flex gap-2">

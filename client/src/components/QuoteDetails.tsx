@@ -11,9 +11,10 @@ import html2pdf from 'html2pdf.js';
 interface QuoteDetailsProps {
   quoteId: number;
   onBack: () => void;
+  onDuplicate?: (quoteData: QuoteWithItems) => void;
 }
 
-const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
+const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicate }) => {
   const { theme, toggleTheme } = useTheme();
   const [quoteData, setQuoteData] = useState<QuoteWithItems | null>(null);
   const [loading, setLoading] = useState(true);
@@ -359,26 +360,26 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       // כפיית reflow
       void element.offsetHeight;
- 
-       const opt = {
-         margin: [10, 10, 10, 10],
-         filename: `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.pdf`,
-         image: { type: 'jpeg', quality: 0.98 },
-         html2canvas: {
-           scale: 2,
-           useCORS: true,
-           allowTaint: true
-         },
-         jsPDF: {
-           unit: 'mm',
-           format: 'a4',
-           orientation: 'portrait'
-         },
-         pagebreak: {
+
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `${quoteData.quote.event_name}_${quoteData.quote.client_company}_${formatDate(quoteData.quote.event_date)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait'
+        },
+        pagebreak: {
            mode: ['css', 'legacy'],
            avoid: ['.avoid-page-break', '.item-group']
-         },
-       };
+        },
+      };
 
       await html2pdf().set(opt).from(element).save();
 
@@ -618,6 +619,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
               >
                 🔔 ניהול תזכורות
               </button>
+              {onDuplicate && (
+                <button 
+                  onClick={() => onDuplicate(quoteData)} 
+                  className="btn-primary bg-purple-500 hover:bg-purple-600"
+                >
+                  📋 שכפל הצעה
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1306,7 +1315,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack }) => {
                       }
                       try {
                         const newAmount = Math.round((totals.totalAfterDiscount || 0) * (val / 100));
-                        setExtraVatDiscountPercent(val);
+                      setExtraVatDiscountPercent(val);
                         if (quoteData?.quote?.id) {
                           await quotesAPI.update(quoteData.quote.id, {
                             extra_vat_discount_percent: val,
