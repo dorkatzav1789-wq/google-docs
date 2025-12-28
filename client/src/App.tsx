@@ -9,6 +9,7 @@ import QuoteDetails from './components/QuoteDetails';
 import EmployeeManagement from './components/EmployeeManagement';
 import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
+import ReminderService from './components/ReminderService';
 
 function App() {
   const { user, signOut, loading } = useAuth();
@@ -67,8 +68,9 @@ function App() {
   }
 
   return (
-    <div className="App min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <header className="bg-white dark:bg-gray-800 shadow-sm p-4 mb-0 transition-colors border-b border-gray-200 dark:border-gray-700">
+    <ReminderService>
+      <div className="App min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 mb-0 transition-colors border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex-1 flex justify-start">
             <button
@@ -135,7 +137,8 @@ function App() {
           {user?.role === 'admin' && <QuotesList onQuoteSelect={handleQuoteSelect} />}
         </>
       )}
-    </div>
+      </div>
+    </ReminderService>
   );
 }
 

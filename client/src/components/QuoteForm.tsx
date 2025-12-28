@@ -4,8 +4,6 @@ import ClientSelector from './ClientSelector';
 import NewClientForm from './NewClientForm';
 import QuoteItemsInput from './QuoteItemsInput';
 import QuoteSummary from './QuoteSummary';
-import ItemsManager from './ItemsManager';
-import AliasesManager from './AliasesManager';
 import { quotesAPI } from '../services/supabaseAPI';
 import { useTheme } from '../context/ThemeContext';
 
@@ -240,7 +238,7 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack, duplicateDa
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-          {/* צד שמאל - בחירת לקוח וניהול פריטים */}
+          {/* צד שמאל - בחירת לקוח */}
           <div className="lg:col-span-1 space-y-6">
             {showNewClientForm ? (
                 <NewClientForm
@@ -254,12 +252,6 @@ const QuoteForm: React.FC<QuoteFormProps> = ({ onQuoteSaved, onBack, duplicateDa
                     onNewClient={handleNewClient}
                 />
             )}
-            
-            {/* ניהול פריטים */}
-            <ItemsManager />
-            
-            {/* ניהול כינויים */}
-            <AliasesManager />
           </div>
 
           {/* צד ימין - פרטי הצעה */}

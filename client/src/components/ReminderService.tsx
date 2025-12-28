@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Reminder } from '../types';
-import { remindersAPI } from '../services/api';
+import { remindersAPI } from '../services/supabaseAPI';
 import { emailService } from '../services/emailService';
 import ReminderStatus from './ReminderStatus';
 
