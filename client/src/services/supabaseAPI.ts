@@ -198,7 +198,8 @@ export const quotesAPI = {
       .from('quote_items')
       .select('*')
       .eq('quote_id', id)
-      .order('id', { ascending: true }); // חזרה ל-id עד שהעמודה sort_order תהיה זמינה
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true }); // fallback if sort_order is same
     
     if (itemsError) throw itemsError;
 
@@ -265,7 +266,7 @@ export const quotesAPI = {
 
     // Insert quote items
     console.log('Items to insert:', items); // לוג לבדיקה
-    const itemsWithQuoteId = items.map(item => {
+    const itemsWithQuoteId = items.map((item, index) => {
       console.log('Mapping item:', { name: item.name, description: item.description }); // לוג לבדיקה
       return {
         item_name: item.name || 'שם לא זמין',
@@ -275,6 +276,7 @@ export const quotesAPI = {
         discount: item.discount,
         total: item.total,
         quote_id: quoteData.id,
+        sort_order: (index + 1) * 100, // מתחילים מ-100, 200, 300 וכו'
       };
     });
 
@@ -502,7 +504,74 @@ export const quotesAPI = {
     quantity: number;
     discount?: number;
     total: number;
+    afterItemId?: number; // אם נתון, נוסיף אחרי הפריט הזה
+    beforeItemId?: number; // אם נתון, נוסיף לפני הפריט הזה
   }): Promise<{ id: number }> => {
+    let sortOrder: number | undefined;
+
+    // אם מוגדר אחרי פריט מסוים או לפני פריט מסוים, צריך לחשב את ה-sort_order
+    if (payload.afterItemId || payload.beforeItemId) {
+      const targetItemId = payload.afterItemId || payload.beforeItemId!;
+      // קבלת הפריט הקיים
+      const { data: targetItem, error: targetError } = await getSupabaseAdmin()
+        .from('quote_items')
+        .select('sort_order')
+        .eq('id', targetItemId)
+        .single();
+      
+      if (targetError) throw targetError;
+      const targetSortOrder = targetItem?.sort_order || 0;
+
+      if (payload.afterItemId) {
+        // מוסיפים אחרי - נבדוק אם יש פריט אחרי
+        const { data: nextItems } = await getSupabaseAdmin()
+          .from('quote_items')
+          .select('sort_order, id')
+          .eq('quote_id', payload.quote_id)
+          .gt('sort_order', targetSortOrder)
+          .order('sort_order', { ascending: true })
+          .limit(1);
+        
+        if (nextItems && nextItems.length > 0) {
+          // יש פריט אחרי - נכניס ביניהם
+          sortOrder = (targetSortOrder + nextItems[0].sort_order) / 2;
+        } else {
+          // אין פריט אחרי - נוסיף 100 אחרי
+          sortOrder = targetSortOrder + 100;
+        }
+      } else {
+        // payload.beforeItemId
+        // מוסיפים לפני - נבדוק אם יש פריט לפני
+        const { data: prevItems } = await getSupabaseAdmin()
+          .from('quote_items')
+          .select('sort_order, id')
+          .eq('quote_id', payload.quote_id)
+          .lt('sort_order', targetSortOrder)
+          .order('sort_order', { ascending: false })
+          .limit(1);
+        
+        if (prevItems && prevItems.length > 0) {
+          // יש פריט לפני - נכניס ביניהם
+          sortOrder = (targetSortOrder + prevItems[0].sort_order) / 2;
+        } else {
+          // אין פריט לפני - נוסיף 100 לפני (אבל לא שלילי)
+          sortOrder = Math.max(targetSortOrder - 100, 1);
+        }
+      }
+    } else {
+      // לא מוגדר מיקום - נוסיף בסוף
+      const { data: lastItems } = await getSupabaseAdmin()
+        .from('quote_items')
+        .select('sort_order')
+        .eq('quote_id', payload.quote_id)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      
+      sortOrder = lastItems && lastItems.length > 0 && lastItems[0]?.sort_order 
+        ? lastItems[0].sort_order + 100 
+        : 100;
+    }
+
     const { data, error } = await getSupabaseAdmin()
       .from('quote_items')
       .insert([{
@@ -513,6 +582,7 @@ export const quotesAPI = {
         quantity: payload.quantity,
         discount: payload.discount ?? 0,
         total: payload.total,
+        sort_order: sortOrder,
       }])
       .select('id')
       .single();

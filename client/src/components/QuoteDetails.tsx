@@ -30,6 +30,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [addItemPosition, setAddItemPosition] = useState<{ type: 'before' | 'after', itemId: number } | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogItems, setCatalogItems] = useState<Array<{ id: number; name: string; description: string; price: number }>>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -498,8 +499,9 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
     }
   };
 
-  const openAddItemModal = async () => {
+  const openAddItemModal = async (position?: { type: 'before' | 'after', itemId: number }) => {
     try {
+      setAddItemPosition(position || null);
       setShowAddItemModal(true);
       setCatalogLoading(true);
       const items = await itemsAPI.getAll();
@@ -527,7 +529,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   const addCatalogItemToQuote = async (item: { id: number; name: string; description: string; price: number }) => {
     if (!quoteData?.quote?.id) return;
     try {
-      await quotesAPI.addItem({
+      const payload: any = {
         quote_id: quoteData.quote.id,
         item_name: item.name,
         item_description: item.description || '',
@@ -535,9 +537,21 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
         quantity: 1,
         discount: 0,
         total: Number(item.price) || 0,
-      });
+      };
+
+      // הוספת מיקום אם נבחר
+      if (addItemPosition) {
+        if (addItemPosition.type === 'before') {
+          payload.beforeItemId = addItemPosition.itemId;
+        } else {
+          payload.afterItemId = addItemPosition.itemId;
+        }
+      }
+
+      await quotesAPI.addItem(payload);
       await loadQuoteDetails();
       setShowAddItemModal(false);
+      setAddItemPosition(null);
     } catch (e) {
       console.error('Failed adding item to quote', e);
       alert('שגיאה בהוספת פריט להצעה');
@@ -1373,7 +1387,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
         <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-4 pt-4">
             <div className="text-sm font-semibold text-gray-800 dark:text-white">שם הפריט	תיאור</div>
-            <button onClick={openAddItemModal} className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">הוסף פריט</button>
+            <button onClick={() => openAddItemModal()} className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">הוסף פריט</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse bg-white dark:bg-gray-800">
@@ -1545,12 +1559,32 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => startEdit(index)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                          >
-                            ערוך
-                          </button>
+                          <div className="flex gap-1 flex-col">
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => item.id && openAddItemModal({ type: 'before', itemId: item.id })}
+                                className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הוסף פריט לפני"
+                                disabled={!item.id}
+                              >
+                                ⬆️ לפני
+                              </button>
+                              <button
+                                onClick={() => item.id && openAddItemModal({ type: 'after', itemId: item.id })}
+                                className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="הוסף פריט אחרי"
+                                disabled={!item.id}
+                              >
+                                ⬇️ אחרי
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => startEdit(index)}
+                              className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                            >
+                              ערוך
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>

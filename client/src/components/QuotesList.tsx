@@ -4,6 +4,7 @@ import { quotesAPI, remindersAPI } from '../services/supabaseAPI';
 
 interface QuotesListProps {
   onQuoteSelect: (quoteId: number) => void;
+  compact?: boolean; // אם true, מציג גרסה קומפקטית בלי min-h-screen
 }
 
 type GroupedQuotes = Record<string, Quote[]>;
@@ -16,10 +17,11 @@ const formatHebDate = (isoDateLike: string) => {
 
 const formatCurrency = (amount: number) => `₪${amount.toLocaleString()}`;
 
-const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
+const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false }) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [reminders, setReminders] = useState<Record<number, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadQuotes = async () => {
     try {
@@ -54,10 +56,21 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // סינון לפי חיפוש
+  const filteredQuotes = useMemo(() => {
+    if (!searchTerm.trim()) return quotes;
+    const term = searchTerm.toLowerCase();
+    return quotes.filter(quote => 
+      quote.event_name?.toLowerCase().includes(term) ||
+      quote.client_name?.toLowerCase().includes(term) ||
+      quote.client_company?.toLowerCase().includes(term)
+    );
+  }, [quotes, searchTerm]);
+
   // קיבוץ לפי תאריך אירוע
   const groupedQuotes: GroupedQuotes = useMemo(() => {
     const grouped: GroupedQuotes = {};
-    for (const q of quotes) {
+    for (const q of filteredQuotes) {
       const key = q.event_date || 'ללא תאריך אירוע';
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(q);
@@ -71,7 +84,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
       });
     });
     return grouped;
-  }, [quotes]);
+  }, [filteredQuotes]);
 
   // רשימת ימים (קבוצות) ממוינת לפי תאריך האירוע
   const days = useMemo(() => {
@@ -95,10 +108,25 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
   }
 
   return (
-      <div className="w-full mx-auto bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="text-center mb-8 px-6 pt-6">
-          <h1 className="text-3xl font-bold text-black dark:text-white mb-2">הצעות קיימות</h1>
-          <p className="text-black/80 dark:text-white/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
+      <div className={`w-full mx-auto ${compact ? '' : 'bg-gray-50 dark:bg-gray-900 min-h-screen'}`}>
+        <div className={`text-center mb-8 ${compact ? 'px-0 pt-0' : 'px-6 pt-6'}`}>
+          {!compact && (
+            <>
+              <h1 className="text-3xl font-bold text-black dark:text-white mb-2">הצעות קיימות</h1>
+              <p className="text-black/80 dark:text-white/80 mb-4">ניהול הצעות מחיר לפי תאריך האירוע</p>
+            </>
+          )}
+          
+          {/* שדה חיפוש */}
+          <div className="max-w-md mx-auto mb-4">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="חפש לפי שם אירוע, לקוח או חברה..."
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+            />
+          </div>
         </div>
 
         {quotes.length === 0 ? (
@@ -109,8 +137,16 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect }) => {
                 <p className="text-gray-600 dark:text-gray-400">צור הצעת מחיר ראשונה כדי להתחיל</p>
               </div>
             </div>
+        ) : filteredQuotes.length === 0 ? (
+            <div className="text-center px-6">
+              <div className="card max-w-md mx-auto bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <div className="text-4xl mb-4">🔍</div>
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">לא נמצאו הצעות</h3>
+                <p className="text-gray-600 dark:text-gray-400">נסה לשנות את מונח החיפוש</p>
+              </div>
+            </div>
         ) : (
-            <div className="space-y-6 px-6 pb-6">
+            <div className={`space-y-6 ${compact ? 'px-0 pb-0' : 'px-6 pb-6'}`}>
               {days.map((dayKey) => (
                   <div key={dayKey} className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <div className="flex items-center justify-between mb-4">

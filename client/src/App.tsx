@@ -32,6 +32,8 @@ function App() {
   const handleQuoteSelect = (quoteId: number) => {
     setSelectedQuoteId(quoteId);
     setShowNewQuote(false);
+    setShowDashboard(false); // סגירת דשבורד אם פתוח
+    setShowEmployees(false); // סגירת עובדים אם פתוח
   };
 
   const handleNewQuote = () => {
@@ -95,7 +97,7 @@ function App() {
         </div>
       </header>
       {showDashboard ? (
-        <AdminDashboard onBack={handleBack} />
+        <AdminDashboard onBack={handleBack} onQuoteSelect={handleQuoteSelect} />
       ) : showEmployees ? (
         <>
           <EmployeeManagement onBack={handleBack} />
