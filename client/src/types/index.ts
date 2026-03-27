@@ -38,6 +38,7 @@ export interface QuoteItem {
 export interface Quote {
   id?: number;
   client_id: number;
+  quote_status?: 'initial' | 'negotiation' | 'reserved' | 'signed';
   event_name: string;
   event_date: string;
   event_hours: string;
@@ -61,6 +62,18 @@ export interface Quote {
 export interface QuoteWithItems {
   quote: Quote;
   items: QuoteItem[];
+}
+
+export interface QuoteImage {
+  id: number;
+  quote_id: number;
+  file_path: string;
+  file_name: string;
+  content_type?: string | null;
+  file_size?: number | null;
+  sort_order: number;
+  created_at: string;
+  public_url?: string;
 }
 
 export interface Employee {

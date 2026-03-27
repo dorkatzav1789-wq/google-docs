@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { QuoteWithItems } from '../types';
-import { quotesAPI, itemsAPI } from '../services/supabaseAPI';
+import { QuoteWithItems, QuoteImage } from '../types';
+import { quotesAPI, itemsAPI, quoteImagesAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
 import SplitModal from './SplitModal';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,15 @@ interface QuoteDetailsProps {
   onBack: () => void;
   onDuplicate?: (quoteData: QuoteWithItems) => void;
 }
+
+type QuoteStatus = 'initial' | 'negotiation' | 'reserved' | 'signed';
+
+const STATUS_OPTIONS: Array<{ value: QuoteStatus; label: string }> = [
+  { value: 'initial', label: 'ראשוני' },
+  { value: 'negotiation', label: 'מתנהל משא ומתן' },
+  { value: 'reserved', label: 'משוריין' },
+  { value: 'signed', label: 'חתום' },
+];
 
 const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicate }) => {
   const { theme, toggleTheme } = useTheme();
@@ -34,6 +43,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogItems, setCatalogItems] = useState<Array<{ id: number; name: string; description: string; price: number }>>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [quoteImages, setQuoteImages] = useState<QuoteImage[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [removingImageId, setRemovingImageId] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<QuoteImage | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
@@ -250,6 +263,19 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   useEffect(() => {
     loadQuoteDetails();
   }, [quoteId, loadQuoteDetails]);
+
+  const loadQuoteImages = useCallback(async () => {
+    try {
+      const images = await quoteImagesAPI.listByQuote(quoteId);
+      setQuoteImages(images);
+    } catch (error) {
+      console.error('שגיאה בטעינת תמונות להצעה:', error);
+    }
+  }, [quoteId]);
+
+  useEffect(() => {
+    loadQuoteImages();
+  }, [loadQuoteImages]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'לא צוין';
@@ -558,6 +584,66 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
     }
   };
 
+  const handleImagesUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files ? Array.from(event.target.files) : [];
+    if (files.length === 0) return;
+
+    try {
+      setUploadingImages(true);
+      await Promise.all(files.map((file) => quoteImagesAPI.upload(quoteId, file)));
+      await loadQuoteImages();
+    } catch (error) {
+      console.error('שגיאה בהעלאת תמונות:', error);
+      alert('העלאת התמונות נכשלה');
+    } finally {
+      setUploadingImages(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (image: QuoteImage) => {
+    const ok = window.confirm(`למחוק את התמונה "${image.file_name}"?`);
+    if (!ok) return;
+
+    try {
+      setRemovingImageId(image.id);
+      await quoteImagesAPI.remove(image.id);
+      setQuoteImages((prev) => prev.filter((img) => img.id !== image.id));
+    } catch (error) {
+      console.error('שגיאה במחיקת תמונה:', error);
+      alert('מחיקת התמונה נכשלה');
+    } finally {
+      setRemovingImageId(null);
+    }
+  };
+
+  const handleStatusChange = async (nextStatus: QuoteStatus) => {
+    const prevStatus = (quoteData?.quote?.quote_status as QuoteStatus | undefined) || 'initial';
+    if (!quoteData?.quote?.id || prevStatus === nextStatus) return;
+
+    setQuoteData((prev) => prev ? {
+      ...prev,
+      quote: {
+        ...prev.quote,
+        quote_status: nextStatus,
+      }
+    } : prev);
+
+    try {
+      await quotesAPI.update(quoteData.quote.id, { quote_status: nextStatus });
+    } catch (error) {
+      console.error('שגיאה בעדכון סטטוס הצעה:', error);
+      setQuoteData((prev) => prev ? {
+        ...prev,
+        quote: {
+          ...prev.quote,
+          quote_status: prevStatus,
+        }
+      } : prev);
+      alert('שמירת הסטטוס נכשלה');
+    }
+  };
+
   if (loading) {
     return (
         <div className="w-full mx-auto p-6">
@@ -620,6 +706,19 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-black dark:text-white mb-2">פרטי הצעת מחיר</h1>
             <p className="text-black/80 dark:text-white/80">הצעה #{quote.id}</p>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <label htmlFor="quote-status" className="text-sm font-medium text-gray-700 dark:text-gray-200">סטטוס הצעה:</label>
+              <select
+                id="quote-status"
+                value={(quote.quote_status as QuoteStatus) || 'initial'}
+                onChange={(e) => handleStatusChange(e.target.value as QuoteStatus)}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="mt-4 flex gap-2">
               <button onClick={handleExportPDF} disabled={exportingPDF || !exportReady} className="btn-success">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}
@@ -1382,6 +1481,116 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
             </div>
           </div>
         </div>
+
+        <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">תמונות להצעה</h3>
+            <label className={`px-3 py-1 rounded text-sm text-white cursor-pointer ${uploadingImages ? 'bg-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              {uploadingImages ? 'מעלה...' : 'העלה תמונות'}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImagesUpload}
+                className="hidden"
+                disabled={uploadingImages}
+              />
+            </label>
+          </div>
+
+          {quoteImages.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300">אין תמונות להצעה זו עדיין.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {quoteImages.map((image) => (
+                <div key={image.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                  {image.public_url ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(image)}
+                      className="block w-full text-right"
+                      title="פתח תצוגה גדולה"
+                    >
+                      <img
+                        src={image.public_url}
+                        alt={image.file_name}
+                        className="w-full h-40 object-cover hover:opacity-90 transition-opacity"
+                      />
+                    </button>
+                  ) : (
+                    <div className="w-full h-40 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                      תצוגה מקדימה לא זמינה
+                    </div>
+                  )}
+                  <div className="p-3 flex items-center justify-between gap-2">
+                    <div className="text-xs text-gray-700 dark:text-gray-300 truncate" title={image.file_name}>
+                      {image.file_name}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {image.public_url && (
+                        <a
+                          href={image.public_url}
+                          download={image.file_name}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                          title="הורד תמונה"
+                        >
+                          הורד
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleDeleteImage(image)}
+                        disabled={removingImageId === image.id}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-60"
+                      >
+                        {removingImageId === image.id ? 'מוחק...' : 'מחק'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {selectedImage?.public_url && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={() => setSelectedImage(null)}
+          >
+            <div
+              className="relative max-w-5xl w-full bg-gray-900 rounded-lg p-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-white truncate">{selectedImage.file_name}</div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={selectedImage.public_url}
+                    download={selectedImage.file_name}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    הורד
+                  </a>
+                  <button
+                    onClick={() => setSelectedImage(null)}
+                    className="px-3 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-600"
+                  >
+                    סגור
+                  </button>
+                </div>
+              </div>
+              <img
+                src={selectedImage.public_url}
+                alt={selectedImage.file_name}
+                className="w-full max-h-[75vh] object-contain rounded"
+              />
+            </div>
+          </div>
+        )}
 
         {/* טבלת פריטים */}
         <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

@@ -1,6 +1,6 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
 import { getSupabaseClient, getSupabaseAdmin } from './supabaseClient';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage } from '../types';
 
 // ---------- Clients ----------
 export const clientsAPI = {
@@ -952,5 +952,100 @@ export const remindersAPI = {
     
     if (error) throw error;
     return data;
+  },
+};
+
+// ---------- Quote Images ----------
+const QUOTE_IMAGES_BUCKET = 'quote-images';
+
+export const quoteImagesAPI = {
+  listByQuote: async (quoteId: number): Promise<QuoteImage[]> => {
+    const { data, error } = await getSupabaseClient()
+      .from('quote_images')
+      .select('*')
+      .eq('quote_id', quoteId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    const rows = (data || []) as QuoteImage[];
+    const rowsWithUrls = await Promise.all(
+      rows.map(async (row) => {
+        const { data: signedData } = await getSupabaseClient()
+          .storage
+          .from(QUOTE_IMAGES_BUCKET)
+          .createSignedUrl(row.file_path, 60 * 60 * 24 * 7);
+
+        return {
+          ...row,
+          public_url: signedData?.signedUrl,
+        };
+      })
+    );
+
+    return rowsWithUrls;
+  },
+
+  upload: async (quoteId: number, file: File): Promise<QuoteImage> => {
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${quoteId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeFileName}`;
+
+    const { error: uploadError } = await getSupabaseClient()
+      .storage
+      .from(QUOTE_IMAGES_BUCKET)
+      .upload(path, file, { upsert: false, contentType: file.type || undefined });
+
+    if (uploadError) throw uploadError;
+
+    const { data: inserted, error: insertError } = await getSupabaseClient()
+      .from('quote_images')
+      .insert([{
+        quote_id: quoteId,
+        file_path: path,
+        file_name: file.name,
+        content_type: file.type || null,
+        file_size: file.size || null,
+      }])
+      .select('*')
+      .single();
+
+    if (insertError) throw insertError;
+
+    const { data: signedData } = await getSupabaseClient()
+      .storage
+      .from(QUOTE_IMAGES_BUCKET)
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+
+    return {
+      ...(inserted as QuoteImage),
+      public_url: signedData?.signedUrl,
+    };
+  },
+
+  remove: async (imageId: number): Promise<{ ok: boolean }> => {
+    const { data: row, error: rowError } = await getSupabaseClient()
+      .from('quote_images')
+      .select('id, file_path')
+      .eq('id', imageId)
+      .single();
+
+    if (rowError) throw rowError;
+
+    const { error: storageError } = await getSupabaseClient()
+      .storage
+      .from(QUOTE_IMAGES_BUCKET)
+      .remove([row.file_path]);
+
+    if (storageError) throw storageError;
+
+    const { error: deleteError } = await getSupabaseClient()
+      .from('quote_images')
+      .delete()
+      .eq('id', imageId);
+
+    if (deleteError) throw deleteError;
+
+    return { ok: true };
   },
 };

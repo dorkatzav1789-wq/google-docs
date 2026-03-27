@@ -8,6 +8,27 @@ interface QuotesListProps {
 }
 
 type GroupedQuotes = Record<string, Quote[]>;
+type QuoteStatus = 'initial' | 'negotiation' | 'reserved' | 'signed';
+
+const STATUS_LABELS: Record<QuoteStatus, string> = {
+  initial: 'ראשוני',
+  negotiation: 'מתנהל משא ומתן',
+  reserved: 'משוריין',
+  signed: 'חתום',
+};
+
+const STATUS_BADGE_CLASSES: Record<QuoteStatus, string> = {
+  initial: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+  negotiation: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+  reserved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  signed: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+};
+
+const getQuoteStatus = (quote: Quote): QuoteStatus => {
+  const status = quote.quote_status as QuoteStatus | undefined;
+  if (status === 'negotiation' || status === 'reserved' || status === 'signed') return status;
+  return 'initial';
+};
 
 const formatHebDate = (isoDateLike: string) => {
   const d = new Date(isoDateLike);
@@ -22,6 +43,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
   const [loading, setLoading] = useState(true);
   const [reminders, setReminders] = useState<Record<number, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
 
   const loadQuotes = async () => {
     try {
@@ -58,14 +80,18 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
 
   // סינון לפי חיפוש
   const filteredQuotes = useMemo(() => {
-    if (!searchTerm.trim()) return quotes;
-    const term = searchTerm.toLowerCase();
-    return quotes.filter(quote => 
+    const term = searchTerm.toLowerCase().trim();
+    return quotes.filter(quote => {
+      const quoteStatus = (quote.quote_status as QuoteStatus) || 'initial';
+      const matchesSearch = !term || (
       quote.event_name?.toLowerCase().includes(term) ||
       quote.client_name?.toLowerCase().includes(term) ||
       quote.client_company?.toLowerCase().includes(term)
-    );
-  }, [quotes, searchTerm]);
+      );
+      const matchesStatus = statusFilter === 'all' || quoteStatus === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [quotes, searchTerm, statusFilter]);
 
   // קיבוץ לפי תאריך אירוע
   const groupedQuotes: GroupedQuotes = useMemo(() => {
@@ -118,14 +144,27 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
           )}
           
           {/* שדה חיפוש */}
-          <div className="max-w-md mx-auto mb-4">
+          <div className="max-w-3xl mx-auto mb-4 flex gap-2">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="חפש לפי שם אירוע, לקוח או חברה..."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              className="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | QuoteStatus)}
+              className="w-40 shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              title="סינון לפי סטטוס"
+              aria-label="סינון לפי סטטוס"
+            >
+              <option value="all">כל הסטטוסים</option>
+              <option value="initial">{STATUS_LABELS.initial}</option>
+              <option value="negotiation">{STATUS_LABELS.negotiation}</option>
+              <option value="reserved">{STATUS_LABELS.reserved}</option>
+              <option value="signed">{STATUS_LABELS.signed}</option>
+            </select>
           </div>
         </div>
 
@@ -170,9 +209,14 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                                   className="flex-1 cursor-pointer"
                                   onClick={() => onQuoteSelect(quote.id!)}
                               >
-                                <h4 className="font-semibold text-gray-800 dark:text-white mb-1">
-                                  {quote.event_name}
-                                </h4>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-semibold text-gray-800 dark:text-white">
+                                    {quote.event_name}
+                                  </h4>
+                                  <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${STATUS_BADGE_CLASSES[getQuoteStatus(quote)]}`}>
+                                    {STATUS_LABELS[getQuoteStatus(quote)]}
+                                  </span>
+                                </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                                   <div>
                                     <span className="font-medium">לקוח:</span> {quote.client_name}
