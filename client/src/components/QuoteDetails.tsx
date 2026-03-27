@@ -1664,8 +1664,13 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
           </div>
         )}
 
-        <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">הוצאות להצעה</h3>
+        <div className="card mt-6 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white">הוצאות להצעה</h3>
+            <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+              פנימי בלבד
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-4">
             <input
@@ -1673,7 +1678,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               value={expenseDescription}
               onChange={(e) => setExpenseDescription(e.target.value)}
               placeholder="תיאור הוצאה"
-              className="md:col-span-7 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="md:col-span-7 h-9 px-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
             <input
               type="number"
@@ -1682,25 +1687,32 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               value={expenseAmount}
               onChange={(e) => setExpenseAmount(e.target.value)}
               placeholder="סכום"
-              className="md:col-span-3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="md:col-span-3 h-9 px-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             />
             <button
               onClick={handleAddExpense}
               disabled={savingExpense}
-              className="md:col-span-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
+              className="md:col-span-2 h-9 px-3 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
             >
               {savingExpense ? 'שומר...' : 'הוסף'}
             </button>
           </div>
 
           {quoteExpenses.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">אין הוצאות להצעה זו.</p>
+            <div className="mb-4 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-4 text-center">
+              <div className="text-2xl mb-1">💸</div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">אין הוצאות להצעה זו עדיין</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">הוסף הוצאה ראשונה כדי לראות הכנסה נטו</p>
+            </div>
           ) : (
             <div className="space-y-2 mb-4">
               {quoteExpenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded p-2">
+                <div key={expense.id} className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
                   <div className="text-sm text-gray-800 dark:text-gray-100">
-                    <div className="font-medium">{expense.description}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      <span className="text-red-500">•</span>
+                      <span>{expense.description}</span>
+                    </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(expense.created_at).toLocaleDateString('he-IL')}
                     </div>
@@ -1710,7 +1722,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                     <button
                       onClick={() => handleDeleteExpense(expense)}
                       disabled={removingExpenseId === expense.id}
-                      className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-60"
+                      className="h-8 px-2 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-60"
                     >
                       {removingExpenseId === expense.id ? 'מוחק...' : 'מחק'}
                     </button>
@@ -1720,7 +1732,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
             </div>
           )}
 
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2 rounded-lg bg-white dark:bg-gray-800 p-3">
             <div className="flex justify-between text-sm">
               <span className="text-gray-700 dark:text-gray-300">סה"כ הוצאות:</span>
               <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(totalExpenses)}</span>
