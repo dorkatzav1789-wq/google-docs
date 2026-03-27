@@ -144,18 +144,18 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
           )}
           
           {/* שדה חיפוש */}
-          <div className="max-w-3xl mx-auto mt-4 flex flex-col sm:flex-row gap-2">
+          <div className="max-w-3xl mx-auto mt-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-2 flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="חפש לפי שם אירוע, לקוח או חברה..."
-              className="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              className="min-w-0 flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | QuoteStatus)}
-              className="w-full sm:w-40 shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full sm:w-44 shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
               title="סינון לפי סטטוס"
               aria-label="סינון לפי סטטוס"
             >
@@ -165,6 +165,14 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
               <option value="reserved">{STATUS_LABELS.reserved}</option>
               <option value="signed">{STATUS_LABELS.signed}</option>
             </select>
+          </div>
+          <div className="max-w-3xl mx-auto mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
+            <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              סה"כ הצעות: {quotes.length}
+            </span>
+            <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+              תוצאות סינון: {filteredQuotes.length}
+            </span>
           </div>
         </div>
 
@@ -201,7 +209,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                       {groupedQuotes[dayKey].map((quote) => (
                           <div
                               key={quote.id}
-                              className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700 hover:shadow-sm transition-all bg-white dark:bg-gray-800"
+                              className="border border-gray-200 dark:border-gray-600 rounded-xl p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50/70 dark:hover:bg-gray-700 hover:shadow-md transition-all bg-white dark:bg-gray-800"
                           >
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                               {/* פרטי ההצעה – לחיצה פותחת פרטים */}
@@ -243,7 +251,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
 
                               {/* סכום + תאריך יצירה + מחיקה */}
                               <div className="text-left sm:ml-4 flex flex-col items-start sm:items-end gap-2 min-w-[130px]">
-                                <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                                <div className="text-lg font-extrabold text-green-600 dark:text-green-400">
                                   {formatCurrency(quote.final_total!)}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -254,7 +262,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                                 </div>
 
                                 <button
-                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    className="px-2 py-1 rounded text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors"
                                     title="מחיקת הצעה"
                                     aria-label="מחיקת הצעה"
                                     onClick={async (e) => {
