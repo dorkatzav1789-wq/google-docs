@@ -137,7 +137,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
       <div className={`w-full mx-auto ${compact ? '' : 'bg-gray-50 dark:bg-gray-900 min-h-screen'}`}>
         <div className={`${compact ? 'px-0 pt-0' : 'px-3 sm:px-4 md:px-6 pt-3 sm:pt-4 md:pt-6'} mb-6`}>
           {!compact && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 shadow-sm p-3 sm:p-4 md:p-5 text-center">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-800/80 shadow-sm p-3 sm:p-4 md:p-5 text-center">
               <h1 className="text-2xl sm:text-3xl font-bold text-black dark:text-white mb-2">הצעות קיימות</h1>
               <p className="text-black/80 dark:text-white/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
             </div>
@@ -196,20 +196,20 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
             <div className={`space-y-4 sm:space-y-6 ${compact ? 'px-0 pb-0' : 'px-3 sm:px-4 md:px-6 pb-6'}`}>
               {days.map((dayKey) => (
                   <div key={dayKey} className="card rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-2 border-b border-gray-100 dark:border-gray-700">
                       <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">
                         {dayKey === 'ללא תאריך אירוע' ? dayKey : formatHebDate(dayKey)}
                       </h3>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {groupedQuotes[dayKey].length} הצעות
-                </span>
+                      <span className="text-xs sm:text-sm px-2 py-1 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                        {groupedQuotes[dayKey].length} הצעות
+                      </span>
                     </div>
 
                     <div className="space-y-3">
                       {groupedQuotes[dayKey].map((quote) => (
                           <div
                               key={quote.id}
-                              className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 sm:p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50/70 dark:hover:bg-gray-700 hover:shadow-md transition-all bg-white dark:bg-gray-800"
+                              className="border border-gray-200/90 dark:border-gray-700 rounded-2xl p-3 sm:p-4 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.12)] dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition-all duration-200"
                           >
                             <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                               {/* פרטי ההצעה – לחיצה פותחת פרטים */}
@@ -217,41 +217,41 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                                   className="flex-1 cursor-pointer"
                                   onClick={() => onQuoteSelect(quote.id!)}
                               >
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  <h4 className="font-semibold text-gray-800 dark:text-white break-words">
+                                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white break-words text-base sm:text-lg">
                                     {quote.event_name}
                                   </h4>
-                                  <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${STATUS_BADGE_CLASSES[getQuoteStatus(quote)]}`}>
+                                  <span className={`px-2.5 py-1 text-[11px] rounded-full font-medium ${STATUS_BADGE_CLASSES[getQuoteStatus(quote)]}`}>
                                     {STATUS_LABELS[getQuoteStatus(quote)]}
                                   </span>
                                 </div>
                                 <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                                  <div>
-                                    <span className="font-medium">לקוח:</span> {quote.client_name}
+                                  <div className="leading-relaxed">
+                                    <span className="font-medium text-gray-700 dark:text-gray-200">לקוח:</span> {quote.client_name}
                                     {quote.client_company && ` - ${quote.client_company}`}
                                   </div>
                                   {quote.event_hours && (
-                                      <div>
-                                        <span className="font-medium">שעות:</span> {quote.event_hours}
+                                      <div className="leading-relaxed">
+                                        <span className="font-medium text-gray-700 dark:text-gray-200">שעות:</span> {quote.event_hours}
                                       </div>
                                   )}
                                   {quote.special_notes && (
-                                      <div>
-                                        <span className="font-medium">הערות:</span> {quote.special_notes}
+                                      <div className="leading-relaxed">
+                                        <span className="font-medium text-gray-700 dark:text-gray-200">הערות:</span> {quote.special_notes}
                                       </div>
                                   )}
                                   {reminders[quote.id!] && (
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-blue-600">🔔</span>
-                                        <span className="text-blue-600 font-medium">תזכורת פעילה</span>
+                                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-sky-50 text-sky-700 dark:bg-sky-900/25 dark:text-sky-300">
+                                        <span>🔔</span>
+                                        <span className="font-medium text-xs">תזכורת פעילה</span>
                                       </div>
                                   )}
                                 </div>
                               </div>
 
                               {/* סכום + תאריך יצירה + מחיקה */}
-                              <div className="text-left sm:ml-4 flex flex-col items-start sm:items-end gap-2 min-w-[130px] w-full sm:w-auto">
-                                <div className="text-base sm:text-lg font-extrabold text-green-600 dark:text-green-400">
+                              <div className="text-left sm:ml-4 flex flex-col items-start sm:items-end gap-2 min-w-[150px] w-full sm:w-auto">
+                                <div className="px-3 py-1.5 rounded-xl bg-emerald-50/80 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 text-base sm:text-lg font-bold">
                                   {formatCurrency(quote.final_total!)}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -260,9 +260,15 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                                       ? new Date(quote.created_at).toLocaleDateString('he-IL')
                                       : 'לא ידוע'}
                                 </div>
+                                <button
+                                  onClick={() => onQuoteSelect(quote.id!)}
+                                  className="w-full sm:w-auto px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white transition-colors text-xs font-medium"
+                                >
+                                  פתח פרטים
+                                </button>
 
                                 <button
-                                    className="w-full sm:w-auto px-2 py-1 rounded text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors"
+                                    className="w-full sm:w-auto px-3 py-1.5 rounded-lg text-red-600 border border-red-200 bg-white hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:border-red-900/30 dark:bg-gray-800 dark:hover:text-red-300 dark:hover:bg-red-900/20 transition-colors text-xs font-medium"
                                     title="מחיקת הצעה"
                                     aria-label="מחיקת הצעה"
                                     onClick={async (e) => {
