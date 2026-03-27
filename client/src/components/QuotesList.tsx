@@ -135,16 +135,16 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
 
   return (
       <div className={`w-full mx-auto ${compact ? '' : 'bg-gray-50 dark:bg-gray-900 min-h-screen'}`}>
-        <div className={`text-center mb-8 ${compact ? 'px-0 pt-0' : 'px-6 pt-6'}`}>
+        <div className={`${compact ? 'px-0 pt-0' : 'px-4 md:px-6 pt-4 md:pt-6'} mb-6`}>
           {!compact && (
-            <>
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 shadow-sm p-4 md:p-5 text-center">
               <h1 className="text-3xl font-bold text-black dark:text-white mb-2">הצעות קיימות</h1>
-              <p className="text-black/80 dark:text-white/80 mb-4">ניהול הצעות מחיר לפי תאריך האירוע</p>
-            </>
+              <p className="text-black/80 dark:text-white/80">ניהול הצעות מחיר לפי תאריך האירוע</p>
+            </div>
           )}
           
           {/* שדה חיפוש */}
-          <div className="max-w-3xl mx-auto mb-4 flex gap-2">
+          <div className="max-w-3xl mx-auto mt-4 flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={searchTerm}
@@ -155,7 +155,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as 'all' | QuoteStatus)}
-              className="w-40 shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full sm:w-40 shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               title="סינון לפי סטטוס"
               aria-label="סינון לפי סטטוס"
             >
@@ -185,9 +185,9 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
               </div>
             </div>
         ) : (
-            <div className={`space-y-6 ${compact ? 'px-0 pb-0' : 'px-6 pb-6'}`}>
+            <div className={`space-y-6 ${compact ? 'px-0 pb-0' : 'px-4 md:px-6 pb-6'}`}>
               {days.map((dayKey) => (
-                  <div key={dayKey} className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <div key={dayKey} className="card rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-xl font-bold text-gray-800 dark:text-white">
                         {dayKey === 'ללא תאריך אירוע' ? dayKey : formatHebDate(dayKey)}
@@ -201,9 +201,9 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                       {groupedQuotes[dayKey].map((quote) => (
                           <div
                               key={quote.id}
-                              className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors bg-white dark:bg-gray-800"
+                              className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-gray-700 hover:shadow-sm transition-all bg-white dark:bg-gray-800"
                           >
-                            <div className="flex justify-between items-start">
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                               {/* פרטי ההצעה – לחיצה פותחת פרטים */}
                               <div
                                   className="flex-1 cursor-pointer"
@@ -242,8 +242,8 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                               </div>
 
                               {/* סכום + תאריך יצירה + מחיקה */}
-                              <div className="text-left ml-4 flex flex-col items-end gap-2">
-                                <div className="text-lg font-bold text-green-600">
+                              <div className="text-left sm:ml-4 flex flex-col items-start sm:items-end gap-2 min-w-[130px]">
+                                <div className="text-lg font-bold text-green-600 dark:text-green-400">
                                   {formatCurrency(quote.final_total!)}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
