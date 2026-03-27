@@ -1,6 +1,6 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
 import { getSupabaseClient, getSupabaseAdmin } from './supabaseClient';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense } from '../types';
 
 // ---------- Clients ----------
 export const clientsAPI = {
@@ -1046,6 +1046,45 @@ export const quoteImagesAPI = {
 
     if (deleteError) throw deleteError;
 
+    return { ok: true };
+  },
+};
+
+// ---------- Quote Expenses ----------
+export const quoteExpensesAPI = {
+  listByQuote: async (quoteId: number): Promise<QuoteExpense[]> => {
+    const { data, error } = await getSupabaseClient()
+      .from('quote_expenses')
+      .select('*')
+      .eq('quote_id', quoteId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return (data || []) as QuoteExpense[];
+  },
+
+  create: async (payload: { quote_id: number; description: string; amount: number }): Promise<QuoteExpense> => {
+    const { data, error } = await getSupabaseClient()
+      .from('quote_expenses')
+      .insert([{
+        quote_id: payload.quote_id,
+        description: payload.description,
+        amount: payload.amount,
+      }])
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data as QuoteExpense;
+  },
+
+  remove: async (id: number): Promise<{ ok: boolean }> => {
+    const { error } = await getSupabaseClient()
+      .from('quote_expenses')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
     return { ok: true };
   },
 };

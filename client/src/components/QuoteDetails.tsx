@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
-import { QuoteWithItems, QuoteImage } from '../types';
-import { quotesAPI, itemsAPI, quoteImagesAPI } from '../services/supabaseAPI';
+import { QuoteWithItems, QuoteImage, QuoteExpense } from '../types';
+import { quotesAPI, itemsAPI, quoteImagesAPI, quoteExpensesAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
 import SplitModal from './SplitModal';
 import { useTheme } from '../context/ThemeContext';
@@ -47,6 +47,11 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   const [uploadingImages, setUploadingImages] = useState(false);
   const [removingImageId, setRemovingImageId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<QuoteImage | null>(null);
+  const [quoteExpenses, setQuoteExpenses] = useState<QuoteExpense[]>([]);
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState<string>('');
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [removingExpenseId, setRemovingExpenseId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
@@ -88,6 +93,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   const finalAfterExtraDiscount = useMemo(() => {
     return totalAfterExtraDiscount + vatAfterExtraDiscount;
   }, [totalAfterExtraDiscount, vatAfterExtraDiscount]);
+
+  const totalExpenses = useMemo(() => {
+    return quoteExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+  }, [quoteExpenses]);
+
+  const netIncomeAfterExpenses = useMemo(() => {
+    return finalAfterExtraDiscount - totalExpenses;
+  }, [finalAfterExtraDiscount, totalExpenses]);
 
   // Sync extra VAT discount from DB only when quote loads/changes; don't overwrite recent UI changes
   useEffect(() => {
@@ -276,6 +289,19 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   useEffect(() => {
     loadQuoteImages();
   }, [loadQuoteImages]);
+
+  const loadQuoteExpenses = useCallback(async () => {
+    try {
+      const expenses = await quoteExpensesAPI.listByQuote(quoteId);
+      setQuoteExpenses(expenses);
+    } catch (error) {
+      console.error('שגיאה בטעינת הוצאות להצעה:', error);
+    }
+  }, [quoteId]);
+
+  useEffect(() => {
+    loadQuoteExpenses();
+  }, [loadQuoteExpenses]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'לא צוין';
@@ -614,6 +640,52 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
       alert('מחיקת התמונה נכשלה');
     } finally {
       setRemovingImageId(null);
+    }
+  };
+
+  const handleAddExpense = async () => {
+    const description = expenseDescription.trim();
+    const amount = Number(expenseAmount);
+    if (!description) {
+      alert('יש להזין תיאור הוצאה');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      alert('יש להזין סכום הוצאה תקין');
+      return;
+    }
+
+    try {
+      setSavingExpense(true);
+      const created = await quoteExpensesAPI.create({
+        quote_id: quoteId,
+        description,
+        amount,
+      });
+      setQuoteExpenses((prev) => [...prev, created]);
+      setExpenseDescription('');
+      setExpenseAmount('');
+    } catch (error) {
+      console.error('שגיאה בהוספת הוצאה:', error);
+      alert('הוספת ההוצאה נכשלה');
+    } finally {
+      setSavingExpense(false);
+    }
+  };
+
+  const handleDeleteExpense = async (expense: QuoteExpense) => {
+    const ok = window.confirm(`למחוק את ההוצאה "${expense.description}"?`);
+    if (!ok) return;
+
+    try {
+      setRemovingExpenseId(expense.id);
+      await quoteExpensesAPI.remove(expense.id);
+      setQuoteExpenses((prev) => prev.filter((x) => x.id !== expense.id));
+    } catch (error) {
+      console.error('שגיאה במחיקת הוצאה:', error);
+      alert('מחיקת ההוצאה נכשלה');
+    } finally {
+      setRemovingExpenseId(null);
     }
   };
 
@@ -1591,6 +1663,76 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
             </div>
           </div>
         )}
+
+        <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">הוצאות להצעה</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-4">
+            <input
+              type="text"
+              value={expenseDescription}
+              onChange={(e) => setExpenseDescription(e.target.value)}
+              placeholder="תיאור הוצאה"
+              className="md:col-span-7 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={expenseAmount}
+              onChange={(e) => setExpenseAmount(e.target.value)}
+              placeholder="סכום"
+              className="md:col-span-3 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+            <button
+              onClick={handleAddExpense}
+              disabled={savingExpense}
+              className="md:col-span-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
+            >
+              {savingExpense ? 'שומר...' : 'הוסף'}
+            </button>
+          </div>
+
+          {quoteExpenses.length === 0 ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">אין הוצאות להצעה זו.</p>
+          ) : (
+            <div className="space-y-2 mb-4">
+              {quoteExpenses.map((expense) => (
+                <div key={expense.id} className="flex items-center justify-between border border-gray-200 dark:border-gray-700 rounded p-2">
+                  <div className="text-sm text-gray-800 dark:text-gray-100">
+                    <div className="font-medium">{expense.description}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(expense.created_at).toLocaleDateString('he-IL')}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-red-600 dark:text-red-400">-{formatCurrency(Number(expense.amount || 0))}</span>
+                    <button
+                      onClick={() => handleDeleteExpense(expense)}
+                      disabled={removingExpenseId === expense.id}
+                      className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-60"
+                    >
+                      {removingExpenseId === expense.id ? 'מוחק...' : 'מחק'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-700 dark:text-gray-300">סה"כ הוצאות:</span>
+              <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(totalExpenses)}</span>
+            </div>
+            <div className="flex justify-between text-lg">
+              <span className="font-bold text-gray-800 dark:text-white">הכנסה אחרי הוצאות:</span>
+              <span className={`font-bold ${netIncomeAfterExpenses >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {formatCurrency(netIncomeAfterExpenses)}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* טבלת פריטים */}
         <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">

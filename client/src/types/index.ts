@@ -76,6 +76,14 @@ export interface QuoteImage {
   public_url?: string;
 }
 
+export interface QuoteExpense {
+  id: number;
+  quote_id: number;
+  description: string;
+  amount: number;
+  created_at: string;
+}
+
 export interface Employee {
   id: number;
   first_name?: string | null;
