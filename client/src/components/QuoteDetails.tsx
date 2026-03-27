@@ -746,10 +746,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
       (Number(quote.discount_amount) || 0) > 0;
 
   return (
-      <div className="w-full mx-auto p-6 bg-white dark:bg-gray-900 min-h-screen">
+      <div className="w-full mx-auto p-4 md:p-6 bg-white dark:bg-gray-900 min-h-screen">
         <div className="mb-6">
           {/* Breadcrumbs */}
-          <nav className="flex items-center space-x-2 text-sm mb-4" aria-label="Breadcrumb">
+          <nav className="flex flex-wrap items-center gap-2 text-sm mb-4" aria-label="Breadcrumb">
             <button 
               onClick={onBack} 
               className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
@@ -763,7 +763,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
             <span className="text-gray-600 dark:text-gray-300">פרטי הצעה #{quote.id}</span>
           </nav>
           
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
             <div className="flex items-center gap-2">
               <button onClick={onBack} className="btn-secondary">← חזור לרשימה</button>
             </div>
@@ -791,7 +791,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 ))}
               </select>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap justify-center gap-2 sticky top-2 z-10">
               <button onClick={handleExportPDF} disabled={exportingPDF || !exportReady} className="btn-success">
                 {exportingPDF ? 'מייצא...' : '📄 ייצא PDF'}
               </button>
@@ -1469,7 +1469,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
         </div>
 
         {/* סיכום כספי */}
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">סיכום כספי</h3>
             <div className="space-y-3">
@@ -1554,10 +1554,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
           </div>
         </div>
 
-        <div className="card mt-6 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
+        <div className="card mt-6 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h3 className="text-lg font-bold text-gray-800 dark:text-white">תמונות להצעה</h3>
-            <label className={`px-3 py-1 rounded text-sm text-white cursor-pointer ${uploadingImages ? 'bg-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+            <label className={`h-9 px-3 rounded text-sm text-white cursor-pointer inline-flex items-center ${uploadingImages ? 'bg-gray-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
               {uploadingImages ? 'מעלה...' : 'העלה תמונות'}
               <input
                 type="file"
@@ -1637,7 +1637,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="text-sm text-white truncate">{selectedImage.file_name}</div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <a
                     href={selectedImage.public_url}
                     download={selectedImage.file_name}
@@ -1665,7 +1665,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
         )}
 
         <div className="card mt-6 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h3 className="text-lg font-bold text-gray-800 dark:text-white">הוצאות להצעה</h3>
             <span className="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
               פנימי בלבד
