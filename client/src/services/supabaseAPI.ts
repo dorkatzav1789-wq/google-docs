@@ -175,6 +175,41 @@ export const quotesAPI = {
     }));
   },
 
+  /** הצעות בסטטוס חתום שתאריך האירוע שלהן בחודש הלוח (1–12) ובשנה הנתונה */
+  getSignedByEventMonth: async (year: number, month: number): Promise<Quote[]> => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const start = `${year}-${pad(month)}-01`;
+    const nextM = month === 12 ? 1 : month + 1;
+    const nextY = month === 12 ? year + 1 : year;
+    const endExclusive = `${nextY}-${pad(nextM)}-01`;
+
+    const { data, error } = await getSupabaseClient()
+      .from('quotes')
+      .select(`
+        *,
+        clients!inner (
+          name,
+          company,
+          phone,
+          company_id
+        )
+      `)
+      .eq('quote_status', 'signed')
+      .gte('event_date', start)
+      .lt('event_date', endExclusive)
+      .order('event_date', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((quote: any) => ({
+      ...quote,
+      client_name: quote.clients?.name,
+      client_company: quote.clients?.company,
+      client_phone: quote.clients?.phone,
+      client_company_id: quote.clients?.company_id,
+    }));
+  },
+
   getById: async (id: number): Promise<QuoteWithItems> => {
     // Get quote with client info
     const { data: quoteData, error: quoteError } = await getSupabaseClient()
@@ -1086,5 +1121,26 @@ export const quoteExpensesAPI = {
 
     if (error) throw error;
     return { ok: true };
+  },
+
+  /** סכום הוצאות לפי מזהה הצעה (לשאילתות אצווה) */
+  sumAmountsByQuoteIds: async (quoteIds: number[]): Promise<Record<number, number>> => {
+    const sums: Record<number, number> = {};
+    if (!quoteIds.length) return sums;
+    const chunkSize = 200;
+    for (let i = 0; i < quoteIds.length; i += chunkSize) {
+      const chunk = quoteIds.slice(i, i + chunkSize);
+      const { data, error } = await getSupabaseClient()
+        .from('quote_expenses')
+        .select('quote_id, amount')
+        .in('quote_id', chunk);
+
+      if (error) throw error;
+      for (const row of data || []) {
+        const qid = row.quote_id as number;
+        sums[qid] = (sums[qid] || 0) + Number(row.amount ?? 0);
+      }
+    }
+    return sums;
   },
 };

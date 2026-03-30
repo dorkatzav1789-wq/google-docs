@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import html2pdf from 'html2pdf.js';
 import { Quote } from '../types';
-import { quotesAPI, remindersAPI } from '../services/supabaseAPI';
+import { quotesAPI, remindersAPI, quoteExpensesAPI } from '../services/supabaseAPI';
 
 interface QuotesListProps {
   onQuoteSelect: (quoteId: number) => void;
@@ -38,12 +39,23 @@ const formatHebDate = (isoDateLike: string) => {
 
 const formatCurrency = (amount: number) => `₪${amount.toLocaleString()}`;
 
+/** שמות חודשים בעברית (ל־select — תואם גם לדפדפנים בלי input[type=month]) */
+const HEB_MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
+  new Date(2000, i, 1).toLocaleDateString('he-IL', { month: 'long' })
+);
+
 const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false }) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [reminders, setReminders] = useState<Record<number, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | QuoteStatus>('all');
+  const [exportYear, setExportYear] = useState(() => new Date().getFullYear());
+  const [exportMonth, setExportMonth] = useState(() => new Date().getMonth() + 1);
+  const [exportBusy, setExportBusy] = useState(false);
+
+  const y0 = new Date().getFullYear();
+  const exportYearChoices = Array.from({ length: 9 }, (_, i) => y0 - 5 + i);
 
   const loadQuotes = async () => {
     try {
@@ -77,6 +89,166 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
     loadReminders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const exportSignedMonthPdf = async () => {
+    const year = exportYear;
+    const month = exportMonth;
+    const mStr = String(month).padStart(2, '0');
+    if (!year || month < 1 || month > 12) return;
+
+    const escHtml = (s: string | number | null | undefined) =>
+      String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const fmtMoney = (n: number) =>
+      `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 2 })}`;
+
+    const th =
+      'border:1px solid #111;padding:6px 8px;text-align:right;font-size:11px;background:#f3f4f6;font-weight:bold;';
+    const td = 'border:1px solid #111;padding:6px 8px;text-align:right;font-size:10px;vertical-align:top;';
+
+    try {
+      setExportBusy(true);
+      const signed = await quotesAPI.getSignedByEventMonth(year, month);
+      if (!signed.length) {
+        alert('אין הצעות חתומות עם תאריך אירוע בחודש שנבחר.');
+        return;
+      }
+      const ids = signed.map((q) => q.id).filter((id): id is number => id != null);
+      const expenseSums = await quoteExpensesAPI.sumAmountsByQuoteIds(ids);
+
+      const income = (q: Quote) => Number(q.final_total ?? 0);
+      const expensesFor = (q: Quote) => expenseSums[q.id!] ?? 0;
+
+      let totalIncome = 0;
+      let totalExpenses = 0;
+
+      const bodyRows = signed
+        .map((q) => {
+          const inc = income(q);
+          const exp = expensesFor(q);
+          const net = inc - exp;
+          totalIncome += inc;
+          totalExpenses += exp;
+          const eventDateStr = q.event_date
+            ? formatHebDate(q.event_date)
+            : '';
+          return `<tr>
+            <td style="${td}">${escHtml(q.id)}</td>
+            <td style="${td}">${escHtml(eventDateStr)}</td>
+            <td style="${td}">${escHtml(q.event_name)}</td>
+            <td style="${td}">${escHtml(q.client_name)}</td>
+            <td style="${td}">${escHtml(q.client_company)}</td>
+            <td style="${td}">${escHtml(fmtMoney(inc))}</td>
+            <td style="${td}">${escHtml(fmtMoney(exp))}</td>
+            <td style="${td}">${escHtml(fmtMoney(net))}</td>
+          </tr>`;
+        })
+        .join('');
+
+      const periodLabel = new Date(year, month - 1, 1).toLocaleDateString('he-IL', {
+        month: 'long',
+        year: 'numeric',
+      });
+
+      const html = `
+        <div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:12px;box-sizing:border-box;">
+          <h1 style="font-size:18px;margin:0 0 4px 0;">דוח הצעות חתומות</h1>
+          <p style="font-size:12px;margin:0 0 12px 0;color:#374151;">לפי תאריך אירוע: ${escHtml(periodLabel)}</p>
+          <p style="font-size:10px;margin:0 0 16px 0;color:#6b7280;line-height:1.4;">
+         
+          </p>
+          <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+            <colgroup>
+              <col style="width:6%" /><col style="width:12%" /><col style="width:18%" />
+              <col style="width:14%" /><col style="width:14%" /><col style="width:12%" />
+              <col style="width:12%" /><col style="width:12%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="${th}">מזהה</th>
+                <th style="${th}">תאריך אירוע</th>
+                <th style="${th}">שם אירוע</th>
+                <th style="${th}">לקוח</th>
+                <th style="${th}">חברה</th>
+                <th style="${th}">הכנסה</th>
+                <th style="${th}">הוצאות</th>
+                <th style="${th}">נטו</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+              <tr style="background:#d1fae5;font-weight:bold;">
+                <td colspan="5" style="${td}">סיכום חודש</td>
+                <td style="${td}">${escHtml(fmtMoney(totalIncome))}</td>
+                <td style="${td}">${escHtml(fmtMoney(totalExpenses))}</td>
+                <td style="${td}">${escHtml(fmtMoney(totalIncome - totalExpenses))}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      // html2canvas רגיש לסגנונות אב בדף (Tailwind / dark / transform). מסמך iframe נקי
+      // מבודד את הדוח ומונע PDF לבן שמתקבל לעיתים כשמציירים אלמנט מתוך ה-React root.
+      let iframe: HTMLIFrameElement | null = null;
+      try {
+        iframe = document.createElement('iframe');
+        iframe.setAttribute('title', 'ייצוא PDF');
+        Object.assign(iframe.style, {
+          position: 'fixed',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          zIndex: '2147483646',
+          border: 'none',
+          background: '#ffffff',
+        });
+        document.body.appendChild(iframe);
+
+        const idoc = iframe.contentDocument;
+        if (!idoc) throw new Error('iframe document unavailable');
+
+        idoc.open();
+        idoc.write(
+          `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"/><style>
+            * { box-sizing: border-box; }
+            body { margin: 0; padding: 12px; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }
+          </style></head><body>${html}</body></html>`
+        );
+        idoc.close();
+
+        const root = idoc.body.firstElementChild as HTMLElement | null;
+        if (!root) throw new Error('export root missing');
+
+        await Promise.resolve();
+        await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+        void root.offsetHeight;
+        await new Promise<void>((r) => setTimeout(r, 80));
+
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: `signed-events-${year}-${mStr}.pdf`,
+          image: { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+          jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'landscape' as const },
+          pagebreak: { mode: ['css', 'legacy'] as const },
+        };
+
+        await html2pdf().set(opt).from(root).save();
+      } finally {
+        iframe?.remove();
+      }
+    } catch (err) {
+      console.error('שגיאה בייצוא דוח חודשי ל-PDF:', err);
+      alert('שגיאה בייצוא הדוח ל-PDF. נסה שוב.');
+    } finally {
+      setExportBusy(false);
+    }
+  };
 
   // סינון לפי חיפוש
   const filteredQuotes = useMemo(() => {
@@ -166,6 +338,51 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
               <option value="signed">{STATUS_LABELS.signed}</option>
             </select>
           </div>
+
+          <div className="max-w-3xl mx-auto mt-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-3 sm:p-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-800 dark:text-white mb-1">דוח חודשי (חתום)</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <select
+                value={exportMonth}
+                onChange={(e) => setExportMonth(Number(e.target.value))}
+                className="h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white !w-auto min-w-[9rem]"
+                title="חודש לדוח"
+                aria-label="חודש לדוח"
+              >
+                {HEB_MONTH_LABELS.map((label, idx) => (
+                  <option key={idx + 1} value={idx + 1}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={exportYear}
+                onChange={(e) => setExportYear(Number(e.target.value))}
+                className="h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white !w-auto min-w-[5.5rem]"
+                title="שנה לדוח"
+                aria-label="שנה לדוח"
+              >
+                {exportYearChoices.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={exportBusy}
+                onClick={() => void exportSignedMonthPdf()}
+                className="h-10 px-4 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:pointer-events-none text-sm font-medium whitespace-nowrap"
+              >
+                {exportBusy ? 'מייצא…' : 'ייצא PDF'}
+              </button>
+            </div>
+          </div>
+
           <div className="max-w-3xl mx-auto mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
             <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
               סה"כ הצעות: {quotes.length}
