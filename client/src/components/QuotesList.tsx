@@ -39,6 +39,14 @@ const formatHebDate = (isoDateLike: string) => {
 
 const formatCurrency = (amount: number) => `₪${amount.toLocaleString()}`;
 
+/** סכום לפני מע״מ אחרי הנחות (כולל הנחת מחיר סופי) — תואם ל־QuoteDetails */
+const quoteIncomeExcludingVat = (q: Quote): number => {
+  const base = Number(q.total_after_discount ?? 0);
+  const pct = Number(q.extra_vat_discount_percent ?? 0);
+  const extraDiscount = Math.round(base * (pct / 100));
+  return Math.max(base - extraDiscount, 0);
+};
+
 /** שמות חודשים בעברית (ל־select — תואם גם לדפדפנים בלי input[type=month]) */
 const HEB_MONTH_LABELS = Array.from({ length: 12 }, (_, i) =>
   new Date(2000, i, 1).toLocaleDateString('he-IL', { month: 'long' })
@@ -120,7 +128,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
       const ids = signed.map((q) => q.id).filter((id): id is number => id != null);
       const expenseSums = await quoteExpensesAPI.sumAmountsByQuoteIds(ids);
 
-      const income = (q: Quote) => Number(q.final_total ?? 0);
+      const income = (q: Quote) => quoteIncomeExcludingVat(q);
       const expensesFor = (q: Quote) => expenseSums[q.id!] ?? 0;
 
       let totalIncome = 0;
@@ -159,7 +167,7 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
           <h1 style="font-size:18px;margin:0 0 4px 0;">דוח הצעות חתומות</h1>
           <p style="font-size:12px;margin:0 0 12px 0;color:#374151;">לפי תאריך אירוע: ${escHtml(periodLabel)}</p>
           <p style="font-size:10px;margin:0 0 16px 0;color:#6b7280;line-height:1.4;">
-         
+            עמודות הכנסה ונטו מחושבות ללא מע״מ (לאחר הנחות), בהתאם לסיכום בהצעה.
           </p>
           <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
             <colgroup>
@@ -174,9 +182,9 @@ const QuotesList: React.FC<QuotesListProps> = ({ onQuoteSelect, compact = false 
                 <th style="${th}">שם אירוע</th>
                 <th style="${th}">לקוח</th>
                 <th style="${th}">חברה</th>
-                <th style="${th}">הכנסה</th>
+                <th style="${th}">הכנסה (ללא מע״מ)</th>
                 <th style="${th}">הוצאות</th>
-                <th style="${th}">נטו</th>
+                <th style="${th}">נטו (ללא מע״מ)</th>
               </tr>
             </thead>
             <tbody>

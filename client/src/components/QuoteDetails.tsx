@@ -99,8 +99,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
   }, [quoteExpenses]);
 
   const netIncomeAfterExpenses = useMemo(() => {
-    return finalAfterExtraDiscount - totalExpenses;
-  }, [finalAfterExtraDiscount, totalExpenses]);
+    return totalAfterExtraDiscount - totalExpenses;
+  }, [totalAfterExtraDiscount, totalExpenses]);
 
   // Sync extra VAT discount from DB only when quote loads/changes; don't overwrite recent UI changes
   useEffect(() => {
@@ -1738,7 +1738,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(totalExpenses)}</span>
             </div>
             <div className="flex justify-between text-lg">
-              <span className="font-bold text-gray-800 dark:text-white">הכנסה אחרי הוצאות:</span>
+              <span className="font-bold text-gray-800 dark:text-white">הכנסה אחרי הוצאות (ללא מע״מ):</span>
               <span className={`font-bold ${netIncomeAfterExpenses >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {formatCurrency(netIncomeAfterExpenses)}
               </span>
