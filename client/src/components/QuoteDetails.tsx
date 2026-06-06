@@ -1768,7 +1768,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               <tbody>
               {items.map((item, index) => (
                   <React.Fragment key={index}>
-                    <tr className="border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 group">
+                    <tr className={`border-b border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-700 group ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-100 dark:bg-gray-900/60'}`}>
                       <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white relative">
                         {editingItem === index ? (
                           <input
@@ -2032,8 +2032,8 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                       </tr>
                     </thead>
                     <tbody>
-                      {catalogItems.map((it) => (
-                        <tr key={it.id} className="border-t dark:border-gray-700">
+                      {catalogItems.map((it, index) => (
+                        <tr key={it.id} className={`border-t dark:border-gray-700 ${index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-100 dark:bg-gray-900/60'}`}>
                           <td className="px-3 py-2">{it.name}</td>
                           <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{it.description}</td>
                           <td className="px-3 py-2">{formatCurrency(Number(it.price) || 0)}</td>
