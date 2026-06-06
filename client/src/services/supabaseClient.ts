@@ -14,9 +14,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Client with service role for admin operations
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+// Dedicated service-role client that never adopts the logged-in user's session.
+// Using a separate storageKey + persistSession:false ensures requests are sent
+// with the service_role key as Authorization (true service role, bypasses RLS),
+// instead of inheriting the current user's JWT from the shared auth storage.
+export const supabaseService = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    storageKey: 'sb-service-no-session',
+  },
+});
+
 // Helper functions to get the clients
 export const getSupabaseClient = () => supabase;
 export const getSupabaseAdmin = () => supabaseAdmin;
+export const getSupabaseService = () => supabaseService;
 
 // Auth context types
 export type AuthUser = {

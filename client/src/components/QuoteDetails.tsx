@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { QuoteWithItems, QuoteImage, QuoteExpense } from '../types';
-import { quotesAPI, itemsAPI, quoteImagesAPI, quoteExpensesAPI } from '../services/supabaseAPI';
+import { quotesAPI, itemsAPI, quoteImagesAPI, quoteExpensesAPI, signingAPI } from '../services/supabaseAPI';
 import ReminderManager from './ReminderManager';
 import SplitModal from './SplitModal';
 import { useTheme } from '../context/ThemeContext';
@@ -60,6 +60,11 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
     discount: 0
   });
   const pdfRef = useRef<HTMLDivElement>(null);
+  const [signingLink, setSigningLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [showSignedModal, setShowSignedModal] = useState(false);
+  const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
 
   // Calculate totals from current items - must be before any early returns
   const totals = useMemo(() => {
@@ -716,6 +721,41 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
     }
   };
 
+  const handleCreateSigningLink = async () => {
+    if (!quoteData?.quote?.id) return;
+    try {
+      setGeneratingLink(true);
+      const token = await signingAPI.ensureToken(quoteData.quote.id);
+      const link = `${window.location.origin}/sign/${token}`;
+      setSigningLink(link);
+      try {
+        await navigator.clipboard.writeText(link);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+      } catch (_) {
+        // אם ההעתקה נכשלה - הקישור עדיין מוצג להעתקה ידנית
+      }
+    } catch (e) {
+      console.error('Failed to create signing link', e);
+      alert('שגיאה ביצירת לינק חתימה');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleOpenSigned = async () => {
+    setShowSignedModal(true);
+    const path = quoteData?.quote?.signed_pdf_url;
+    if (path) {
+      try {
+        const url = await signingAPI.getSignedPdfUrl(path);
+        setSignedPdfUrl(url || null);
+      } catch (e) {
+        console.error('Failed to get signed pdf url', e);
+      }
+    }
+  };
+
   if (loading) {
     return (
         <div className="w-full mx-auto p-6">
@@ -798,6 +838,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               <button onClick={handleExportWord} disabled={exportingWord} className="btn-success">
                 {exportingWord ? 'מייצא...' : '📝 ייצא Word'}
               </button>
+              <button onClick={handleCreateSigningLink} disabled={generatingLink} className="btn-primary bg-amber-500 hover:bg-amber-600">
+                {generatingLink ? 'יוצר...' : '🔗 לינק חתימה'}
+              </button>
+              {quote.signing_status === 'signed' && (
+                <button onClick={handleOpenSigned} className="btn-success bg-emerald-600 hover:bg-emerald-700">
+                  ✅ הצעה חתומה
+                </button>
+              )}
               <button 
                 onClick={() => setShowReminderManager(true)} 
                 className="btn-primary"
@@ -813,6 +861,29 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 </button>
               )}
             </div>
+            {signingLink && (
+              <div className="mt-3 mx-auto max-w-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 text-right">
+                <div className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                  {linkCopied ? '✅ הקישור הועתק! שלחו אותו ללקוח לחתימה:' : 'קישור לחתימת הלקוח:'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={signingLink}
+                    onFocus={(e) => e.target.select()}
+                    aria-label="קישור חתימה"
+                    className="flex-1 px-2 py-1 text-sm border border-amber-300 dark:border-amber-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white ltr text-left"
+                  />
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(signingLink); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2500); }}
+                    className="px-3 py-1 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded whitespace-nowrap"
+                  >
+                    העתק
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1287,6 +1358,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 )}
 
                 <tr className="summary-row-orange avoid-page-break">
+                  <td className="item-description">מחיר לפני מע"מ</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td>{formatCurrency(totalAfterExtraDiscount)}</td>
+                </tr>
+
+                <tr className="summary-row-orange avoid-page-break">
                   <td className="item-description">18% מע"מ</td>
                   <td></td>
                   <td></td>
@@ -1533,6 +1612,10 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                   </select>
                 </div>
                 <span className="font-bold text-red-600 dark:text-red-400">-{formatCurrency(extraDiscountAmount)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700 dark:text-gray-300">מחיר לפני מע"מ:</span>
+                <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(totalAfterExtraDiscount)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-700 dark:text-gray-300">מע"מ (18%):</span>
@@ -2048,6 +2131,57 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
               </div>
               <div className="mt-3 text-left">
                 <button onClick={() => setShowAddItemModal(false)} className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600">סגור</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* מודל הצעה חתומה */}
+        {showSignedModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSignedModal(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">✅ הצעה חתומה</h3>
+                <button onClick={() => setShowSignedModal(false)} className="text-gray-600 dark:text-gray-300 hover:text-gray-900">✕</button>
+              </div>
+
+              <div className="space-y-3 text-sm text-gray-700 dark:text-gray-200">
+                <div className="flex justify-between">
+                  <span className="font-medium">שם החותם:</span>
+                  <span>{quote.signed_by || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">נחתם בתאריך:</span>
+                  <span>{quote.signed_at ? new Date(quote.signed_at).toLocaleString('he-IL') : '—'}</span>
+                </div>
+
+                <div>
+                  <span className="font-medium block mb-1">חתימה:</span>
+                  <div className="border border-gray-300 dark:border-gray-600 rounded p-2 bg-white flex items-center justify-center min-h-[100px]">
+                    {quote.signature ? (
+                      <img src={quote.signature} alt="חתימת הלקוח" className="max-h-32 max-w-full" />
+                    ) : (
+                      <span className="text-gray-400">אין תצוגת חתימה</span>
+                    )}
+                  </div>
+                </div>
+
+                {quote.signed_pdf_url && (
+                  <div className="pt-2">
+                    {signedPdfUrl ? (
+                      <a
+                        href={signedPdfUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                      >
+                        📄 פתח PDF חתום
+                      </a>
+                    ) : (
+                      <span className="text-gray-500">טוען קישור ל-PDF...</span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

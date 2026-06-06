@@ -1,5 +1,5 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
-import { getSupabaseClient, getSupabaseAdmin } from './supabaseClient';
+import { getSupabaseClient, getSupabaseAdmin, getSupabaseService } from './supabaseClient';
 import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense } from '../types';
 
 // ---------- Clients ----------
@@ -987,6 +987,132 @@ export const remindersAPI = {
     
     if (error) throw error;
     return data;
+  },
+};
+
+// ---------- Signing ----------
+const SIGNED_QUOTES_BUCKET = 'signed-quotes';
+
+export const signingAPI = {
+  /** מחזיר טוקן חתימה להצעה (יוצר אחד אם חסר) */
+  ensureToken: async (quoteId: number): Promise<string> => {
+    const { data, error } = await getSupabaseService()
+      .from('quotes')
+      .select('signing_token')
+      .eq('id', quoteId)
+      .single();
+
+    if (error) throw error;
+    if (data?.signing_token) return data.signing_token as string;
+
+    // אין טוקן עדיין - נייצר חדש
+    const newToken = (globalThis.crypto?.randomUUID && globalThis.crypto.randomUUID()) ||
+      `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const { error: updErr } = await getSupabaseService()
+      .from('quotes')
+      .update({ signing_token: newToken })
+      .eq('id', quoteId);
+    if (updErr) throw updErr;
+    return newToken;
+  },
+
+  /** טעינת הצעה לפי טוקן חתימה (גישה ציבורית ללקוח) */
+  getByToken: async (token: string): Promise<QuoteWithItems> => {
+    const { data: quoteData, error: quoteError } = await getSupabaseService()
+      .from('quotes')
+      .select(`
+        *,
+        clients (
+          name,
+          company,
+          phone,
+          company_id
+        )
+      `)
+      .eq('signing_token', token)
+      .single();
+
+    if (quoteError) throw quoteError;
+
+    const { data: itemsData, error: itemsError } = await getSupabaseService()
+      .from('quote_items')
+      .select('*')
+      .eq('quote_id', quoteData.id)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true });
+
+    if (itemsError) throw itemsError;
+
+    const mappedItems = (itemsData || []).map((item: any) => ({
+      id: item.id,
+      name: item.item_name,
+      description: item.item_description,
+      unit_price: item.unit_price,
+      quantity: item.quantity,
+      discount: item.discount,
+      total: item.total,
+    }));
+
+    return {
+      quote: {
+        ...quoteData,
+        client_name: quoteData.clients?.name,
+        client_company: quoteData.clients?.company,
+        client_phone: quoteData.clients?.phone,
+        client_company_id: quoteData.clients?.company_id,
+        extra_vat_discount_percent: quoteData.extra_vat_discount_percent ?? 0,
+        extra_vat_discount_amount: quoteData.extra_vat_discount_amount ?? 0,
+      },
+      items: mappedItems,
+    };
+  },
+
+  /** שמירת חתימה: העלאת ה-PDF החתום ל-Storage ועדכון השדות בדטהבייס */
+  saveSignature: async (
+    token: string,
+    payload: { signatureDataUrl: string; signedBy: string; pdfBlob: Blob }
+  ): Promise<{ ok: true }> => {
+    // איתור ההצעה לפי הטוקן
+    const { data: quoteRow, error: findErr } = await getSupabaseService()
+      .from('quotes')
+      .select('id, signing_status')
+      .eq('signing_token', token)
+      .single();
+    if (findErr) throw findErr;
+    if (!quoteRow) throw new Error('הצעה לא נמצאה');
+
+    // העלאת ה-PDF החתום ל-Storage
+    const path = `${quoteRow.id}/signed-${Date.now()}.pdf`;
+    const { error: uploadErr } = await getSupabaseService()
+      .storage
+      .from(SIGNED_QUOTES_BUCKET)
+      .upload(path, payload.pdfBlob, { upsert: true, contentType: 'application/pdf' });
+    if (uploadErr) throw uploadErr;
+
+    // עדכון שדות החתימה בהצעה
+    const { error: updErr } = await getSupabaseService()
+      .from('quotes')
+      .update({
+        signature: payload.signatureDataUrl,
+        signed_pdf_url: path,
+        signed_at: new Date().toISOString(),
+        signed_by: payload.signedBy,
+        signing_status: 'signed',
+        quote_status: 'signed',
+      })
+      .eq('id', quoteRow.id);
+    if (updErr) throw updErr;
+
+    return { ok: true };
+  },
+
+  /** מחזיר URL חתום לצפייה ב-PDF החתום */
+  getSignedPdfUrl: async (path: string): Promise<string | undefined> => {
+    const { data } = await getSupabaseService()
+      .storage
+      .from(SIGNED_QUOTES_BUCKET)
+      .createSignedUrl(path, 60 * 60 * 24 * 7);
+    return data?.signedUrl;
   },
 };
 

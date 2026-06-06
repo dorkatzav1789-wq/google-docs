@@ -57,6 +57,13 @@ export interface Quote {
   client_company?: string;
   client_phone?: string | null;
   client_company_id?: string | null;
+  // Signature fields
+  signature?: string | null;
+  signed_pdf_url?: string | null;
+  signed_at?: string | null;
+  signed_by?: string | null;
+  signing_token?: string | null;
+  signing_status?: 'pending' | 'signed' | null;
 }
 
 export interface QuoteWithItems {
