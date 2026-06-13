@@ -103,6 +103,15 @@ export interface Employee {
   created_at: string;
 }
 
+export interface EventType {
+  id: number;
+  key: string;
+  label: string;
+  sort_order?: number;
+  is_active?: boolean;
+  created_at?: string;
+}
+
 export interface WorkHours {
   id: number;
   employee_id: number;
@@ -112,7 +121,8 @@ export interface WorkHours {
   total_amount: number;
   overtime_amount: number;
   notes?: string;
-  event_type: 'business' | 'personal';
+  // מפתח סוג האירוע (key מטבלת event_types). נשמר 'business'/'personal' לתאימות לאחור
+  event_type: string;
 
   // כשמחזירים מ-Supabase עם join:
   employees?: {
@@ -141,7 +151,7 @@ export type NewWorkHoursInput = {
   total_amount: number;
   overtime_amount: number;
   notes?: string;
-  event_type: 'business' | 'personal';
+  event_type: string;
 };
 
 export interface Reminder {

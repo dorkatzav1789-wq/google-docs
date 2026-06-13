@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import type { MonthlyReport as MonthlyReportType, WorkHours, Employee } from '../types';
-import { reportsAPI, employeesAPI, workHoursAPI } from '../services/supabaseAPI';
+import type { MonthlyReport as MonthlyReportType, WorkHours, Employee, EventType } from '../types';
+import { reportsAPI, employeesAPI, workHoursAPI, eventTypesAPI } from '../services/supabaseAPI';
 import { useAuth } from '../context/AuthContext';
 import html2pdf from 'html2pdf.js';
 
@@ -16,17 +16,33 @@ export const MonthlyReport: React.FC = () => {
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({
     work_date: '',
-    event_type: 'business' as 'business' | 'personal',
+    event_type: 'business' as string,
     hours_worked: '',
     hourly_rate: '',
     overtime_amount: '',
     total_amount: '',
     notes: '',
   });
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
+  // מיפוי key -> label להצגת שם סוג האירוע (כולל סוגים מותאמים אישית)
+  const eventTypeLabel = (key: string): string => {
+    const match = eventTypes.find((t) => t.key === key);
+    if (match) return match.label;
+    if (key === 'business') return 'עסקי';
+    if (key === 'personal') return 'פרטי';
+    return key;
+  };
   const [savingEdit, setSavingEdit] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
   const canEditRows = !!user; // כל משתמש מחובר יכול לערוך את השורות שהוא רואה (אדמין רואה הכל, עובד רק את עצמו)
+
+  useEffect(() => {
+    eventTypesAPI
+      .getAll()
+      .then((data) => setEventTypes(data))
+      .catch((error) => console.error('Error loading event types:', error));
+  }, []);
 
   const normalizeReport = (data: any): MonthlyReportType => {
     const work_hours: WorkHours[] = Array.isArray(data?.work_hours)
@@ -146,7 +162,7 @@ export const MonthlyReport: React.FC = () => {
     setEditDraft((prev) => {
       const next = {
         ...prev,
-        [field]: field === 'event_type' ? (value as 'business' | 'personal') : value,
+        [field]: value,
       };
 
       const hours = Number(field === 'hours_worked' ? value : next.hours_worked) || 0;
@@ -661,8 +677,16 @@ export const MonthlyReport: React.FC = () => {
                           onChange={(e) => handleEditFieldChange('event_type', e.target.value)}
                           className="w-full p-1 border border-gray-300 rounded"
                         >
-                          <option value="business">אירוע עסקי</option>
-                          <option value="personal">אירוע פרטי</option>
+                          {eventTypes.length === 0 ? (
+                            <>
+                              <option value="business">אירוע עסקי</option>
+                              <option value="personal">אירוע פרטי</option>
+                            </>
+                          ) : (
+                            eventTypes.map((type) => (
+                              <option key={type.id} value={type.key}>{type.label}</option>
+                            ))
+                          )}
                         </select>
                       ) : (
                         <span
@@ -672,7 +696,7 @@ export const MonthlyReport: React.FC = () => {
                               : 'bg-green-100 text-green-800'
                           }`}
                         >
-                          {row.event_type === 'business' ? 'עסקי' : 'פרטי'}
+                          {eventTypeLabel(row.event_type)}
                         </span>
                       )}
                     </td>

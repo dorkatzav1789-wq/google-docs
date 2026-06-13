@@ -1,6 +1,6 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
 import { getSupabaseClient, getSupabaseAdmin, getSupabaseService } from './supabaseClient';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense, EventType } from '../types';
 
 // ---------- Clients ----------
 export const clientsAPI = {
@@ -143,6 +143,54 @@ export const aliasesAPI = {
       .delete()
       .eq('id', id);
     
+    if (error) throw error;
+  },
+};
+
+// ---------- Event Types ----------
+export const eventTypesAPI = {
+  getAll: async (): Promise<EventType[]> => {
+    const { data, error } = await getSupabaseClient()
+      .from('event_types')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('label', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  create: async (payload: {
+    key: string;
+    label: string;
+    sort_order?: number;
+    is_active?: boolean;
+  }): Promise<EventType> => {
+    const { data, error } = await getSupabaseAdmin()
+      .from('event_types')
+      .insert([payload])
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  update: async (id: number, updates: Partial<EventType>): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('event_types')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('event_types')
+      .delete()
+      .eq('id', id);
+
     if (error) throw error;
   },
 };
@@ -745,7 +793,7 @@ export const workHoursAPI = {
     id: number,
     body: Partial<{
       work_date: string;
-      event_type: 'business' | 'personal';
+      event_type: string;
       hours_worked: number;
       hourly_rate: number;
       total_amount: number;

@@ -1,6 +1,7 @@
 import React from 'react';
 import ItemsManager from './ItemsManager';
 import AliasesManager from './AliasesManager';
+import EventTypesManager from './EventTypesManager';
 import QuotesList from './QuotesList';
 import { useAuth } from '../context/AuthContext';
 
@@ -71,6 +72,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, onQuoteSelect }
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">כינויים לפריטים</h2>
             </div>
             <AliasesManager />
+          </div>
+
+          {/* ניהול סוגי אירוע */}
+          <div className="lg:col-span-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-3 md:p-4">
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <span className="text-lg">🗂️</span>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">סוגי אירוע</h2>
+            </div>
+            <EventTypesManager />
           </div>
         </div>
 

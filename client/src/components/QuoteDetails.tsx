@@ -1038,14 +1038,18 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 }
                 
                 .invoice-table thead th {
-                  background-color: #e9eef2;
+                  background-color: #5a6b7b;
                   font-weight: bold;
-                  color: #333;
-                  border-bottom: 2px solid #d0d8e0;
+                  color: #ffffff;
+                  border-bottom: 2px solid #4a5a68;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
                 
-                .invoice-table tbody tr:nth-child(even) {
-                  background-color: #f5f8fa;
+                .invoice-table tbody.item-group:nth-of-type(odd) tr:not(.split-row) {
+                  background-color: #dce6f0;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
                 
                 .invoice-table .item-description {
@@ -1064,10 +1068,14 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 
                 .summary-row-green {
                   background-color: #e6f3d8 !important;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
                 
                 .summary-row-orange {
                   background-color: #fde8d7 !important;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
                 }
                 
                 .summary-row-green td, .summary-row-orange td {
@@ -1349,7 +1357,7 @@ const QuoteDetails: React.FC<QuoteDetailsProps> = ({ quoteId, onBack, onDuplicat
                 )}
                 {extraVatDiscountPercent > 0 && (
                   <tr className="summary-row-green avoid-page-break">
-                    <td className="item-description">הנחה למחיר סופי ){extraVatDiscountPercent}%(</td>
+                    <td className="item-description">הנחה למחיר סופי ({extraVatDiscountPercent}%)</td>
                     <td></td>
                     <td></td>
                     <td></td>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Employee } from '../types';
-import { employeesAPI, workHoursAPI } from '../services/api';
+import type { Employee, EventType } from '../types';
+import { employeesAPI, workHoursAPI, eventTypesAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const WorkHoursTracker: React.FC = () => {
@@ -12,8 +12,9 @@ export const WorkHoursTracker: React.FC = () => {
     hours_worked: 0,
     notes: '',
     overtime_amount: 0,
-    event_type: 'business' as 'business' | 'personal'
+    event_type: 'business' as string
   });
+  const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [showCreateEmployeeForm, setShowCreateEmployeeForm] = useState<boolean>(false);
@@ -57,6 +58,25 @@ export const WorkHoursTracker: React.FC = () => {
     loadEmployees();
   }, [loadEmployees]);
 
+  useEffect(() => {
+    const loadEventTypes = async () => {
+      try {
+        const data = await eventTypesAPI.getAll();
+        const active = data.filter((t) => t.is_active !== false);
+        setEventTypes(active);
+        // אם סוג ברירת המחדל אינו קיים, נבחר את הראשון הזמין
+        setWorkHours((prev) =>
+          active.some((t) => t.key === prev.event_type) || active.length === 0
+            ? prev
+            : { ...prev, event_type: active[0].key }
+        );
+      } catch (error) {
+        console.error('Error loading event types:', error);
+      }
+    };
+    loadEventTypes();
+  }, []);
+
   const handleAddWorkHours = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee) return;
@@ -90,7 +110,7 @@ export const WorkHoursTracker: React.FC = () => {
         hours_worked: 0,
         notes: '',
         overtime_amount: 0,
-        event_type: 'business' as 'business' | 'personal'
+        event_type: eventTypes[0]?.key ?? 'business'
       });
       alert('יום העבודה נוסף בהצלחה!');
     } catch (error) {
@@ -171,14 +191,22 @@ export const WorkHoursTracker: React.FC = () => {
 
             <select
                 value={workHours.event_type}
-                onChange={(e) => setWorkHours({ ...workHours, event_type: e.target.value as 'business' | 'personal' })}
+                onChange={(e) => setWorkHours({ ...workHours, event_type: e.target.value })}
                 className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded"
                 required
                 title="סוג אירוע"
                 aria-label="סוג אירוע"
             >
-              <option value="business">אירוע עסקי</option>
-              <option value="personal">אירוע פרטי</option>
+              {eventTypes.length === 0 ? (
+                <>
+                  <option value="business">אירוע עסקי</option>
+                  <option value="personal">אירוע פרטי</option>
+                </>
+              ) : (
+                eventTypes.map((type) => (
+                  <option key={type.id} value={type.key}>{type.label}</option>
+                ))
+              )}
             </select>
 
             <div className="space-y-1">
