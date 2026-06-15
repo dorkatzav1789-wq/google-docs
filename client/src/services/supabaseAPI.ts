@@ -166,7 +166,7 @@ export const eventTypesAPI = {
     sort_order?: number;
     is_active?: boolean;
   }): Promise<EventType> => {
-    const { data, error } = await getSupabaseAdmin()
+    const { data, error } = await getSupabaseService()
       .from('event_types')
       .insert([payload])
       .select('*')
@@ -177,7 +177,7 @@ export const eventTypesAPI = {
   },
 
   update: async (id: number, updates: Partial<EventType>): Promise<void> => {
-    const { error } = await getSupabaseAdmin()
+    const { error } = await getSupabaseService()
       .from('event_types')
       .update(updates)
       .eq('id', id);
@@ -186,7 +186,7 @@ export const eventTypesAPI = {
   },
 
   delete: async (id: number): Promise<void> => {
-    const { error } = await getSupabaseAdmin()
+    const { error } = await getSupabaseService()
       .from('event_types')
       .delete()
       .eq('id', id);
