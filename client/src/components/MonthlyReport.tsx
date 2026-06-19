@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import type { MonthlyReport as MonthlyReportType, WorkHours, Employee, EventType } from '../types';
 import { reportsAPI, employeesAPI, workHoursAPI, eventTypesAPI } from '../services/supabaseAPI';
 import { useAuth } from '../context/AuthContext';
@@ -36,6 +36,16 @@ export const MonthlyReport: React.FC = () => {
   const reportRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === 'admin';
   const canEditRows = !!user; // כל משתמש מחובר יכול לערוך את השורות שהוא רואה (אדמין רואה הכל, עובד רק את עצמו)
+
+  // סוגי האירוע שקיימים בפועל בדוח הנוכחי - מציגים בייצוא רק אירועים שבהם העובד עבד
+  const reportEventTypeKeys = useMemo<string[]>(() => {
+    if (!report) return [];
+    const keys = new Set<string>();
+    report.work_hours.forEach((row) => {
+      if (row.event_type) keys.add(row.event_type);
+    });
+    return Array.from(keys);
+  }, [report]);
 
   useEffect(() => {
     eventTypesAPI
@@ -217,8 +227,8 @@ export const MonthlyReport: React.FC = () => {
     try {
       setExporting(true);
       
-      // Group work hours by employee
-      const byEmployee = new Map<string, { name: string; business: WorkHours[]; personal: WorkHours[]; }>();
+      // קיבוץ לפי עובד ואז לפי סוג אירוע (דינמי - תומך בכל סוגי האירוע)
+      const byEmployee = new Map<string, { name: string; groups: Map<string, WorkHours[]> }>();
       
       report.work_hours.forEach(row => {
         const firstName = (row as any).employees?.first_name ?? '';
@@ -227,15 +237,15 @@ export const MonthlyReport: React.FC = () => {
         const key = fullName || (row as any).employee_name || `#${row.employee_id}`;
         
         if (!byEmployee.has(key)) {
-          byEmployee.set(key, { name: key, business: [], personal: [] });
+          byEmployee.set(key, { name: key, groups: new Map() });
         }
         
         const emp = byEmployee.get(key)!;
-        if (row.event_type === 'business') {
-          emp.business.push(row);
-        } else {
-          emp.personal.push(row);
+        const eventKey = row.event_type || 'other';
+        if (!emp.groups.has(eventKey)) {
+          emp.groups.set(eventKey, []);
         }
+        emp.groups.get(eventKey)!.push(row);
       });
       
       // Build detailed HTML
@@ -250,97 +260,72 @@ export const MonthlyReport: React.FC = () => {
       
       // Replace the main table with employee-grouped content
       const tempContainer = document.createElement('div');
+
+      // בונה טבלת פירוט עבור קבוצת אירועים אחת (סוג אירוע מסוים)
+      const renderEventGroup = (label: string, rows: WorkHours[], groupTotal: number) => `
+        <div style="margin-bottom: 20px;">
+          <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #1e40af;">${label}</h4>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 15px;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="border: 1px solid #000; padding: 8px;">תאריך</th>
+                <th style="border: 1px solid #000; padding: 8px;">ימים</th>
+                <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
+                <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
+                <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
+                <th style="border: 1px solid #000; padding: 8px;">הערות</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 8px;">${row.work_date}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${fmt(row.hours_worked)}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
+                  <td style="border: 1px solid #000; padding: 8px;">${row.notes || '-'}</td>
+                </tr>
+              `).join('')}
+              <tr style="background-color: #dbeafe; font-weight: bold;">
+                <td colspan="5" style="border: 1px solid #000; padding: 8px;">סה"כ ${label}</td>
+                <td style="border: 1px solid #000; padding: 8px;">₪${fmt(groupTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
       
       let groupedTableHTML = '<div style="margin-top: 20px;">';
       
       byEmployee.forEach((empData, empName) => {
-        const businessTotal = empData.business.reduce((sum, r) => sum + (r.total_amount || 0), 0);
-        const personalTotal = empData.personal.reduce((sum, r) => sum + (r.total_amount || 0), 0);
-        const overallTotal = businessTotal + personalTotal;
-        
+        let groupsHTML = '';
+        const summaryRows: string[] = [];
+        let overallTotal = 0;
+
+        empData.groups.forEach((rows, eventKey) => {
+          const label = eventTypeLabel(eventKey);
+          const groupTotal = rows.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+          overallTotal += groupTotal;
+          groupsHTML += renderEventGroup(label, rows, groupTotal);
+          summaryRows.push(`
+            <tr>
+              <td style="padding: 5px; font-weight: 600;">${label}:</td>
+              <td style="padding: 5px; text-align: left;">₪${fmt(groupTotal)}</td>
+            </tr>
+          `);
+        });
+
         groupedTableHTML += `
           <div style="margin-bottom: 40px; page-break-inside: avoid;">
             <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #ccc; padding-bottom: 10px;">${empName}</h3>
-            
-            <!-- Business Events -->
-            <div style="margin-bottom: 20px;">
-              <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #1e40af;">אירועים עסקיים</h4>
-              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 15px;">
-                <thead>
-                  <tr style="background-color: #f3f4f6;">
-                    <th style="border: 1px solid #000; padding: 8px;">תאריך</th>
-                    <th style="border: 1px solid #000; padding: 8px;">ימים</th>
-                    <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
-                    <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
-                    <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
-                    <th style="border: 1px solid #000; padding: 8px;">הערות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${empData.business.length > 0 ? empData.business.map(row => `
-                    <tr>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.work_date}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${fmt(row.hours_worked)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.notes || '-'}</td>
-                    </tr>
-                  `).join('') : '<tr><td colspan="6" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים עסקיים</td></tr>'}
-                  <tr style="background-color: #dbeafe; font-weight: bold;">
-                    <td colspan="5" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים עסקיים</td>
-                    <td style="border: 1px solid #000; padding: 8px;">₪${fmt(businessTotal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            
-            <!-- Personal Events -->
-            <div style="margin-bottom: 20px;">
-              <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #059669;">אירועים פרטיים</h4>
-              <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 15px;">
-                <thead>
-                  <tr style="background-color: #f3f4f6;">
-                    <th style="border: 1px solid #000; padding: 8px;">תאריך</th>
-                    <th style="border: 1px solid #000; padding: 8px;">ימים</th>
-                    <th style="border: 1px solid #000; padding: 8px;">תשלום יומי</th>
-                    <th style="border: 1px solid #000; padding: 8px;">שעות נוספות</th>
-                    <th style="border: 1px solid #000; padding: 8px;">סה"כ</th>
-                    <th style="border: 1px solid #000; padding: 8px;">הערות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${empData.personal.length > 0 ? empData.personal.map(row => `
-                    <tr>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.work_date}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${fmt(row.hours_worked)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.hourly_rate)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.overtime_amount > 0 ? `+₪${fmt(row.overtime_amount)}` : '-'}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">₪${fmt(row.total_amount)}</td>
-                      <td style="border: 1px solid #000; padding: 8px;">${row.notes || '-'}</td>
-                    </tr>
-                  `).join('') : '<tr><td colspan="6" style="border: 1px solid #000; padding: 8px; text-align: center;">אין אירועים פרטיים</td></tr>'}
-                  <tr style="background-color: #d1fae5; font-weight: bold;">
-                    <td colspan="5" style="border: 1px solid #000; padding: 8px;">סה"כ אירועים פרטיים</td>
-                    <td style="border: 1px solid #000; padding: 8px;">₪${fmt(personalTotal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            
+            ${groupsHTML}
             <!-- Employee Summary -->
             <div style="background-color: #f9fafb; padding: 15px; border: 2px solid #374151; border-radius: 8px; margin-top: 20px;">
               <h4 style="font-size: 18px; font-weight: bold; margin-bottom: 10px;">סיכום כספי - ${empName}</h4>
               <table style="width: 100%; border-collapse: collapse;">
                 <tbody>
-                  <tr>
-                    <td style="padding: 5px; font-weight: 600;">אירועים עסקיים:</td>
-                    <td style="padding: 5px; text-align: left;">₪${fmt(businessTotal)}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 5px; font-weight: 600;">אירועים פרטיים:</td>
-                    <td style="padding: 5px; text-align: left;">₪${fmt(personalTotal)}</td>
-                  </tr>
+                  ${summaryRows.join('')}
                   <tr style="background-color: #e5e7eb;">
                     <td style="padding: 10px; font-weight: bold; font-size: 16px;">סה"כ לתשלום:</td>
                     <td style="padding: 10px; text-align: left; font-weight: bold; font-size: 18px;">₪${fmt(overallTotal)}</td>
@@ -391,7 +376,7 @@ export const MonthlyReport: React.FC = () => {
     }
   };
 
-  const exportToPDF = async (eventType?: 'business' | 'personal') => {
+  const exportToPDF = async (eventTypeKey?: string) => {
     if (!reportRef.current) return;
     
     try {
@@ -402,37 +387,35 @@ export const MonthlyReport: React.FC = () => {
         : '';
       
       const employeeSuffix = selectedEmployee ? `-${selectedEmployeeName?.trim()}` : '';
-      const eventSuffix = eventType ? `-${eventType === 'business' ? 'עסקי' : 'פרטי'}` : '';
+      const eventLabel = eventTypeKey ? eventTypeLabel(eventTypeKey) : '';
+      const eventSuffix = eventTypeKey ? `-${eventLabel}` : '';
       const filename = `work-hours-report-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}${eventSuffix}.pdf`;
       
-      // Temporarily clone and filter the content if eventType is specified
+      // Temporarily clone and filter the content if eventTypeKey is specified
       let contentToExport = reportRef.current;
       let tempContainer: HTMLDivElement | null = null;
 
       let restoreAdminColumns: (() => void) | null = null;
 
-      if (eventType) {
+      if (eventTypeKey) {
         tempContainer = document.createElement('div');
         tempContainer.innerHTML = reportRef.current.innerHTML;
         
-        // Hide rows that don't match the event type
+        // Hide rows that don't match the selected event type (matched by key, not by label text)
         const rows = tempContainer.querySelectorAll('tbody tr');
         let filteredTotal = 0;
         rows.forEach((row) => {
-          const eventTypeCell = row.querySelector('td:nth-child(3) span');
-          if (eventTypeCell) {
-            const isBusiness = eventTypeCell.textContent?.includes('עסקי');
-            const shouldHide = (eventType === 'business' && !isBusiness) || (eventType === 'personal' && isBusiness);
-            if (shouldHide) {
-              (row as HTMLElement).style.display = 'none';
-            } else {
-              // Calculate total for visible rows
-              const totalCell = row.querySelector('td:nth-child(7)');
-              if (totalCell) {
-                const amountText = totalCell.textContent || '0';
-                const amount = parseFloat(amountText.replace(/[₪,\s]/g, '')) || 0;
-                filteredTotal += amount;
-              }
+          const rowEventType = (row as HTMLElement).getAttribute('data-event-type');
+          const shouldHide = rowEventType !== eventTypeKey;
+          if (shouldHide) {
+            (row as HTMLElement).style.display = 'none';
+          } else {
+            // Calculate total for visible rows
+            const totalCell = row.querySelector('td:nth-child(7)');
+            if (totalCell) {
+              const amountText = totalCell.textContent || '0';
+              const amount = parseFloat(amountText.replace(/[₪,\s]/g, '')) || 0;
+              filteredTotal += amount;
             }
           }
         });
@@ -450,7 +433,7 @@ export const MonthlyReport: React.FC = () => {
         const formattedTotal = filteredTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 });
         summaryDiv.innerHTML = `
           <div>
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #1a202c;">סיכום ${eventType === 'business' ? 'אירועים עסקיים' : 'אירועים פרטיים'}:</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #1a202c;">סיכום ${eventLabel}:</h3>
             <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
               <thead>
               <tr style="background-color: #f9fafb;">
@@ -460,7 +443,7 @@ export const MonthlyReport: React.FC = () => {
               </thead>
               <tbody>
               <tr>
-                <td style="border: 1px solid #000; padding: 8px; font-weight: 500;">${eventType === 'business' ? 'אירועים עסקיים' : 'אירועים פרטיים'}</td>
+                <td style="border: 1px solid #000; padding: 8px; font-weight: 500;">${eventLabel}</td>
                 <td style="border: 1px solid #000; padding: 8px;">₪${formattedTotal}</td>
               </tr>
               </tbody>
@@ -566,20 +549,21 @@ export const MonthlyReport: React.FC = () => {
             >
               {exporting ? 'מייצא...' : 'ייצוא ל-PDF'}
             </button>
-            <button
-                onClick={() => exportToPDF('business')}
-                disabled={exporting}
-                className="px-4 py-2 bg-blue-500 text-white rounded"
+            <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) exportToPDF(e.target.value);
+                }}
+                disabled={exporting || reportEventTypeKeys.length === 0}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+                title="ייצוא PDF לפי סוג אירוע"
+                aria-label="ייצוא PDF לפי סוג אירוע"
             >
-              {exporting ? 'מייצא...' : 'PDF עסקי'}
-            </button>
-            <button
-                onClick={() => exportToPDF('personal')}
-                disabled={exporting}
-                className="px-4 py-2 bg-purple-500 text-white rounded"
-            >
-              {exporting ? 'מייצא...' : 'PDF פרטי'}
-            </button>
+              <option value="">{exporting ? 'מייצא...' : 'PDF לפי אירוע'}</option>
+              {reportEventTypeKeys.map((key) => (
+                  <option key={key} value={key}>{eventTypeLabel(key)}</option>
+              ))}
+            </select>
             <button
                 onClick={exportDetailedPDFByEmployee}
                 disabled={exporting}
@@ -649,7 +633,7 @@ export const MonthlyReport: React.FC = () => {
               </tr>
           ) : (
               report.work_hours.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} data-event-type={row.event_type}>
                     <td className="border p-2">
                       {(() => {
                         const firstName = (row as any).employees?.first_name ?? '';
@@ -829,14 +813,12 @@ export const MonthlyReport: React.FC = () => {
               </tr>
               </thead>
               <tbody>
-              <tr>
-                <td className="border p-2 font-medium">אירועים עסקיים</td>
-                <td className="border p-2">₪{fmt(report.work_hours.filter(r => r.event_type === 'business').reduce((sum, r) => sum + (r.total_amount || 0), 0))}</td>
-              </tr>
-              <tr>
-                <td className="border p-2 font-medium">אירועים פרטיים</td>
-                <td className="border p-2">₪{fmt(report.work_hours.filter(r => r.event_type === 'personal').reduce((sum, r) => sum + (r.total_amount || 0), 0))}</td>
-              </tr>
+              {reportEventTypeKeys.map((key) => (
+                <tr key={key}>
+                  <td className="border p-2 font-medium">{eventTypeLabel(key)}</td>
+                  <td className="border p-2">₪{fmt(report.work_hours.filter(r => r.event_type === key).reduce((sum, r) => sum + (r.total_amount || 0), 0))}</td>
+                </tr>
+              ))}
               <tr className="bg-gray-100">
                 <td className="border p-2 font-bold">סה"כ</td>
                 <td className="border p-2 font-bold">₪{fmt(report.summary.total_amount)}</td>
