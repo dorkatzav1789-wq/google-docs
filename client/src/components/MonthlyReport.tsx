@@ -207,17 +207,6 @@ export const MonthlyReport: React.FC = () => {
     }
   };
 
-  const handleDeleteRow = async (rowId: number) => {
-    if (!window.confirm('האם למחוק את רשומת השעות הזו?')) return;
-    try {
-      await workHoursAPI.delete(rowId);
-      await loadReport();
-    } catch (error) {
-      console.error('Error deleting work hours:', error);
-      alert('שגיאה במחיקת רשומה');
-    }
-  };
-
   const hideAdminColumns = (root: HTMLElement) => {
     const affected: Array<{ el: HTMLElement; display: string }> = [];
     root.querySelectorAll('.admin-actions-column').forEach((node) => {
@@ -225,25 +214,6 @@ export const MonthlyReport: React.FC = () => {
       affected.push({ el, display: el.style.display });
       el.style.display = 'none';
     });
-    return () => {
-      affected.forEach(({ el, display }) => {
-        el.style.display = display;
-      });
-    };
-  };
-
-  // מבטיח שייצוא ה-PDF תמיד מכיל את תצוגת הטבלה (ולא את כרטיסי המובייל), בכל גודל מסך.
-  // החלת display ב-inline גוברת על מחלקות ה-responsive (hidden / md:block), כך שהייצוא דטרמיניסטי.
-  const forceTableLayout = (root: HTMLElement) => {
-    const affected: Array<{ el: HTMLElement; display: string }> = [];
-    const apply = (selector: string, display: string) => {
-      root.querySelectorAll<HTMLElement>(selector).forEach((el) => {
-        affected.push({ el, display: el.style.display });
-        el.style.display = display;
-      });
-    };
-    apply('.report-desktop-table', 'block');
-    apply('.report-mobile-cards', 'none');
     return () => {
       affected.forEach(({ el, display }) => {
         el.style.display = display;
@@ -286,6 +256,11 @@ export const MonthlyReport: React.FC = () => {
       const employeeSuffix = selectedEmployee ? `-${selectedEmployeeName?.trim()}` : '';
       const filename = `work-hours-detailed-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}.pdf`;
       
+      let detailedHTML = reportRef.current.innerHTML;
+      
+      // Replace the main table with employee-grouped content
+      const tempContainer = document.createElement('div');
+
       // בונה טבלת פירוט עבור קבוצת אירועים אחת (סוג אירוע מסוים)
       const renderEventGroup = (label: string, rows: WorkHours[], groupTotal: number) => `
         <div style="margin-bottom: 20px;">
@@ -363,22 +338,17 @@ export const MonthlyReport: React.FC = () => {
       });
       
       groupedTableHTML += '</div>';
-
-      // משכפלים את הדוח ומחליפים את טבלת הדסקטופ בתוכן המקובץ לפי עובד (DOM נקי במקום חיתוך מחרוזות שביר)
-      const tempContainer = document.createElement('div');
-      const clone = reportRef.current.cloneNode(true) as HTMLElement;
-
-      // בתצוגה המפורטת יש סיכום פר-עובד, ולכן מסירים את כרטיסי המובייל ואת סיכום סוגי האירוע הכללי
-      clone.querySelectorAll('.report-mobile-cards, .report-event-summary').forEach((el) => el.remove());
-
-      const desktopTable = clone.querySelector('.report-desktop-table');
-      if (desktopTable) {
-        const groupedWrapper = document.createElement('div');
-        groupedWrapper.innerHTML = groupedTableHTML;
-        desktopTable.replaceWith(groupedWrapper);
-      }
-
-      tempContainer.appendChild(clone);
+      
+      // Replace original table content
+      const originalTableStart = detailedHTML.indexOf('<table');
+      const originalSummaryStart = detailedHTML.indexOf('<div className="mt-6">');
+      const originalSummaryEnd = detailedHTML.indexOf('</div>', originalSummaryStart) + 6;
+      
+      detailedHTML = detailedHTML.substring(0, originalTableStart) + 
+                     groupedTableHTML + 
+                     detailedHTML.substring(originalSummaryEnd);
+      
+      tempContainer.innerHTML = detailedHTML;
       document.body.appendChild(tempContainer);
       const restoreAdminColumns = hideAdminColumns(tempContainer);
       
@@ -483,18 +453,11 @@ export const MonthlyReport: React.FC = () => {
         tempContainer.appendChild(summaryDiv);
 
         document.body.appendChild(tempContainer);
-        forceTableLayout(tempContainer);
         restoreAdminColumns = hideAdminColumns(tempContainer);
         contentToExport = tempContainer;
       }
-
-      // בייצוא מתוך תצוגת המובייל - מאלצים את הטבלה (במקום הכרטיסים) ומשחזרים לאחר מכן
-      let restoreLayout: (() => void) | null = null;
-      if (!tempContainer) {
-        restoreLayout = forceTableLayout(contentToExport as HTMLElement);
-        if (isAdmin) {
-          restoreAdminColumns = hideAdminColumns(contentToExport as HTMLElement);
-        }
+      if (!tempContainer && isAdmin) {
+        restoreAdminColumns = hideAdminColumns(contentToExport as HTMLElement);
       }
       
       const opt = {
@@ -510,9 +473,6 @@ export const MonthlyReport: React.FC = () => {
       // Cleanup
       if (restoreAdminColumns) {
         restoreAdminColumns();
-      }
-      if (restoreLayout) {
-        restoreLayout();
       }
       if (tempContainer && tempContainer.parentElement) {
         document.body.removeChild(tempContainer);
@@ -532,16 +492,16 @@ export const MonthlyReport: React.FC = () => {
       Number(n || 0).toLocaleString('he-IL', { maximumFractionDigits: 2 });
 
   return (
-      <div className="p-4 sm:p-6">
+      <div className="p-6">
         {/* כותרת ובחירה */}
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold">דוח חודשי - {selectedMonth}/{selectedYear}</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">דוח חודשי - {selectedMonth}/{selectedYear}</h2>
 
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 sm:justify-center">
+          <div className="flex gap-4 flex-wrap justify-center">
             <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                className="w-full sm:w-auto p-2 border rounded"
+                className="p-2 border rounded"
                 title="בחר שנה"
                 aria-label="בחר שנה"
             >
@@ -553,7 +513,7 @@ export const MonthlyReport: React.FC = () => {
             <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-                className="w-full sm:w-auto p-2 border rounded"
+                className="p-2 border rounded"
                 title="בחר חודש"
                 aria-label="בחר חודש"
             >
@@ -566,7 +526,7 @@ export const MonthlyReport: React.FC = () => {
             <select
                 value={selectedEmployee ?? ''}
                 onChange={(e) => setSelectedEmployee(e.target.value ? parseInt(e.target.value, 10) : null)}
-                className="w-full sm:w-auto p-2 border rounded"
+                className="p-2 border rounded"
                 title="בחר עובד"
                 aria-label="בחר עובד"
             >
@@ -585,7 +545,7 @@ export const MonthlyReport: React.FC = () => {
             <button
                 onClick={() => exportToPDF()}
                 disabled={exporting}
-                className="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded"
+                className="px-4 py-2 bg-green-500 text-white rounded"
             >
               {exporting ? 'מייצא...' : 'ייצוא ל-PDF'}
             </button>
@@ -595,7 +555,7 @@ export const MonthlyReport: React.FC = () => {
                   if (e.target.value) exportToPDF(e.target.value);
                 }}
                 disabled={exporting || reportEventTypeKeys.length === 0}
-                className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
                 title="ייצוא PDF לפי סוג אירוע"
                 aria-label="ייצוא PDF לפי סוג אירוע"
             >
@@ -607,7 +567,7 @@ export const MonthlyReport: React.FC = () => {
             <button
                 onClick={exportDetailedPDFByEmployee}
                 disabled={exporting}
-                className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded"
+                className="px-4 py-2 bg-orange-500 text-white rounded"
                 title="ייצא PDF מפורט לפי עובדים"
             >
               {exporting ? 'מייצא...' : 'PDF מפורט'}
@@ -616,7 +576,7 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* סיכום עליון */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="p-4 bg-blue-100 rounded">
             <h3 className="font-semibold">סה"כ ימים</h3>
             <p className="text-2xl">{fmt(report.summary?.total_hours)}</p>
@@ -636,7 +596,7 @@ export const MonthlyReport: React.FC = () => {
         </div>
 
         {/* טבלת פירוט */}
-        <div ref={reportRef}>
+        <div ref={reportRef} className="overflow-x-auto">
           {/* כותרת לדוח */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold mb-2">דוח שעות עבודה</h1>
@@ -650,8 +610,6 @@ export const MonthlyReport: React.FC = () => {
             </h2>
           </div>
           
-          {/* תצוגת טבלה - דסקטופ ומעלה (משמשת גם כתצוגת ה-PDF בכל גודל מסך) */}
-          <div className="report-desktop-table hidden md:block overflow-x-auto">
           <table className="w-full border-collapse border min-w-full">
           <thead>
           <tr className="bg-gray-100">
@@ -818,7 +776,17 @@ export const MonthlyReport: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteRow(row.id)}
+                              onClick={async () => {
+                                if (window.confirm('האם למחוק את רשומת השעות הזו?')) {
+                                  try {
+                                    await workHoursAPI.delete(row.id);
+                                    await loadReport();
+                                  } catch (error) {
+                                    console.error('Error deleting work hours:', error);
+                                    alert('שגיאה במחיקת רשומה');
+                                  }
+                                }
+                              }}
                               className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm"
                             >
                               מחיקה
@@ -832,178 +800,10 @@ export const MonthlyReport: React.FC = () => {
           )}
           </tbody>
         </table>
-          </div>
-
-          {/* תצוגת כרטיסים - מובייל בלבד (נוחה לקריאה בטלפון) */}
-          <div className="report-mobile-cards md:hidden space-y-3">
-            {report.work_hours.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 border rounded">אין נתונים לחודש שנבחר</div>
-            ) : (
-              report.work_hours.map((row) => {
-                const firstName = (row as any).employees?.first_name ?? '';
-                const lastName = (row as any).employees?.last_name ?? '';
-                const employeeName = `${firstName} ${lastName}`.trim() || (row as any).employee_name || `#${row.employee_id}`;
-                const isEditing = editingRowId === row.id;
-
-                return (
-                  <div key={row.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
-                    {isEditing ? (
-                      <div className="space-y-3">
-                        <div className="font-bold text-gray-900 dark:text-white">{employeeName}</div>
-
-                        <label className="block">
-                          <span className="text-sm text-gray-500">תאריך</span>
-                          <input
-                            type="date"
-                            value={editDraft.work_date}
-                            onChange={(e) => handleEditFieldChange('work_date', e.target.value)}
-                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                          />
-                        </label>
-
-                        <label className="block">
-                          <span className="text-sm text-gray-500">סוג אירוע</span>
-                          <select
-                            value={editDraft.event_type}
-                            onChange={(e) => handleEditFieldChange('event_type', e.target.value)}
-                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                          >
-                            {eventTypes.length === 0 ? (
-                              <>
-                                <option value="business">אירוע עסקי</option>
-                                <option value="personal">אירוע פרטי</option>
-                              </>
-                            ) : (
-                              eventTypes.map((type) => (
-                                <option key={type.id} value={type.key}>{type.label}</option>
-                              ))
-                            )}
-                          </select>
-                        </label>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <label className="block">
-                            <span className="text-sm text-gray-500">ימים</span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={editDraft.hours_worked}
-                              onChange={(e) => handleEditFieldChange('hours_worked', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="text-sm text-gray-500">תשלום יומי</span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={editDraft.hourly_rate}
-                              onChange={(e) => handleEditFieldChange('hourly_rate', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="text-sm text-gray-500">שעות נוספות</span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={editDraft.overtime_amount}
-                              onChange={(e) => handleEditFieldChange('overtime_amount', e.target.value)}
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                            />
-                          </label>
-                          <div className="block">
-                            <span className="text-sm text-gray-500">סה"כ</span>
-                            <div className="p-2 font-semibold text-gray-900 dark:text-white">₪{fmt(Number(editDraft.total_amount) || 0)}</div>
-                          </div>
-                        </div>
-
-                        <label className="block">
-                          <span className="text-sm text-gray-500">הערות</span>
-                          <input
-                            type="text"
-                            value={editDraft.notes}
-                            onChange={(e) => handleEditFieldChange('notes', e.target.value)}
-                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mt-1"
-                          />
-                        </label>
-
-                        <div className="flex gap-2">
-                          <button type="button" onClick={saveEditRow} disabled={savingEdit} className="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-sm">
-                            {savingEdit ? 'שומר...' : 'שמור'}
-                          </button>
-                          <button type="button" onClick={cancelEditRow} disabled={savingEdit} className="flex-1 px-3 py-2 bg-gray-300 text-gray-800 rounded text-sm">
-                            ביטול
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-start gap-2">
-                          <span className="font-bold text-gray-900 dark:text-white">{employeeName}</span>
-                          <span
-                            className={`px-2 py-1 rounded text-xs ${
-                              row.event_type === 'business'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}
-                          >
-                            {eventTypeLabel(row.event_type)}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">תאריך</span>
-                          <span className="text-gray-900 dark:text-white">{row.work_date}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">ימים</span>
-                          <span className="text-gray-900 dark:text-white">{fmt(row.hours_worked)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">תשלום יומי</span>
-                          <span className="text-gray-900 dark:text-white">₪{fmt(row.hourly_rate)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">שעות נוספות</span>
-                          {row.overtime_amount > 0 ? (
-                            <span className="text-green-600 font-medium">+₪{fmt(row.overtime_amount)}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </div>
-                        <div className="flex justify-between text-sm font-semibold">
-                          <span className="text-gray-500">סה"כ</span>
-                          <span className="text-gray-900 dark:text-white">₪{fmt(row.total_amount)}</span>
-                        </div>
-                        {row.notes && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-500">הערות</span>
-                            <span className="text-gray-900 dark:text-white text-left">{row.notes}</span>
-                          </div>
-                        )}
-
-                        {canEditRows && (
-                          <div className="flex gap-2 pt-2">
-                            <button type="button" onClick={() => startEditRow(row)} className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded text-sm">
-                              עריכה
-                            </button>
-                            <button type="button" onClick={() => handleDeleteRow(row.id)} className="flex-1 px-3 py-2 bg-red-100 text-red-700 rounded text-sm">
-                              מחיקה
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
 
         {/* סיכום לפי סוג אירוע */}
         {report.work_hours.length > 0 && (
-          <div className="report-event-summary mt-6">
+          <div className="mt-6">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">סיכום לפי סוג אירוע:</h3>
             <table className="w-full border-collapse border">
               <thead>

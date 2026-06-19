@@ -204,7 +204,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 mx-3 sm:mx-6 mt-4 sm:mt-6 rounded-lg shadow-sm border">
+          <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 mx-6 mt-6 rounded-lg shadow-sm border">
             {/* לשונית ניהול עובדים */}
             {tab === 'manage' && user?.role === 'admin' && (
                 <div className="p-6">

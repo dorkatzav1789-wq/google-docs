@@ -151,8 +151,8 @@ export const WorkHoursTracker: React.FC = () => {
           : (emp.name ?? 'ללא שם');
 
   return (
-      <div className="p-4 sm:p-6">
-        <h2 className="text-xl sm:text-2xl font-bold mb-6 text-gray-900 dark:text-white">רישום ימי עבודה</h2>
+      <div className="p-6">
+        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">רישום ימי עבודה</h2>
 
         <form onSubmit={handleAddWorkHours} className="mb-8 p-4 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -274,7 +274,7 @@ export const WorkHoursTracker: React.FC = () => {
 
           <button
               type="submit"
-              className="mt-4 w-full sm:w-auto px-4 py-2 bg-green-500 dark:bg-green-600 text-white rounded hover:bg-green-600 dark:hover:bg-green-700 transition-colors"
+              className="mt-4 px-4 py-2 bg-green-500 dark:bg-green-600 text-white rounded hover:bg-green-600 dark:hover:bg-green-700 transition-colors"
               disabled={submitting || loading}
           >
             {submitting ? 'שומר...' : 'הוסף יום עבודה'}
