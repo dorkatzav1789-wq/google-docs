@@ -1,6 +1,6 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
 import { getSupabaseClient, getSupabaseAdmin, getSupabaseService } from './supabaseClient';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense, EventType } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense, EventType, WorkEvent, NewWorkEventInput, EventSignup } from '../types';
 
 // ---------- Clients ----------
 export const clientsAPI = {
@@ -754,6 +754,103 @@ export const employeesAPI = {
     
     if (error) throw error;
     return { success: true };
+  },
+};
+
+// ---------- Work Events (אירועי עבודה) ----------
+export const workEventsAPI = {
+  /** כל האירועים מהיום והלאה, ממוינים לפי תאריך ושעה */
+  getUpcoming: async (): Promise<WorkEvent[]> => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await getSupabaseClient()
+      .from('work_events')
+      .select('*')
+      .gte('event_date', today)
+      .order('event_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  /**
+   * העלאה מקובץ: upsert לפי (תאריך + שם אירוע).
+   * אירוע קיים מתעדכן במקום להיווצר שוב, וההרשמות אליו נשמרות.
+   */
+  upsertMany: async (events: NewWorkEventInput[]): Promise<void> => {
+    if (!events.length) return;
+    const { error } = await getSupabaseAdmin()
+      .from('work_events')
+      .upsert(events, { onConflict: 'event_date,event_name' });
+
+    if (error) throw error;
+  },
+
+  /** בדיקה אילו אירועים מהקובץ כבר קיימים (לתצוגה מקדימה) */
+  findExisting: async (
+    events: Array<Pick<NewWorkEventInput, 'event_date' | 'event_name'>>
+  ): Promise<Set<string>> => {
+    const existing = new Set<string>();
+    if (!events.length) return existing;
+
+    const dates = Array.from(new Set(events.map((e) => e.event_date)));
+    const { data, error } = await getSupabaseClient()
+      .from('work_events')
+      .select('event_date, event_name')
+      .in('event_date', dates);
+
+    if (error) throw error;
+    for (const row of data || []) {
+      existing.add(`${row.event_date}|${row.event_name}`);
+    }
+    return existing;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    const { error } = await getSupabaseAdmin()
+      .from('work_events')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+};
+
+// ---------- Event Signups (הרשמות לאירועים) ----------
+export const eventSignupsAPI = {
+  /** כל ההרשמות לאירועים נתונים, כולל שם העובד */
+  getByEvents: async (eventIds: number[]): Promise<EventSignup[]> => {
+    if (!eventIds.length) return [];
+    const { data, error } = await getSupabaseClient()
+      .from('event_signups')
+      .select(`
+        *,
+        employees (
+          name
+        )
+      `)
+      .in('event_id', eventIds);
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  signUp: async (eventId: number, employeeId: number): Promise<void> => {
+    const { error } = await getSupabaseClient()
+      .from('event_signups')
+      .insert([{ event_id: eventId, employee_id: employeeId }]);
+
+    if (error) throw error;
+  },
+
+  cancel: async (eventId: number, employeeId: number): Promise<void> => {
+    const { error } = await getSupabaseClient()
+      .from('event_signups')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('employee_id', employeeId);
+
+    if (error) throw error;
   },
 };
 

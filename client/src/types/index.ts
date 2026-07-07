@@ -181,4 +181,28 @@ export type NewReminderInput = {
   message?: string;
 };
 
+// ---------- אירועי עבודה (הרשמת עובדים) ----------
+export interface WorkEvent {
+  id: number;
+  event_date: string; // YYYY-MM-DD
+  event_name: string;
+  event_type: string | null;
+  sub_venues: string | null;
+  start_time: string | null; // HH:MM
+  created_at?: string;
+}
+
+export type NewWorkEventInput = Omit<WorkEvent, 'id' | 'created_at'>;
+
+export interface EventSignup {
+  id: number;
+  event_id: number;
+  employee_id: number;
+  created_at?: string;
+  // נתונים מ-join עם employees
+  employees?: {
+    name?: string | null;
+  } | null;
+}
+
 

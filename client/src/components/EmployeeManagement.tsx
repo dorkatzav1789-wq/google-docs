@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import type { Employee } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { employeesAPI } from '../services/supabaseAPI';
 import { WorkHoursTracker } from './WorkHoursTracker';
 import { MonthlyReport } from './MonthlyReport';
+import { WorkEventsTab } from './WorkEventsTab';
 
-type Tab = 'manage' | 'hours' | 'reports';
+type Tab = 'manage' | 'hours' | 'reports' | 'events';
 
 interface EmployeesPageProps {
   onBack?: () => void;
@@ -200,6 +202,16 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                   onClick={() => setTab('reports')}
               >
                 דוח חודשי
+              </button>
+              <button
+                  className={`px-4 py-2 rounded font-medium transition-colors ${
+                    tab === 'events' 
+                      ? 'bg-gray-700 text-white dark:bg-gray-600' 
+                      : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
+                  }`}
+                  onClick={() => setTab('events')}
+              >
+                אירועים
               </button>
             </div>
           </div>
@@ -396,7 +408,8 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                                         ערוך
                                       </button>
                                       <button
-                                          className="px-3 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded transition-colors"
+                                          className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                          title={`מחק את ${fullName(emp)}`}
                                           onClick={async () => {
                                             if (window.confirm(`האם אתה בטוח שברצונך למחוק את ${fullName(emp)}?`)) {
                                               try {
@@ -411,7 +424,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                                           }}
                                           type="button"
                                       >
-                                        מחק
+                                        <Trash2 className="w-4 h-4" />
                                       </button>
                                     </div>
                                   </>
@@ -432,6 +445,9 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
 
             {/* לשונית דוח חודשי */}
             {tab === 'reports' && <MonthlyReport />}
+
+            {/* לשונית אירועים */}
+            {tab === 'events' && <WorkEventsTab />}
           </div>
         </main>
       </div>
