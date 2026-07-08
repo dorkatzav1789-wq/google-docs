@@ -673,6 +673,62 @@ const dbFunctions = {
       throw error;
     }
   },
+
+  // ===== Push Tokens (FCM) =====
+  // שמירת טוקן FCM של מכשיר (upsert - אם הטוקן קיים, מעדכן את המשתמש והתאריך)
+  savePushToken: async (token, userEmail) => {
+    try {
+      const { data, error } = await supabase
+          .from('push_tokens')
+          .upsert(
+              {
+                token,
+                user_email: userEmail || null,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'token' }
+          )
+          .select()
+          .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('savePushToken error:', error);
+      throw error;
+    }
+  },
+
+  // קבלת כל הטוקנים (אופציונלית לפי אימייל)
+  getPushTokens: async (userEmail = null) => {
+    try {
+      let query = supabase.from('push_tokens').select('*');
+      if (userEmail) {
+        query = query.eq('user_email', userEmail);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('getPushTokens error:', error);
+      throw error;
+    }
+  },
+
+  // מחיקת טוקן (למשל כשהוא כבר לא בתוקף)
+  deletePushToken: async (token) => {
+    try {
+      const { error } = await supabase
+          .from('push_tokens')
+          .delete()
+          .eq('token', token);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('deletePushToken error:', error);
+      throw error;
+    }
+  },
 }
 module.exports = { supabase, dbFunctions };
 

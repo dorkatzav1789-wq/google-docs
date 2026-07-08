@@ -10,6 +10,7 @@ import EmployeeManagement from './components/EmployeeManagement';
 import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 import ReminderService from './components/ReminderService';
+import { registerForPushNotifications, listenToForegroundMessages } from './services/firebaseMessaging';
 
 function App() {
   const { user, signOut, loading } = useAuth();
@@ -22,6 +23,29 @@ function App() {
       console.log('User is logged in with role:', user.role);
     }
   }, [user, loading]);
+
+  // רישום להתראות push אחרי התחברות + האזנה להתראות כשהאפליקציה פתוחה
+  useEffect(() => {
+    if (!user?.email) return;
+
+    registerForPushNotifications(user.email);
+
+    let unsubscribe: (() => void) | null = null;
+    listenToForegroundMessages((payload) => {
+      // כשהאפליקציה פתוחה הדפדפן לא מציג התראה אוטומטית - נציג ידנית
+      const title = payload.notification?.title || 'התראה חדשה';
+      const body = payload.notification?.body || '';
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/logo192.png', dir: 'rtl', lang: 'he' });
+      }
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user?.email]);
   
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
   const [showEmployees, setShowEmployees] = useState(false);
