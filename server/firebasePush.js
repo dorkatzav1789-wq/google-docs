@@ -43,11 +43,22 @@ function ensureInitialized() {
  * @param {Object} params
  * @param {string} params.title כותרת ההתראה
  * @param {string} params.body גוף ההתראה
- * @param {string|null} params.userEmail אם צוין - שליחה רק למכשירים של המשתמש הזה, אחרת לכולם
+ * @param {string|string[]|null} params.userEmail אימייל בודד או מערך אימיילים - שליחה רק למכשירים שלהם, אחרת לכולם
  * @param {Object} [params.data] נתונים נוספים (למשל url לפתיחה בלחיצה)
+ * @param {string} [params.source] מקור ההתראה לצורך הלוג (manual / event_signup_alert...)
+ * @param {number|null} [params.eventId] מזהה אירוע עבודה (להתראות על אירועים)
+ * @param {number|null} [params.daysBefore] כמה ימים לפני האירוע (להתראות על אירועים)
  * @returns {Promise<{ sent: number, failed: number }>}
  */
-async function sendPushNotification({ title, body, userEmail = null, data = {} }) {
+async function sendPushNotification({
+  title,
+  body,
+  userEmail = null,
+  data = {},
+  source = "manual",
+  eventId = null,
+  daysBefore = null,
+}) {
   if (!ensureInitialized()) {
     throw new Error("Firebase Admin לא מאותחל - חסר מפתח Service Account");
   }
@@ -55,7 +66,28 @@ async function sendPushNotification({ title, body, userEmail = null, data = {} }
   const tokenRows = await dbFunctions.getPushTokens(userEmail);
   const tokens = tokenRows.map((r) => r.token).filter(Boolean);
 
+  // רישום בלוג גם כשאין טוקנים - כדי שיהיה תיעוד שההתראה "נוצרה"
+  const logSafely = async (sent, failed) => {
+    try {
+      await dbFunctions.logNotification({
+        title,
+        body,
+        recipientEmail: Array.isArray(userEmail) ? userEmail.join(',') : userEmail,
+        data,
+        sentCount: sent,
+        failedCount: failed,
+        source,
+        eventId,
+        daysBefore,
+      });
+    } catch (e) {
+      // כשל בלוג לא צריך להפיל את שליחת ההתראה עצמה
+      console.error("⚠️ שמירת התראה בלוג נכשלה:", e?.message || e);
+    }
+  };
+
   if (tokens.length === 0) {
+    await logSafely(0, 0);
     return { sent: 0, failed: 0 };
   }
 
@@ -87,6 +119,8 @@ async function sendPushNotification({ title, body, userEmail = null, data = {} }
       }
     })
   );
+
+  await logSafely(response.successCount, response.failureCount);
 
   return { sent: response.successCount, failed: response.failureCount };
 }

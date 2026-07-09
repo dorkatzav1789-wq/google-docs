@@ -9,6 +9,12 @@ const fs = require("fs");
 // מודולים פנימיים
 const { dbFunctions } = require("./supabase-database");
 const { initializeDatabase } = require("./initData");
+const { uploadPdfToDrive } = require("./googleDrive");
+const { sendPushNotification } = require("./firebasePush");
+const {
+  checkUpcomingEventsWithoutSignups,
+  startEventSignupAlertsScheduler,
+} = require("./eventSignupAlerts");
 
 // Puppeteer – תומך גם בשרת (Lambda/Render) וגם בלוקאלי
 const chromium = require("@sparticuz/chromium");
@@ -28,7 +34,8 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 // ===================== Middleware ===================== //
 app.use(cors());
-app.use(express.json());
+// מגבלה מוגדלת כדי לאפשר קבלת קובץ PDF (base64) לשמירה בדרייב
+app.use(express.json({ limit: "25mb" }));
 
 // ===================== Static ===================== //
 
@@ -192,6 +199,96 @@ app.delete("/api/quotes/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/quotes error:", error);
+    res.status(500).json({ error: error?.message || "Server error" });
+  }
+});
+
+// שמירת ה-PDF של ההצעה בגוגל דרייב (התוכן מגיע מהלקוח כ-base64)
+app.post("/api/quotes/:id/save-to-drive", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "מזהה הצעה לא תקין" });
+
+    const { pdfBase64, fileName } = req.body || {};
+    if (!pdfBase64) {
+      return res.status(400).json({ error: "חסר תוכן PDF לשמירה" });
+    }
+
+    const buffer = Buffer.from(pdfBase64, "base64");
+    const safeName = (fileName && String(fileName).trim()) || `הצעת-מחיר-${id}.pdf`;
+
+    const file = await uploadPdfToDrive({ fileName: safeName, buffer });
+
+    res.json({
+      ok: true,
+      fileId: file.id,
+      fileName: file.name,
+      webViewLink: file.webViewLink,
+    });
+  } catch (error) {
+    console.error("POST /api/quotes/:id/save-to-drive error:", error);
+    res.status(500).json({ error: error?.message || "שמירה בדרייב נכשלה" });
+  }
+});
+
+// ------- Push Notifications (FCM) -------
+// רישום טוקן FCM של מכשיר
+app.post("/api/push/register", async (req, res) => {
+  try {
+    const { token, user_email } = req.body || {};
+    if (!token) {
+      return res.status(400).json({ error: "token נדרש" });
+    }
+    const saved = await dbFunctions.savePushToken(token, user_email || null);
+    res.status(201).json({ ok: true, id: saved?.id });
+  } catch (error) {
+    console.error("POST /api/push/register error:", error);
+    res.status(500).json({ error: error?.message || "Server error" });
+  }
+});
+
+// שליחת התראה - לכל המכשירים או למשתמש ספציפי (user_email)
+app.post("/api/push/send", async (req, res) => {
+  try {
+    const { title, body, user_email, data } = req.body || {};
+    if (!title || !body) {
+      return res.status(400).json({ error: "title & body נדרשים" });
+    }
+
+    const result = await sendPushNotification({
+      title,
+      body,
+      userEmail: user_email || null,
+      data: data || {},
+    });
+
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("POST /api/push/send error:", error);
+    res.status(500).json({ error: error?.message || "שליחת התראה נכשלה" });
+  }
+});
+
+// בדיקה ידנית: אירועים בעוד יום/יומיים ללא נרשמים → התראה לאדמינים
+// (אותה בדיקה רצה אוטומטית כל שעה; הנתיב שימושי לבדיקות ול-Cron חיצוני)
+app.post("/api/push/check-event-signups", async (_req, res) => {
+  try {
+    const result = await checkUpcomingEventsWithoutSignups();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("POST /api/push/check-event-signups error:", error);
+    res.status(500).json({ error: error?.message || "בדיקת אירועים נכשלה" });
+  }
+});
+
+// היסטוריית התראות שנשלחו
+app.get("/api/push/log", async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query?.limit) || 100, 500);
+    const log = await dbFunctions.getNotificationsLog(limit);
+    res.json(log);
+  } catch (error) {
+    console.error("GET /api/push/log error:", error);
     res.status(500).json({ error: error?.message || "Server error" });
   }
 });
@@ -1041,3 +1138,6 @@ app.listen(PORT, () => {
   console.log(`🚀 השרת רץ על פורט ${PORT}`);
   console.log(`🌐 פתח את הדפדפן ולך ל: http://localhost:${PORT}`);
 });
+
+// בדיקת אירועים ללא נרשמים - כל שעה
+startEventSignupAlertsScheduler();

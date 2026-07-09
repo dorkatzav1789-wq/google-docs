@@ -1,8 +1,8 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// פרטי החיבור ל-Supabase
-const supabaseUrl = 'https://nykeobeablrlgdjvhoud.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54dWtoaGhka3VoZHhtd2JxbWZyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTg1MDgwOSwiZXhwIjoyMDcxNDI2ODA5fQ.yhWr-A0oZ1jmWJ3tWSfhCG8WEwrghNgNZDDZubyNlfI';
+// פרטי החיבור ל-Supabase (אותו פרויקט שהקליינט עובד מולו)
+const supabaseUrl = process.env.SUPABASE_URL || 'https://qatbimtrciwwoqoiiejo.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhdGJpbXRyY2l3d29xb2lpZWpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTM4NjM4NSwiZXhwIjoyMDc2OTYyMzg1fQ.C17lSsAeQnwBGcTLthUmTINctolKx4cGx6ukmveAm0g';
 
 // יצירת לקוח Supabase
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -699,11 +699,13 @@ const dbFunctions = {
     }
   },
 
-  // קבלת כל הטוקנים (אופציונלית לפי אימייל)
+  // קבלת כל הטוקנים (אופציונלית לפי אימייל בודד או מערך אימיילים)
   getPushTokens: async (userEmail = null) => {
     try {
       let query = supabase.from('push_tokens').select('*');
-      if (userEmail) {
+      if (Array.isArray(userEmail) && userEmail.length > 0) {
+        query = query.in('user_email', userEmail);
+      } else if (userEmail && !Array.isArray(userEmail)) {
         query = query.eq('user_email', userEmail);
       }
       const { data, error } = await query;
@@ -726,6 +728,124 @@ const dbFunctions = {
       return true;
     } catch (error) {
       console.error('deletePushToken error:', error);
+      throw error;
+    }
+  },
+
+  // ===== Notifications Log =====
+  // שמירת רשומה על התראה שנשלחה (מי, מה, מתי)
+  logNotification: async ({
+    title,
+    body,
+    recipientEmail = null,
+    data = {},
+    sentCount = 0,
+    failedCount = 0,
+    source = 'manual',
+    eventId = null,
+    daysBefore = null,
+  }) => {
+    try {
+      const { data: row, error } = await supabase
+          .from('notifications_log')
+          .insert([{
+            title,
+            body,
+            recipient_email: recipientEmail,
+            data,
+            sent_count: sentCount,
+            failed_count: failedCount,
+            source,
+            event_id: eventId,
+            days_before: daysBefore,
+          }])
+          .select()
+          .single();
+
+      if (error) throw error;
+      return row;
+    } catch (error) {
+      console.error('logNotification error:', error);
+      throw error;
+    }
+  },
+
+  // בדיקה אם כבר נשלחה התראה על אירוע מסוים במרווח ימים מסוים (מניעת כפילויות)
+  wasEventNotificationSent: async (eventId, daysBefore) => {
+    try {
+      const { data, error } = await supabase
+          .from('notifications_log')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('days_before', daysBefore)
+          .limit(1);
+
+      if (error) throw error;
+      return (data || []).length > 0;
+    } catch (error) {
+      console.error('wasEventNotificationSent error:', error);
+      throw error;
+    }
+  },
+
+  // קבלת היסטוריית התראות (חדשות ראשונות)
+  getNotificationsLog: async (limit = 100) => {
+    try {
+      const { data, error } = await supabase
+          .from('notifications_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('getNotificationsLog error:', error);
+      throw error;
+    }
+  },
+
+  // ===== אירועי עבודה - בדיקת הרשמות =====
+  // אימיילים של כל האדמינים הפעילים
+  getAdminEmails: async () => {
+    try {
+      const { data, error } = await supabase
+          .from('users')
+          .select('email')
+          .eq('role', 'admin')
+          .eq('is_active', true);
+
+      if (error) throw error;
+      return (data || []).map((u) => u.email).filter(Boolean);
+    } catch (error) {
+      console.error('getAdminEmails error:', error);
+      throw error;
+    }
+  },
+
+  // אירועים בתאריך נתון (YYYY-MM-DD) שאין להם אף הרשמה של עובד
+  getEventsWithoutSignups: async (eventDate) => {
+    try {
+      const { data: events, error: eventsError } = await supabase
+          .from('work_events')
+          .select('id, event_date, event_name, event_type, start_time')
+          .eq('event_date', eventDate);
+
+      if (eventsError) throw eventsError;
+      if (!events || events.length === 0) return [];
+
+      const ids = events.map((e) => e.id);
+      const { data: signups, error: signupsError } = await supabase
+          .from('event_signups')
+          .select('event_id')
+          .in('event_id', ids);
+
+      if (signupsError) throw signupsError;
+
+      const signedEventIds = new Set((signups || []).map((s) => s.event_id));
+      return events.filter((e) => !signedEventIds.has(e.id));
+    } catch (error) {
+      console.error('getEventsWithoutSignups error:', error);
       throw error;
     }
   },
