@@ -10,7 +10,8 @@ import EmployeeManagement from './components/EmployeeManagement';
 import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 import ReminderService from './components/ReminderService';
-import { registerForPushNotifications, listenToForegroundMessages } from './services/firebaseMessaging';
+import PushPermissionPrompt from './components/PushPermissionPrompt';
+import { listenToForegroundMessages } from './services/firebaseMessaging';
 
 function App() {
   const { user, signOut, loading } = useAuth();
@@ -24,11 +25,9 @@ function App() {
     }
   }, [user, loading]);
 
-  // רישום להתראות push אחרי התחברות + האזנה להתראות כשהאפליקציה פתוחה
+  // האזנה להתראות push כשהאפליקציה פתוחה (הרישום עצמו מנוהל ב-PushPermissionPrompt)
   useEffect(() => {
     if (!user?.email) return;
-
-    registerForPushNotifications(user.email);
 
     let unsubscribe: (() => void) | null = null;
     listenToForegroundMessages((payload) => {
@@ -96,6 +95,7 @@ function App() {
   return (
     <ReminderService>
       <div className="App min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        {user?.email && <PushPermissionPrompt userEmail={user.email} />}
         <header className="bg-white dark:bg-gray-800 shadow-sm p-4 mb-0 transition-colors border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex-1 flex justify-start">
