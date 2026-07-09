@@ -221,7 +221,8 @@ export const MonthlyReport: React.FC = () => {
     };
   };
 
-  const exportDetailedPDFByEmployee = async () => {
+  // allowedEventTypes - אם הועבר, הדוח המפורט יכלול רק את סוגי האירוע האלה (למשל עסקי ופרטי בלבד)
+  const exportDetailedPDFByEmployee = async (allowedEventTypes?: string[]) => {
     if (!reportRef.current || !report) return;
     
     try {
@@ -231,6 +232,7 @@ export const MonthlyReport: React.FC = () => {
       const byEmployee = new Map<string, { name: string; groups: Map<string, WorkHours[]> }>();
       
       report.work_hours.forEach(row => {
+        if (allowedEventTypes && !allowedEventTypes.includes(row.event_type)) return;
         const firstName = (row as any).employees?.first_name ?? '';
         const lastName = (row as any).employees?.last_name ?? '';
         const fullName = `${firstName} ${lastName}`.trim();
@@ -247,6 +249,11 @@ export const MonthlyReport: React.FC = () => {
         }
         emp.groups.get(eventKey)!.push(row);
       });
+
+      if (byEmployee.size === 0) {
+        alert('אין רשומות מתאימות לייצוא בחודש שנבחר');
+        return;
+      }
       
       // Build detailed HTML
       const selectedEmployeeName = selectedEmployee 
@@ -254,7 +261,10 @@ export const MonthlyReport: React.FC = () => {
         : '';
       
       const employeeSuffix = selectedEmployee ? `-${selectedEmployeeName?.trim()}` : '';
-      const filename = `work-hours-detailed-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}.pdf`;
+      const typesSuffix = allowedEventTypes
+        ? `-${allowedEventTypes.map((key) => eventTypeLabel(key)).join('-')}`
+        : '';
+      const filename = `work-hours-detailed-${selectedYear}-${String(selectedMonth).padStart(2, '0')}${employeeSuffix}${typesSuffix}.pdf`;
       
       let detailedHTML = reportRef.current.innerHTML;
       
@@ -565,12 +575,20 @@ export const MonthlyReport: React.FC = () => {
               ))}
             </select>
             <button
-                onClick={exportDetailedPDFByEmployee}
+                onClick={() => exportDetailedPDFByEmployee()}
                 disabled={exporting}
                 className="px-4 py-2 bg-orange-500 text-white rounded"
                 title="ייצא PDF מפורט לפי עובדים"
             >
               {exporting ? 'מייצא...' : 'PDF מפורט'}
+            </button>
+            <button
+                onClick={() => exportDetailedPDFByEmployee(['business', 'personal'])}
+                disabled={exporting}
+                className="px-4 py-2 bg-amber-600 text-white rounded"
+                title="ייצא PDF מפורט הכולל אירועים עסקיים ופרטיים בלבד"
+            >
+              {exporting ? 'מייצא...' : 'PDF מפורט - עסקי ופרטי'}
             </button>
           </div>
         </div>
