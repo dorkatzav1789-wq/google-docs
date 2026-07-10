@@ -54,6 +54,7 @@ export const WorkEventsTab: React.FC = () => {
   const [previewFileName, setPreviewFileName] = useState('');
   const [duplicatesInFile, setDuplicatesInFile] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
@@ -127,6 +128,24 @@ export const WorkEventsTab: React.FC = () => {
       alert('שגיאה במחיקת האירוע');
     } finally {
       setBusyEventId(null);
+    }
+  };
+
+  // ----- מחיקת כל האירועים (אדמין) -----
+  const handleDeleteAll = async () => {
+    if (!events.length) return;
+    if (!window.confirm(`למחוק את כל ${events.length} האירועים? כל ההרשמות אליהם יימחקו גם כן. פעולה זו אינה הפיכה.`)) {
+      return;
+    }
+    try {
+      setDeletingAll(true);
+      await workEventsAPI.deleteMany(events.map((e) => e.id));
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting all events:', err);
+      alert('שגיאה במחיקת האירועים');
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -307,7 +326,7 @@ export const WorkEventsTab: React.FC = () => {
         </div>
 
         {isAdmin && !preview && (
-          <>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <input
               ref={fileInputRef}
               type="file"
@@ -323,7 +342,18 @@ export const WorkEventsTab: React.FC = () => {
               <Upload className="w-4 h-4" />
               העלאת קובץ אירועים (xlsx)
             </button>
-          </>
+            {events.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDeleteAll}
+                disabled={deletingAll}
+                className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deletingAll ? 'מוחק...' : 'מחק את כל האירועים'}
+              </button>
+            )}
+          </div>
         )}
       </div>
 

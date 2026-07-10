@@ -814,6 +814,17 @@ export const workEventsAPI = {
 
     if (error) throw error;
   },
+
+  /** מחיקת מספר אירועים לפי מזהים (ההרשמות אליהם נמחקות ב-cascade) */
+  deleteMany: async (ids: number[]): Promise<void> => {
+    if (!ids.length) return;
+    const { error } = await getSupabaseAdmin()
+      .from('work_events')
+      .delete()
+      .in('id', ids);
+
+    if (error) throw error;
+  },
 };
 
 // ---------- Event Signups (הרשמות לאירועים) ----------
@@ -826,7 +837,8 @@ export const eventSignupsAPI = {
       .select(`
         *,
         employees (
-          name
+          name,
+          phone
         )
       `)
       .in('event_id', eventIds);
