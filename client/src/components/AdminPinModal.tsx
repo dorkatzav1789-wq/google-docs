@@ -1,5 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Lock, X } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { Button } from 'components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from 'components/ui/dialog';
+import { Input } from 'components/ui/input';
+import { Label } from 'components/ui/label';
+import { cn } from 'lib/utils';
 
 const ADMIN_PIN = '1789';
 
@@ -30,34 +41,21 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({ onSuccess, onClose
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-xs rounded-xl bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-            <Lock className="w-4 h-4" />
-            <h3 className="text-sm font-semibold">גישת ניהול</h3>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xs gap-0 p-0 overflow-hidden">
+        <DialogHeader className="flex-row items-center gap-2 space-y-0 border-b bg-muted/50 px-4 py-3 pe-12 text-right">
+          <Lock className="h-4 w-4 text-foreground" />
+          <div>
+            <DialogTitle className="text-sm">גישת ניהול</DialogTitle>
+            <DialogDescription className="sr-only">הזן קוד גישה לדשבורד הניהול</DialogDescription>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="סגור"
-            className="p-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-4">
-          <label htmlFor="admin-pin" className="block text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <Label htmlFor="admin-pin" className="mb-2 block text-muted-foreground">
             הזן קוד גישה
-          </label>
-          <input
+          </Label>
+          <Input
             ref={inputRef}
             id="admin-pin"
             type="password"
@@ -69,24 +67,19 @@ export const AdminPinModal: React.FC<AdminPinModalProps> = ({ onSuccess, onClose
               setPin(e.target.value);
               setError(false);
             }}
-            className={`w-full p-2.5 text-center tracking-[0.5em] text-lg rounded-lg border bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 ${
-              error
-                ? 'border-red-400 dark:border-red-600 focus:ring-red-400'
-                : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
-            }`}
+            className={cn(
+              'text-center text-lg tracking-[0.5em]',
+              error && 'border-destructive focus-visible:ring-destructive'
+            )}
           />
           {error && (
-            <p className="mt-2 text-xs text-red-600 dark:text-red-400 text-center">קוד שגוי, נסה שוב</p>
+            <p className="mt-2 text-center text-xs text-destructive">קוד שגוי, נסה שוב</p>
           )}
-          <button
-            type="submit"
-            disabled={!pin}
-            className="mt-4 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
+          <Button type="submit" disabled={!pin} className="mt-4 w-full">
             כניסה
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

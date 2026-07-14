@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Employee } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import { employeesAPI } from '../services/supabaseAPI';
 import { WorkHoursTracker } from './WorkHoursTracker';
 import { MonthlyReport } from './MonthlyReport';
 import { WorkEventsTab } from './WorkEventsTab';
+import { Button } from 'components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from 'components/ui/card';
+import { Input } from 'components/ui/input';
+import { Label } from 'components/ui/label';
+import { Badge } from 'components/ui/badge';
 
 type Tab = 'manage' | 'hours' | 'reports' | 'events';
 
@@ -16,16 +26,13 @@ interface EmployeesPageProps {
 
 const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme(); // eslint-disable-line @typescript-eslint/no-unused-vars
-  // משתמש רגיל יראה ישירות את טאב רישום שעות
   const [tab, setTab] = useState<Tab>(user?.role === 'admin' ? 'manage' : 'hours');
-
-  // ----- ניהול עובדים -----
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  // עובד חדש
   const [newEmployee, setNewEmployee] = useState({
     first_name: '',
     last_name: '',
@@ -36,7 +43,6 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
     is_active: true,
   });
 
-  // מצב עריכה לעובד קיים
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<Employee>>({});
 
@@ -59,12 +65,10 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
     }
   };
 
-  // הוספת עובד חדש
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSaving(true);
-      // ב-EmployeeManagement כששולחים create:
       await employeesAPI.create({
         first_name: newEmployee.first_name,
         last_name: newEmployee.last_name,
@@ -83,6 +87,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
         hourly_rate: 0,
         is_active: true,
       });
+      setShowAddForm(false);
       await loadEmployees();
       alert('העובד נוסף בהצלחה');
     } catch (err) {
@@ -93,7 +98,6 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
     }
   };
 
-  // התחלת עריכה
   const startEdit = (emp: Employee) => {
     setEditingId(emp.id);
     setEditDraft({
@@ -107,13 +111,11 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
     });
   };
 
-  // ביטול עריכה
   const cancelEdit = () => {
     setEditingId(null);
     setEditDraft({});
   };
 
-  // שמירת עריכה
   const saveEdit = async (id: number) => {
     try {
       setSaving(true);
@@ -128,358 +130,408 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
       });
       await loadEmployees();
       cancelEdit();
-      console.log('העובד עודכן בהצלחה');
     } catch (err) {
       console.error('Error updating employee:', err);
-      console.log('שגיאה בעדכון עובד');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDelete = async (emp: Employee) => {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${fullName(emp)}?`)) return;
+    try {
+      await employeesAPI.delete(emp.id);
+      await loadEmployees();
+      alert('העובד נמחק בהצלחה');
+    } catch (err) {
+      console.error('Error deleting employee:', err);
+      alert('שגיאה במחיקת העובד');
+    }
+  };
+
   const fullName = (emp: Employee) =>
-      [emp.first_name, emp.last_name].filter(Boolean).join(' ') || '---';
+    [emp.first_name, emp.last_name].filter(Boolean).join(' ') || '---';
+
+  const filteredEmployees = employees.filter((emp) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      fullName(emp).toLowerCase().includes(q) ||
+      (emp.phone || '').toLowerCase().includes(q) ||
+      (emp.email || '').toLowerCase().includes(q) ||
+      (emp.job_title || '').toLowerCase().includes(q)
+    );
+  });
+
+  const fieldClass =
+    'border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white';
 
   return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <header className="App-header bg-gray-800 dark:bg-gray-900 shadow-sm p-4 mb-0 border-b border-gray-200 dark:border-gray-700">
-          <div className="header-content flex justify-between items-center">
-            <div className="flex flex-col">
-              {/* Breadcrumbs */}
-              <nav className="flex items-center space-x-2 text-sm mb-2" aria-label="Breadcrumb">
-                {user?.role === 'admin' && onBack && (
-                  <>
-                    <button 
-                      onClick={onBack} 
-                      className="flex items-center text-gray-300 dark:text-gray-400 hover:text-white dark:hover:text-gray-200 transition-colors"
+    <div dir="rtl" className="min-h-screen bg-gray-50 transition-colors dark:bg-gray-900">
+      <div className="container mx-auto p-4 md:p-6">
+        <Card className="sticky top-3 z-10 mb-6 border-gray-200 bg-white/90 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/90">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 p-4 md:p-5">
+            <div>
+              <CardTitle className="text-2xl text-gray-900 md:text-3xl dark:text-white">
+                ניהול עובדים
+              </CardTitle>
+              <CardDescription className="mt-1 text-gray-600 dark:text-gray-300">
+                פרטי עובדים, שעות, דוחות ואירועים
+              </CardDescription>
+            </div>
+            {onBack && (
+              <Button
+                variant="secondary"
+                onClick={onBack}
+                className="bg-gray-500 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700"
+              >
+                ← חזור
+              </Button>
+            )}
+          </CardHeader>
+        </Card>
+
+        <div dir="rtl" className="subnav mb-6 rounded-lg bg-gray-800 p-4 dark:bg-gray-900">
+          <div className="flex flex-wrap justify-center gap-2">
+            {user?.role === 'admin' && (
+              <button
+                className={`px-4 py-2 rounded font-medium transition-colors ${
+                  tab === 'manage'
+                    ? 'bg-gray-700 text-white dark:bg-gray-600'
+                    : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
+                }`}
+                onClick={() => setTab('manage')}
+              >
+                פרטי עובדים
+              </button>
+            )}
+            <button
+              className={`px-4 py-2 rounded font-medium transition-colors ${
+                tab === 'hours'
+                  ? 'bg-gray-700 text-white dark:bg-gray-600'
+                  : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => setTab('hours')}
+            >
+              רישום ימים
+            </button>
+            <button
+              className={`px-4 py-2 rounded font-medium transition-colors ${
+                tab === 'reports'
+                  ? 'bg-gray-700 text-white dark:bg-gray-600'
+                  : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => setTab('reports')}
+            >
+              דוח חודשי
+            </button>
+            <button
+              className={`px-4 py-2 rounded font-medium transition-colors ${
+                tab === 'events'
+                  ? 'bg-gray-700 text-white dark:bg-gray-600'
+                  : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
+              }`}
+              onClick={() => setTab('events')}
+            >
+              אירועים
+            </button>
+          </div>
+        </div>
+
+        <div dir="rtl">
+          {tab === 'manage' && user?.role === 'admin' && (
+            <>
+              <Card className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="text-gray-900 dark:text-white">פרטי עובדים</CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAddForm((v) => !v)}
+                      className="bg-green-600 text-white hover:bg-green-700"
                     >
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      הצעות מחיר
-                    </button>
-                    <span className="text-gray-400 dark:text-gray-500">/</span>
-                  </>
-                )}
-                <span className="text-gray-300 dark:text-gray-400">ניהול עובדים</span>
-              </nav>
-              <h1 className="text-2xl font-bold text-white dark:text-white">ניהול עובדים</h1>
-            </div>
-            <div className="flex items-center gap-4">
-
-            </div>
-          </div>
-        </header>
-
-        <main className="bg-gray-50 dark:bg-gray-900 min-h-screen">
-          {/* טאבים פנימיים */}
-          <div className="subnav bg-gray-800 dark:bg-gray-900 p-4">
-            <div className="flex gap-2 flex-wrap justify-center">
-              {user?.role === 'admin' && (
-                <button
-                    className={`px-4 py-2 rounded font-medium transition-colors ${
-                      tab === 'manage' 
-                        ? 'bg-gray-700 text-white dark:bg-gray-600' 
-                        : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
-                    }`}
-                    onClick={() => setTab('manage')}
-                >
-                  פרטי עובדים
-                </button>
-              )}
-              <button
-                  className={`px-4 py-2 rounded font-medium transition-colors ${
-                    tab === 'hours' 
-                      ? 'bg-gray-700 text-white dark:bg-gray-600' 
-                      : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setTab('hours')}
-              >
-                רישום ימים
-              </button>
-              <button
-                  className={`px-4 py-2 rounded font-medium transition-colors ${
-                    tab === 'reports' 
-                      ? 'bg-gray-700 text-white dark:bg-gray-600' 
-                      : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setTab('reports')}
-              >
-                דוח חודשי
-              </button>
-              <button
-                  className={`px-4 py-2 rounded font-medium transition-colors ${
-                    tab === 'events' 
-                      ? 'bg-gray-700 text-white dark:bg-gray-600' 
-                      : 'text-gray-300 hover:bg-gray-700 dark:hover:bg-gray-600'
-                  }`}
-                  onClick={() => setTab('events')}
-              >
-                אירועים
-              </button>
-            </div>
-          </div>
-
-          <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 mx-6 mt-6 rounded-lg shadow-sm border">
-            {/* לשונית ניהול עובדים */}
-            {tab === 'manage' && user?.role === 'admin' && (
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">ניהול עובדים</h2>
-
-                  {/* טופס הוספת עובד */}
-                  <form onSubmit={handleAddEmployee} className="mb-8 p-4 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">הוסף עובד חדש</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input
+                      {showAddForm ? '✖️ ביטול' : '➕ עובד חדש'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {showAddForm && (
+                    <form
+                      onSubmit={handleAddEmployee}
+                      className="mb-4 rounded-lg border border-green-300 bg-green-50 p-3 dark:border-green-600 dark:bg-green-900/20"
+                    >
+                      <h4 className="mb-3 font-semibold text-green-800 dark:text-green-300">
+                        הוספת עובד חדש
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <Input
                           type="text"
                           placeholder="שם פרטי"
                           value={newEmployee.first_name}
-                          onChange={(e) =>
-                              setNewEmployee((s) => ({ ...s, first_name: e.target.value }))
-                          }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
+                          onChange={(e) => setNewEmployee((s) => ({ ...s, first_name: e.target.value }))}
+                          className={fieldClass}
                           required
-                      />
-                      <input
+                        />
+                        <Input
                           type="text"
                           placeholder="שם משפחה"
                           value={newEmployee.last_name}
-                          onChange={(e) =>
-                              setNewEmployee((s) => ({ ...s, last_name: e.target.value }))
-                          }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
+                          onChange={(e) => setNewEmployee((s) => ({ ...s, last_name: e.target.value }))}
+                          className={fieldClass}
                           required
-                      />
-                      <input
+                        />
+                        <Input
                           type="tel"
                           placeholder="טלפון"
                           value={newEmployee.phone}
-                          onChange={(e) =>
-                              setNewEmployee((s) => ({ ...s, phone: e.target.value }))
-                          }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                      />
-                      <input
+                          onChange={(e) => setNewEmployee((s) => ({ ...s, phone: e.target.value }))}
+                          className={fieldClass}
+                        />
+                        <Input
                           type="email"
                           placeholder="אימייל"
                           value={newEmployee.email}
-                          onChange={(e) =>
-                              setNewEmployee((s) => ({ ...s, email: e.target.value }))
-                          }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                      />
-                      <input
+                          onChange={(e) => setNewEmployee((s) => ({ ...s, email: e.target.value }))}
+                          className={fieldClass}
+                        />
+                        <Input
                           type="text"
                           placeholder="תפקיד (למשל: סאונדמן)"
                           value={newEmployee.job_title}
-                          onChange={(e) =>
-                              setNewEmployee((s) => ({ ...s, job_title: e.target.value }))
-                          }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                      />
-                      <input
+                          onChange={(e) => setNewEmployee((s) => ({ ...s, job_title: e.target.value }))}
+                          className={fieldClass}
+                        />
+                        <Input
                           type="number"
                           step="0.01"
                           placeholder="תשלום יומי"
                           value={newEmployee.hourly_rate}
                           onChange={(e) =>
-                              setNewEmployee((s) => ({
-                                ...s,
-                                hourly_rate: parseFloat(e.target.value) || 0,
-                              }))
+                            setNewEmployee((s) => ({
+                              ...s,
+                              hourly_rate: parseFloat(e.target.value) || 0,
+                            }))
                           }
-                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
+                          className={fieldClass}
                           required
-                      />
-                      <label className="flex items-center gap-2 text-gray-900 dark:text-white">
-                        <input
+                        />
+                        <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                          <input
                             type="checkbox"
                             checked={newEmployee.is_active}
                             onChange={(e) =>
-                                setNewEmployee((s) => ({ ...s, is_active: e.target.checked }))
+                              setNewEmployee((s) => ({ ...s, is_active: e.target.checked }))
                             }
-                            className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-                        />
-                        פעיל
-                      </label>
-                    </div>
-                    <button
-                        type="submit"
-                        className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded transition-colors"
-                        disabled={saving}
-                    >
-                      {saving ? 'שומר...' : 'הוסף עובד'}
-                    </button>
-                  </form>
+                            className="h-4 w-4 rounded"
+                          />
+                          פעיל
+                        </label>
+                      </div>
+                      <Button type="submit" disabled={saving} className="mt-3 w-full sm:w-auto">
+                        {saving ? 'שומר...' : '➕ הוסף עובד'}
+                      </Button>
+                    </form>
+                  )}
 
-                  {/* רשימת עובדים */}
-                  <div className="grid gap-4">
-                    {loading ? (
-                        <div className="p-4 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">טוען עובדים...</div>
-                    ) : employees.length > 0 ? (
-                        employees.map((emp) => (
-                            <div key={emp.id} className="p-4 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded-lg text-right">
-                              {editingId === emp.id ? (
-                                  <>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                      <input
-                                          type="text"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="שם פרטי"
-                                          value={(editDraft.first_name as string) ?? ''}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({ ...s, first_name: e.target.value }))
-                                          }
-                                      />
-                                      <input
-                                          type="text"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="שם משפחה"
-                                          value={(editDraft.last_name as string) ?? ''}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({ ...s, last_name: e.target.value }))
-                                          }
-                                      />
-                                      <input
-                                          type="tel"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="טלפון"
-                                          value={(editDraft.phone as string) ?? ''}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({ ...s, phone: e.target.value }))
-                                          }
-                                      />
-                                      <input
-                                          type="email"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="אימייל"
-                                          value={(editDraft.email as string) ?? ''}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({ ...s, email: e.target.value }))
-                                          }
-                                      />
-                                      <input
-                                          type="text"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="תפקיד (למשל: סאונדמן)"
-                                          value={(editDraft.job_title as string) ?? ''}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({ ...s, job_title: e.target.value }))
-                                          }
-                                      />
-                                      <input
-                                          type="number"
-                                          step="0.01"
-                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
-                                          placeholder="תשלום יומי"
-                                           value={Number(editDraft.hourly_rate ?? 0)}
-                                          onChange={(e) =>
-                                              setEditDraft((s) => ({
-                                                ...s,
-                                                hourly_rate: parseFloat(e.target.value) || 0,
-                                              }))
-                                          }
-                                      />
-                                      <label className="flex items-center gap-2 text-gray-900 dark:text-white">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(editDraft.is_active)}
-                                            onChange={(e) =>
-                                                setEditDraft((s) => ({
-                                                  ...s,
-                                                  is_active: e.target.checked,
-                                                }))
-                                            }
-                                            className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
-                                        />
-                                        פעיל
-                                      </label>
-                                    </div>
-
-                                    <div className="mt-3 flex gap-2 justify-start">
-                                      <button
-                                          className="px-3 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white rounded transition-colors"
-                                          disabled={saving}
-                                          onClick={() => saveEdit(emp.id)}
-                                      >
-                                        שמור
-                                      </button>
-                                      <button
-                                          className="px-3 py-2 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded transition-colors"
-                                          onClick={cancelEdit}
-                                          type="button"
-                                      >
-                                        ביטול
-                                      </button>
-                                    </div>
-                                  </>
-                              ) : (
-                                  <>
-                                    <h4 className="font-semibold text-lg text-gray-900 dark:text-white">
-                                      {fullName(emp)}
-                                      {emp.job_title && (
-                                        <span className="ms-2 inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200 align-middle">
-                                          {emp.job_title}
-                                        </span>
-                                      )}
-                                    </h4>
-                                    <p className="text-gray-700 dark:text-gray-300">טלפון: {emp.phone || 'לא צוין'}</p>
-                                    <p className="text-gray-700 dark:text-gray-300">אימייל: {emp.email || 'לא צוין'}</p>
-                                    <p className="text-gray-700 dark:text-gray-300">תשלום יומי: ₪{Number(emp.hourly_rate || 0).toLocaleString('he-IL')}</p>
-                                    <p className="text-gray-700 dark:text-gray-300">סטטוס: {emp.is_active ? 'פעיל' : 'לא פעיל'}</p>
-
-                                    <div className="mt-3 flex gap-2">
-                                      <button
-                                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded transition-colors"
-                                          onClick={() => startEdit(emp)}
-                                          type="button"
-                                      >
-                                        ערוך
-                                      </button>
-                                      <button
-                                          className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                                          title={`מחק את ${fullName(emp)}`}
-                                          onClick={async () => {
-                                            if (window.confirm(`האם אתה בטוח שברצונך למחוק את ${fullName(emp)}?`)) {
-                                              try {
-                                                await employeesAPI.delete(emp.id);
-                                                await loadEmployees();
-                                                alert('העובד נמחק בהצלחה');
-                                              } catch (err) {
-                                                console.error('Error deleting employee:', err);
-                                                alert('שגיאה במחיקת העובד');
-                                              }
-                                            }
-                                          }}
-                                          type="button"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </>
-                              )}
-                            </div>
-                        ))
-                    ) : (
-                        <div className="p-4 border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
-                          אין עובדים להצגה כרגע
-                        </div>
-                    )}
+                  <div className="mb-4">
+                    <Input
+                      type="text"
+                      placeholder="חיפוש עובד..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={fieldClass}
+                    />
                   </div>
-                </div>
-            )}
 
-            {/* לשונית רישום שעות */}
-            {tab === 'hours' && <WorkHoursTracker />}
+                  {loading ? (
+                    <div className="py-4 text-center">
+                      <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600" />
+                      <p className="mt-2 text-gray-600 dark:text-gray-300">טוען עובדים...</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[32rem] space-y-2 overflow-y-auto">
+                      {filteredEmployees.map((emp) => (
+                        <div
+                          key={emp.id}
+                          className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-700/60"
+                        >
+                          {editingId === emp.id ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">שם פרטי</Label>
+                                  <Input
+                                    className={fieldClass}
+                                    value={(editDraft.first_name as string) ?? ''}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, first_name: e.target.value }))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">שם משפחה</Label>
+                                  <Input
+                                    className={fieldClass}
+                                    value={(editDraft.last_name as string) ?? ''}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, last_name: e.target.value }))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">טלפון</Label>
+                                  <Input
+                                    className={fieldClass}
+                                    value={(editDraft.phone as string) ?? ''}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, phone: e.target.value }))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">אימייל</Label>
+                                  <Input
+                                    className={fieldClass}
+                                    value={(editDraft.email as string) ?? ''}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, email: e.target.value }))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">תפקיד</Label>
+                                  <Input
+                                    className={fieldClass}
+                                    value={(editDraft.job_title as string) ?? ''}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, job_title: e.target.value }))
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="mb-1 text-gray-700 dark:text-gray-300">תשלום יומי</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    className={fieldClass}
+                                    value={Number(editDraft.hourly_rate ?? 0)}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({
+                                        ...s,
+                                        hourly_rate: parseFloat(e.target.value) || 0,
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(editDraft.is_active)}
+                                    onChange={(e) =>
+                                      setEditDraft((s) => ({ ...s, is_active: e.target.checked }))
+                                    }
+                                    className="h-4 w-4 rounded"
+                                  />
+                                  פעיל
+                                </label>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  disabled={saving}
+                                  onClick={() => saveEdit(emp.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  שמור
+                                </Button>
+                                <Button size="sm" variant="secondary" onClick={cancelEdit}>
+                                  ביטול
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 text-right">
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                  <span className="font-semibold text-gray-800 dark:text-white">
+                                    {fullName(emp)}
+                                  </span>
+                                  {emp.job_title && (
+                                    <Badge variant="secondary">{emp.job_title}</Badge>
+                                  )}
+                                  <Badge variant={emp.is_active ? 'success' : 'outline'}>
+                                    {emp.is_active ? 'פעיל' : 'לא פעיל'}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                                  טלפון: {emp.phone || 'לא צוין'}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  אימייל: {emp.email || 'לא צוין'}
+                                </p>
+                                <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                  ₪{Number(emp.hourly_rate || 0).toLocaleString('he-IL')} ליום
+                                </p>
+                              </div>
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(emp)}
+                                  className="rounded px-2 py-1 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                                  title="עריכה"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(emp)}
+                                  className="rounded px-2 py-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                                  title="מחיקה"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-            {/* לשונית דוח חודשי */}
-            {tab === 'reports' && <MonthlyReport />}
+                  {!loading && filteredEmployees.length === 0 && (
+                    <div className="py-4 text-center text-gray-500 dark:text-gray-400">
+                      {searchTerm ? 'לא נמצאו עובדים תואמים' : 'אין עובדים להצגה כרגע'}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-            {/* לשונית אירועים */}
-            {tab === 'events' && <WorkEventsTab />}
-          </div>
-        </main>
+          {tab === 'hours' && (
+            <Card className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <CardContent className="p-3 md:p-4">
+                <WorkHoursTracker />
+              </CardContent>
+            </Card>
+          )}
+
+          {tab === 'reports' && (
+            <div className="card bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg shadow-sm border">
+              <MonthlyReport />
+            </div>
+          )}
+
+          {tab === 'events' && (
+            <Card className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+              <CardContent className="p-3 md:p-4">
+                <WorkEventsTab />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
+    </div>
   );
 };
 

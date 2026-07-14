@@ -511,7 +511,7 @@ export const MonthlyReport: React.FC = () => {
             <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                className="p-2 border rounded"
+                className="p-2 border rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 title="בחר שנה"
                 aria-label="בחר שנה"
             >
@@ -523,7 +523,7 @@ export const MonthlyReport: React.FC = () => {
             <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-                className="p-2 border rounded"
+                className="p-2 border rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 title="בחר חודש"
                 aria-label="בחר חודש"
             >
@@ -536,7 +536,7 @@ export const MonthlyReport: React.FC = () => {
             <select
                 value={selectedEmployee ?? ''}
                 onChange={(e) => setSelectedEmployee(e.target.value ? parseInt(e.target.value, 10) : null)}
-                className="p-2 border rounded"
+                className="p-2 border rounded bg-white text-gray-900 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 title="בחר עובד"
                 aria-label="בחר עובד"
             >
@@ -595,26 +595,26 @@ export const MonthlyReport: React.FC = () => {
 
         {/* סיכום עליון */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="p-4 bg-blue-100 rounded">
+          <div className="p-4 bg-blue-100 rounded text-blue-900">
             <h3 className="font-semibold">סה"כ ימים</h3>
             <p className="text-2xl">{fmt(report.summary?.total_hours)}</p>
           </div>
-          <div className="p-4 bg-green-100 rounded">
+          <div className="p-4 bg-green-100 rounded text-green-900">
             <h3 className="font-semibold">סה"כ תשלום</h3>
             <p className="text-2xl">₪{fmt(report.summary?.total_amount)}</p>
           </div>
-          <div className="p-4 bg-purple-100 rounded">
+          <div className="p-4 bg-purple-100 rounded text-purple-900">
             <h3 className="font-semibold">סה"כ שעות נוספות</h3>
             <p className="text-2xl">₪{fmt(report.work_hours.reduce((sum, row) => sum + (row.overtime_amount || 0), 0))}</p>
           </div>
-          <div className="p-4 bg-yellow-100 rounded">
+          <div className="p-4 bg-yellow-100 rounded text-yellow-900">
             <h3 className="font-semibold">מספר עובדים</h3>
             <p className="text-2xl">{fmt(report.summary?.employee_count)}</p>
           </div>
         </div>
 
-        {/* טבלת פירוט */}
-        <div ref={reportRef} className="overflow-x-auto">
+        {/* טבלת פירוט - רקע לבן קבוע (גם בדארק מוד) כי האזור מיוצא ל-PDF */}
+        <div ref={reportRef} className="overflow-x-auto rounded-lg bg-white p-4 text-gray-900">
           {/* כותרת לדוח */}
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold mb-2">דוח שעות עבודה</h1>
