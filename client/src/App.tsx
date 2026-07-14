@@ -11,19 +11,20 @@ import AdminDashboard from './components/AdminDashboard';
 import LoginPage from './components/LoginPage';
 import ReminderService from './components/ReminderService';
 import PushPermissionPrompt from './components/PushPermissionPrompt';
+import { AdminPinModal } from './components/AdminPinModal';
 import { listenToForegroundMessages } from './services/firebaseMessaging';
+
+/** מסך יחיד פעיל - מונע התנגשויות בין דגלי תצוגה נפרדים */
+type View =
+  | { name: 'home' }
+  | { name: 'employees' }
+  | { name: 'dashboard' }
+  | { name: 'newQuote' }
+  | { name: 'quoteDetails'; quoteId: number };
 
 function App() {
   const { user, signOut, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  console.log('App: Current user:', user, 'Loading:', loading);
-
-  useEffect(() => {
-    console.log('App: User changed:', user, 'Loading:', loading);
-    if (user) {
-      console.log('User is logged in with role:', user.role);
-    }
-  }, [user, loading]);
 
   // האזנה להתראות push כשהאפליקציה פתוחה (הרישום עצמו מנוהל ב-PushPermissionPrompt)
   useEffect(() => {
@@ -45,37 +46,41 @@ function App() {
       if (unsubscribe) unsubscribe();
     };
   }, [user?.email]);
-  
-  const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
-  const [showEmployees, setShowEmployees] = useState(false);
-  const [showNewQuote, setShowNewQuote] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
+
+  const [view, setView] = useState<View>({ name: 'home' });
   const [duplicateQuoteData, setDuplicateQuoteData] = useState<QuoteWithItems | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+
+  const isAdmin = user?.role === 'admin';
 
   const handleQuoteSelect = (quoteId: number) => {
-    setSelectedQuoteId(quoteId);
-    setShowNewQuote(false);
-    setShowDashboard(false); // סגירת דשבורד אם פתוח
-    setShowEmployees(false); // סגירת עובדים אם פתוח
+    setView({ name: 'quoteDetails', quoteId });
   };
 
   const handleNewQuote = () => {
-    setSelectedQuoteId(null);
-    setShowNewQuote(true);
+    setDuplicateQuoteData(null);
+    setView({ name: 'newQuote' });
   };
 
   const handleBack = () => {
-    setSelectedQuoteId(null);
-    setShowNewQuote(false);
-    setShowEmployees(false);
-    setShowDashboard(false);
     setDuplicateQuoteData(null);
+    setView({ name: 'home' });
   };
 
   const handleDuplicateQuote = (quoteData: QuoteWithItems) => {
     setDuplicateQuoteData(quoteData);
-    setSelectedQuoteId(null);
-    setShowNewQuote(true);
+    setView({ name: 'newQuote' });
+  };
+
+  // כניסה חשאית לדשבורד: לחיצה על הכותרת פותחת חלונית PIN (לאדמין בלבד)
+  const handleTitleClick = () => {
+    if (!isAdmin) return;
+    setShowPinModal(true);
+  };
+
+  const handlePinSuccess = () => {
+    setShowPinModal(false);
+    setView({ name: 'dashboard' });
   };
 
   const [showLogin, setShowLogin] = useState(!user);
@@ -92,77 +97,82 @@ function App() {
     return <LoginPage onLoginSuccess={() => setShowLogin(false)} />;
   }
 
-  return (
-    <ReminderService>
-      <div className="App min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-        {user?.email && <PushPermissionPrompt userEmail={user.email} />}
-        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 mb-0 transition-colors border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex-1 flex justify-start">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              title={theme === 'light' ? 'מעבר למצב כהה' : 'מעבר למצב בהיר'}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-          </div>
-          <h1 className="text-2xl font-bold text-center flex-1 text-gray-900 dark:text-white">מערכת ניהול</h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={async () => {
-                await signOut();
-              }}
-              className="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors"
-            >
-              התנתק
-            </button>
-          </div>
-        </div>
-      </header>
-      {showDashboard ? (
-        <AdminDashboard onBack={handleBack} onQuoteSelect={handleQuoteSelect} />
-      ) : showEmployees ? (
-        <>
-          <EmployeeManagement onBack={handleBack} />
-        </>
-      ) : selectedQuoteId || showNewQuote ? (
-        showNewQuote ? (
-          <QuoteForm onBack={handleBack} duplicateData={duplicateQuoteData || undefined} />
-        ) : (
-          <QuoteDetails quoteId={selectedQuoteId!} onBack={handleBack} onDuplicate={handleDuplicateQuote} />
-        )
-      ) : (
-        <>
-          <div className="bg-gray-50 dark:bg-gray-900 p-6 mb-0">
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={() => setShowEmployees(true)}
-                className="px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
-              >
-                👥 {user?.role === 'admin' ? 'ניהול עובדים' : 'רישום שעות'}
-              </button>
-              {user?.role === 'admin' && (
-                <>
-                  <button
-                    onClick={() => setShowDashboard(true)}
-                    className="px-6 py-3 bg-purple-500 dark:bg-purple-600 text-white rounded-lg hover:bg-purple-600 dark:hover:bg-purple-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
-                  >
-                    ⚙️ דשבורד ניהול
-                  </button>
+  const renderView = () => {
+    switch (view.name) {
+      case 'dashboard':
+        return <AdminDashboard onBack={handleBack} onQuoteSelect={handleQuoteSelect} />;
+      case 'employees':
+        return <EmployeeManagement onBack={handleBack} />;
+      case 'newQuote':
+        return <QuoteForm onBack={handleBack} duplicateData={duplicateQuoteData || undefined} />;
+      case 'quoteDetails':
+        return <QuoteDetails quoteId={view.quoteId} onBack={handleBack} onDuplicate={handleDuplicateQuote} />;
+      case 'home':
+        return (
+          <>
+            <div className="bg-gray-50 dark:bg-gray-900 p-6 mb-0">
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setView({ name: 'employees' })}
+                  className="px-6 py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
+                >
+                  👥 {isAdmin ? 'ניהול עובדים' : 'רישום שעות'}
+                </button>
+                {isAdmin && (
                   <button
                     onClick={handleNewQuote}
                     className="px-6 py-3 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-700 text-lg font-medium shadow-md hover:shadow-lg transition-all"
                   >
                     📝 הצעת מחיר חדשה
                   </button>
-                </>
-              )}
+                )}
+              </div>
+            </div>
+            {isAdmin && <QuotesList onQuoteSelect={handleQuoteSelect} />}
+          </>
+        );
+    }
+  };
+
+  return (
+    <ReminderService>
+      <div className="App min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        {user?.email && <PushPermissionPrompt userEmail={user.email} />}
+        <header className="bg-white dark:bg-gray-800 shadow-sm p-4 mb-0 transition-colors border-b border-gray-200 dark:border-gray-700">
+          <div className="container mx-auto flex justify-between items-center">
+            <div className="flex-1 flex justify-start">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={theme === 'light' ? 'מעבר למצב כהה' : 'מעבר למצב בהיר'}
+              >
+                {theme === 'light' ? '🌙' : '☀️'}
+              </button>
+            </div>
+            <h1
+              onClick={handleTitleClick}
+              className="text-2xl font-bold text-center flex-1 text-gray-900 dark:text-white select-none cursor-default"
+            >
+              מערכת ניהול
+            </h1>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={async () => {
+                  await signOut();
+                }}
+                className="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded hover:bg-gray-600 dark:hover:bg-gray-700 transition-colors"
+              >
+                התנתק
+              </button>
             </div>
           </div>
-          {user?.role === 'admin' && <QuotesList onQuoteSelect={handleQuoteSelect} />}
-        </>
-      )}
+        </header>
+
+        {showPinModal && (
+          <AdminPinModal onSuccess={handlePinSuccess} onClose={() => setShowPinModal(false)} />
+        )}
+
+        {renderView()}
       </div>
     </ReminderService>
   );

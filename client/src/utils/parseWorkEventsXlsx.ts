@@ -1,16 +1,19 @@
 import * as XLSX from 'xlsx';
-import type { NewWorkEventInput } from '../types';
+import type { NewWorkEventInput, WorkEventSource } from '../types';
+import { detectSourceFromSheetName, eventIdentityKey } from './workEventHelpers';
 
 /** שורה בודדת מהקובץ אחרי פירסור, כולל שגיאות אם יש */
 export interface ParsedEventRow {
-  rowNumber: number; // מספר השורה בקובץ (1 = שורת הכותרות)
+  rowNumber: number;
+  sheetName: string;
+  source: WorkEventSource;
   event: NewWorkEventInput | null;
   errors: string[];
 }
 
 export interface ParseWorkEventsResult {
   rows: ParsedEventRow[];
-  /** מספר שורות שהוסרו כי הופיעו פעמיים בקובץ (אותו תאריך + שם) */
+  /** מספר שורות שהוסרו כי הופיעו פעמיים בקובץ (אותו תאריך + שם + מקור) */
   duplicatesInFile: number;
   /** שגיאות ברמת הקובץ, למשל עמודת חובה חסרה */
   fileErrors: string[];
@@ -22,6 +25,7 @@ const COLUMN_MATCHERS: Array<{ field: keyof ColumnIndexes; keywords: string[] }>
   { field: 'type', keywords: ['סוג'] },
   { field: 'subVenues', keywords: ['מתחמ'] },
   { field: 'startTime', keywords: ['שעת', 'שעה'] },
+  { field: 'neededEmployees', keywords: ['כמות', 'מכסה', 'נדרש'] },
 ];
 
 interface ColumnIndexes {
@@ -30,6 +34,7 @@ interface ColumnIndexes {
   type: number;
   subVenues: number;
   startTime: number;
+  neededEmployees: number;
 }
 
 /** מזהה את מיקום העמודות לפי שורת הכותרות (התאמה גמישה לפי מילות מפתח) */
@@ -48,13 +53,11 @@ const detectColumns = (headerRow: unknown[]): Partial<ColumnIndexes> => {
   return indexes;
 };
 
-/** צמצום רווחים כפולים + חיתוך, למניעת "כפילויות מדומות" בשם האירוע */
 const normalizeText = (value: unknown): string =>
   String(value ?? '').trim().replace(/\s+/g, ' ');
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** ממיר ערך תא לתאריך בפורמט YYYY-MM-DD; תומך ב-Date, מספר סריאלי של אקסל וטקסט */
 const parseCellDate = (value: unknown): string | null => {
   if (value instanceof Date && !isNaN(value.getTime())) {
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
@@ -69,13 +72,11 @@ const parseCellDate = (value: unknown): string | null => {
   const text = normalizeText(value);
   if (!text) return null;
 
-  // YYYY-MM-DD
   const isoMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (isoMatch) {
     return `${isoMatch[1]}-${pad(Number(isoMatch[2]))}-${pad(Number(isoMatch[3]))}`;
   }
 
-  // DD/MM/YYYY או DD.MM.YYYY או DD-MM-YYYY
   const dmyMatch = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if (dmyMatch) {
     const day = Number(dmyMatch[1]);
@@ -89,7 +90,6 @@ const parseCellDate = (value: unknown): string | null => {
   return null;
 };
 
-/** ממיר ערך תא לשעה בפורמט HH:MM; תומך ב-Date, שבר יום של אקסל וטקסט */
 const parseCellTime = (value: unknown): string | null => {
   if (value === null || value === undefined || value === '') return null;
 
@@ -115,37 +115,34 @@ const parseCellTime = (value: unknown): string | null => {
   return null;
 };
 
-/**
- * מפרסר קובץ xlsx של אירועי עבודה.
- * עמודות חובה: תאריך האירוע, שם האירוע. השאר אופציונליות.
- */
-export const parseWorkEventsXlsx = async (file: File): Promise<ParseWorkEventsResult> => {
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { cellDates: true });
+/** ממיר ערך תא לכמות עובדים נדרשת (מספר שלם חיובי) */
+const parseCellNeededEmployees = (value: unknown): number | null => {
+  const num = Number(normalizeText(value));
+  if (!Number.isFinite(num)) return null;
+  const rounded = Math.round(num);
+  return rounded > 0 ? rounded : null;
+};
 
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    return { rows: [], duplicatesInFile: 0, fileErrors: ['הקובץ ריק - לא נמצא גיליון'] };
-  }
-
-  const sheet = workbook.Sheets[sheetName];
-  const grid: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
+const parseSheetRows = (
+  grid: unknown[][],
+  sheetName: string,
+  source: WorkEventSource,
+  seenKeys: Set<string>
+): { rows: ParsedEventRow[]; duplicates: number; fileErrors: string[] } => {
   if (grid.length < 2) {
-    return { rows: [], duplicatesInFile: 0, fileErrors: ['הקובץ לא מכיל שורות נתונים'] };
+    return { rows: [], duplicates: 0, fileErrors: [] };
   }
 
   const columns = detectColumns(grid[0]);
   const fileErrors: string[] = [];
-  if (columns.date === undefined) fileErrors.push('לא נמצאה עמודת "תאריך האירוע"');
-  if (columns.name === undefined) fileErrors.push('לא נמצאה עמודת "שם האירוע"');
+  if (columns.date === undefined) fileErrors.push(`"${sheetName}": לא נמצאה עמודת "תאריך האירוע"`);
+  if (columns.name === undefined) fileErrors.push(`"${sheetName}": לא נמצאה עמודת "שם האירוע"`);
   if (fileErrors.length) {
-    return { rows: [], duplicatesInFile: 0, fileErrors };
+    return { rows: [], duplicates: 0, fileErrors };
   }
 
   const rows: ParsedEventRow[] = [];
-  const seenKeys = new Set<string>();
-  let duplicatesInFile = 0;
+  let duplicates = 0;
 
   for (let i = 1; i < grid.length; i++) {
     const cells = grid[i];
@@ -169,30 +166,68 @@ export const parseWorkEventsXlsx = async (file: File): Promise<ParseWorkEventsRe
     }
 
     if (errors.length) {
-      rows.push({ rowNumber, event: null, errors });
+      rows.push({ rowNumber, sheetName, source, event: null, errors });
       continue;
     }
 
-    // סינון כפילויות בתוך הקובץ עצמו (אותו תאריך + שם)
-    const key = `${eventDate}|${eventName}`;
+    const event: NewWorkEventInput = {
+      event_date: eventDate!,
+      event_name: eventName,
+      event_type: columns.type !== undefined ? normalizeText(cells[columns.type]) || null : null,
+      sub_venues: columns.subVenues !== undefined ? normalizeText(cells[columns.subVenues]) || null : null,
+      start_time: startTime,
+      source,
+      needed_employees:
+        columns.neededEmployees !== undefined
+          ? parseCellNeededEmployees(cells[columns.neededEmployees])
+          : null,
+    };
+
+    const key = eventIdentityKey(event);
     if (seenKeys.has(key)) {
-      duplicatesInFile++;
+      duplicates++;
       continue;
     }
     seenKeys.add(key);
 
-    rows.push({
-      rowNumber,
-      errors: [],
-      event: {
-        event_date: eventDate!,
-        event_name: eventName,
-        event_type: columns.type !== undefined ? normalizeText(cells[columns.type]) || null : null,
-        sub_venues: columns.subVenues !== undefined ? normalizeText(cells[columns.subVenues]) || null : null,
-        start_time: startTime,
-      },
-    });
+    rows.push({ rowNumber, sheetName, source, errors: [], event });
   }
 
-  return { rows, duplicatesInFile, fileErrors: [] };
+  return { rows, duplicates, fileErrors: [] };
+};
+
+/**
+ * מפרסר קובץ xlsx של אירועי עבודה מכל הגיליונות.
+ * גיליון1 / VALLEY → valley, גיליון2 / UPTOWN → uptown.
+ * עמודות חובה: תאריך האירוע, שם האירוע. השאר אופציונליות.
+ */
+export const parseWorkEventsXlsx = async (file: File): Promise<ParseWorkEventsResult> => {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { cellDates: true });
+
+  if (!workbook.SheetNames.length) {
+    return { rows: [], duplicatesInFile: 0, fileErrors: ['הקובץ ריק - לא נמצא גיליון'] };
+  }
+
+  const rows: ParsedEventRow[] = [];
+  const fileErrors: string[] = [];
+  const seenKeys = new Set<string>();
+  let duplicatesInFile = 0;
+
+  workbook.SheetNames.forEach((sheetName, sheetIndex) => {
+    const sheet = workbook.Sheets[sheetName];
+    const grid: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const source = detectSourceFromSheetName(sheetName, sheetIndex);
+    const parsed = parseSheetRows(grid, sheetName, source, seenKeys);
+
+    rows.push(...parsed.rows);
+    duplicatesInFile += parsed.duplicates;
+    fileErrors.push(...parsed.fileErrors);
+  });
+
+  if (!rows.length && fileErrors.length) {
+    return { rows: [], duplicatesInFile: 0, fileErrors };
+  }
+
+  return { rows, duplicatesInFile, fileErrors };
 };

@@ -31,6 +31,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
     last_name: '',
     phone: '',
     email: '',
+    job_title: '',
     hourly_rate: 0,
     is_active: true,
   });
@@ -69,8 +70,8 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
         last_name: newEmployee.last_name,
         phone: newEmployee.phone || null,
         email: newEmployee.email || null,
+        job_title: newEmployee.job_title.trim() || null,
         hourly_rate: newEmployee.hourly_rate,
-        // name: `${newEmployee.first_name} ${newEmployee.last_name}`.trim(), // אופציונלי
       });
 
       setNewEmployee({
@@ -78,6 +79,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
         last_name: '',
         phone: '',
         email: '',
+        job_title: '',
         hourly_rate: 0,
         is_active: true,
       });
@@ -99,6 +101,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
       last_name: emp.last_name,
       phone: emp.phone,
       email: emp.email,
+      job_title: emp.job_title,
       hourly_rate: emp.hourly_rate,
       is_active: emp.is_active,
     });
@@ -119,6 +122,7 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
         last_name: (editDraft.last_name ?? '').toString().trim(),
         phone: (editDraft.phone ?? '').toString().trim() || null,
         email: (editDraft.email ?? '').toString().trim() || null,
+        job_title: (editDraft.job_title ?? '').toString().trim() || null,
         hourly_rate: Number(editDraft.hourly_rate ?? 0),
         is_active: Boolean(editDraft.is_active),
       });
@@ -265,6 +269,15 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                           className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
                       />
                       <input
+                          type="text"
+                          placeholder="תפקיד (למשל: סאונדמן)"
+                          value={newEmployee.job_title}
+                          onChange={(e) =>
+                              setNewEmployee((s) => ({ ...s, job_title: e.target.value }))
+                          }
+                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
+                      />
+                      <input
                           type="number"
                           step="0.01"
                           placeholder="תשלום יומי"
@@ -346,6 +359,15 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                                           }
                                       />
                                       <input
+                                          type="text"
+                                          className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
+                                          placeholder="תפקיד (למשל: סאונדמן)"
+                                          value={(editDraft.job_title as string) ?? ''}
+                                          onChange={(e) =>
+                                              setEditDraft((s) => ({ ...s, job_title: e.target.value }))
+                                          }
+                                      />
+                                      <input
                                           type="number"
                                           step="0.01"
                                           className="p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded"
@@ -393,7 +415,14 @@ const EmployeesPage: React.FC<EmployeesPageProps> = ({ onBack }) => {
                                   </>
                               ) : (
                                   <>
-                                    <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{fullName(emp)}</h4>
+                                    <h4 className="font-semibold text-lg text-gray-900 dark:text-white">
+                                      {fullName(emp)}
+                                      {emp.job_title && (
+                                        <span className="ms-2 inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200 align-middle">
+                                          {emp.job_title}
+                                        </span>
+                                      )}
+                                    </h4>
                                     <p className="text-gray-700 dark:text-gray-300">טלפון: {emp.phone || 'לא צוין'}</p>
                                     <p className="text-gray-700 dark:text-gray-300">אימייל: {emp.email || 'לא צוין'}</p>
                                     <p className="text-gray-700 dark:text-gray-300">תשלום יומי: ₪{Number(emp.hourly_rate || 0).toLocaleString('he-IL')}</p>

@@ -1,6 +1,11 @@
 // services/supabaseAPI.ts - Direct Supabase API calls
 import { getSupabaseClient, getSupabaseAdmin, getSupabaseService } from './supabaseClient';
-import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense, EventType, WorkEvent, NewWorkEventInput, EventSignup } from '../types';
+import { Client, Item, Alias, Quote, QuoteItem, QuoteWithItems, NewWorkHoursInput, Reminder, NewReminderInput, Employee, WorkHours, MonthlyReport, QuoteImage, QuoteExpense, EventType, WorkEvent, WorkEventSource, NewWorkEventInput, EventSignup } from '../types';
+
+const normalizeWorkEvent = (row: WorkEvent): WorkEvent => ({
+  ...row,
+  source: (row.source === 'uptown' ? 'uptown' : 'valley') as WorkEventSource,
+});
 
 // ---------- Clients ----------
 export const clientsAPI = {
@@ -716,6 +721,7 @@ export const employeesAPI = {
     email?: string | null;
     hourly_rate: number;
     is_active?: boolean;
+    job_title?: string | null;
   }): Promise<Employee> => {
     const { data, error } = await getSupabaseAdmin()
       .from('employees')
@@ -734,6 +740,7 @@ export const employeesAPI = {
     email?: string | null;
     hourly_rate: number;
     is_active?: boolean;
+    job_title?: string | null;
   }>): Promise<Employee> => {
     const { data, error } = await getSupabaseAdmin()
       .from('employees')
@@ -770,25 +777,55 @@ export const workEventsAPI = {
       .order('start_time', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map(normalizeWorkEvent);
+  },
+
+  /** אירועים בטווח תאריכים (כולל), ממוינים לפי תאריך ושעה */
+  getInRange: async (from: string, to: string): Promise<WorkEvent[]> => {
+    const { data, error } = await getSupabaseClient()
+      .from('work_events')
+      .select('*')
+      .gte('event_date', from)
+      .lte('event_date', to)
+      .order('event_date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map(normalizeWorkEvent);
+  },
+
+  /** יצירת אירוע בודד ידנית (מהדשבורד/טאב האירועים) */
+  create: async (event: NewWorkEventInput): Promise<WorkEvent> => {
+    const { data, error } = await getSupabaseAdmin()
+      .from('work_events')
+      .insert([{ ...event, source: event.source ?? 'valley' }])
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return normalizeWorkEvent(data);
   },
 
   /**
-   * העלאה מקובץ: upsert לפי (תאריך + שם אירוע).
+   * העלאה מקובץ: upsert לפי (תאריך + שם אירוע + מקור).
    * אירוע קיים מתעדכן במקום להיווצר שוב, וההרשמות אליו נשמרות.
    */
   upsertMany: async (events: NewWorkEventInput[]): Promise<void> => {
     if (!events.length) return;
+    const payload = events.map((event) => ({
+      ...event,
+      source: event.source ?? 'valley',
+    }));
     const { error } = await getSupabaseAdmin()
       .from('work_events')
-      .upsert(events, { onConflict: 'event_date,event_name' });
+      .upsert(payload, { onConflict: 'event_date,event_name,source' });
 
     if (error) throw error;
   },
 
   /** בדיקה אילו אירועים מהקובץ כבר קיימים (לתצוגה מקדימה) */
   findExisting: async (
-    events: Array<Pick<NewWorkEventInput, 'event_date' | 'event_name'>>
+    events: Array<Pick<NewWorkEventInput, 'event_date' | 'event_name' | 'source'>>
   ): Promise<Set<string>> => {
     const existing = new Set<string>();
     if (!events.length) return existing;
@@ -796,12 +833,12 @@ export const workEventsAPI = {
     const dates = Array.from(new Set(events.map((e) => e.event_date)));
     const { data, error } = await getSupabaseClient()
       .from('work_events')
-      .select('event_date, event_name')
+      .select('event_date, event_name, source')
       .in('event_date', dates);
 
     if (error) throw error;
     for (const row of data || []) {
-      existing.add(`${row.event_date}|${row.event_name}`);
+      existing.add(`${row.event_date}|${row.event_name}|${row.source ?? 'valley'}`);
     }
     return existing;
   },

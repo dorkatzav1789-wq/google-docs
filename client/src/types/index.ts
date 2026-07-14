@@ -100,6 +100,8 @@ export interface Employee {
   email?: string;
   hourly_rate: number;
   is_active: boolean;
+  /** תפקיד העובד, למשל "סאונדמן" */
+  job_title?: string | null;
   created_at: string;
 }
 
@@ -182,6 +184,9 @@ export type NewReminderInput = {
 };
 
 // ---------- אירועי עבודה (הרשמת עובדים) ----------
+/** מקור מקום העבודה – VALLEY (קוונטום) או UPTOWN */
+export type WorkEventSource = 'valley' | 'uptown';
+
 export interface WorkEvent {
   id: number;
   event_date: string; // YYYY-MM-DD
@@ -189,6 +194,10 @@ export interface WorkEvent {
   event_type: string | null;
   sub_venues: string | null;
   start_time: string | null; // HH:MM
+  /** valley = VALLEY/קוונטום, uptown = UPTOWN */
+  source: WorkEventSource;
+  /** כמות עובדים נדרשת למשמרת (אופציונלי) */
+  needed_employees?: number | null;
   created_at?: string;
 }
 
@@ -202,6 +211,7 @@ export interface EventSignup {
   // נתונים מ-join עם employees
   employees?: {
     name?: string | null;
+    phone?: string | null;
   } | null;
 }
 

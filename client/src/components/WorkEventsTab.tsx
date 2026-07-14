@@ -1,40 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Clock, MapPin, Trash2, Upload, Users } from 'lucide-react';
+import { CalendarDays, Clock, List, MapPin, Plus, Trash2, Upload, Users } from 'lucide-react';
 import type { Employee, EventSignup, WorkEvent } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { employeesAPI, eventSignupsAPI, workEventsAPI } from '../services/supabaseAPI';
 import { parseWorkEventsXlsx, ParsedEventRow } from '../utils/parseWorkEventsXlsx';
+import {
+  EVENT_CATEGORY_ALLOWED_LABEL,
+  EVENT_SOURCE_LABEL,
+  classifyEventForRoles,
+  eventIdentityKey,
+  formatShortDate,
+  formatTime,
+  formatWeekday,
+  getMonthRange,
+  isEarlyStart,
+  isEmployeeEligible,
+  resolveEventVisual,
+  splitSubVenues,
+  toIsoDate,
+} from '../utils/workEventHelpers';
+import { WorkEventsCalendar } from './WorkEventsCalendar';
+import { WorkEventForm } from './WorkEventForm';
 
-/** שורת תצוגה מקדימה: שורה מהקובץ + האם האירוע כבר קיים במערכת */
 interface PreviewRow extends ParsedEventRow {
   existsInDb: boolean;
 }
 
-const parseIsoDate = (isoDate: string): Date | null => {
-  const date = new Date(`${isoDate}T00:00:00`);
-  return isNaN(date.getTime()) ? null : date;
-};
-
-const formatWeekday = (isoDate: string): string => {
-  const date = parseIsoDate(isoDate);
-  return date ? date.toLocaleDateString('he-IL', { weekday: 'long' }) : '';
-};
-
-const formatShortDate = (isoDate: string): string => {
-  const date = parseIsoDate(isoDate);
-  return date
-    ? date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    : isoDate;
-};
-
-const formatTime = (time: string | null): string | null => (time ? time.slice(0, 5) : null);
-
-/** מפצל את מחרוזת תתי המתחמים לרשימת תגיות */
-const splitSubVenues = (subVenues: string | null): string[] =>
-  (subVenues ?? '')
-    .split(/[,;]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+type ViewMode = 'calendar' | 'list';
 
 const signupNames = (signups: EventSignup[]): string =>
   signups.map((s) => s.employees?.name || `עובד #${s.employee_id}`).join(', ');
@@ -43,13 +35,19 @@ export const WorkEventsTab: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
+  const now = new Date();
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [selectedDate, setSelectedDate] = useState<string | null>(toIsoDate(now));
+  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
+
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [signups, setSignups] = useState<EventSignup[]>([]);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyEventId, setBusyEventId] = useState<number | null>(null);
 
-  // תצוגה מקדימה של קובץ שהועלה (אדמין)
+  const [showAddForm, setShowAddForm] = useState(false);
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [previewFileName, setPreviewFileName] = useState('');
   const [duplicatesInFile, setDuplicatesInFile] = useState(0);
@@ -60,12 +58,13 @@ export const WorkEventsTab: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [upcomingEvents, employee] = await Promise.all([
-        workEventsAPI.getUpcoming(),
+      const { from, to } = getMonthRange(viewYear, viewMonth);
+      const [monthEvents, employee] = await Promise.all([
+        workEventsAPI.getInRange(from, to),
         employeesAPI.getCurrentUserEmployee(),
       ]);
-      const eventSignups = await eventSignupsAPI.getByEvents(upcomingEvents.map((e) => e.id));
-      setEvents(upcomingEvents);
+      const eventSignups = await eventSignupsAPI.getByEvents(monthEvents.map((e) => e.id));
+      setEvents(monthEvents);
       setSignups(eventSignups);
       setCurrentEmployee(employee);
     } catch (err) {
@@ -75,7 +74,7 @@ export const WorkEventsTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [viewYear, viewMonth]);
 
   useEffect(() => {
     void loadData();
@@ -91,16 +90,55 @@ export const WorkEventsTab: React.FC = () => {
     return map;
   }, [signups]);
 
-  const isSignedUp = (eventId: number): boolean =>
-    currentEmployee != null &&
-    (signupsByEvent.get(eventId) ?? []).some((s) => s.employee_id === currentEmployee.id);
+  const signedUpEventIds = useMemo(() => {
+    if (!currentEmployee) return new Set<number>();
+    const ids = new Set<number>();
+    for (const signup of signups) {
+      if (signup.employee_id === currentEmployee.id) ids.add(signup.event_id);
+    }
+    return ids;
+  }, [signups, currentEmployee]);
 
-  // ----- הרשמה / ביטול הרשמה -----
+  const isSignedUp = (eventId: number): boolean => signedUpEventIds.has(eventId);
+
+  /** האם העובד הנוכחי רשאי להירשם לאירוע (לפי תפקידיו וסיווג האירוע) */
+  const isEligibleForEvent = useCallback(
+    (event: WorkEvent): boolean =>
+      currentEmployee != null &&
+      isEmployeeEligible(currentEmployee.job_title, classifyEventForRoles(event)),
+    [currentEmployee]
+  );
+
+  const isEventFull = (event: WorkEvent): boolean =>
+    event.needed_employees != null &&
+    (signupsByEvent.get(event.id)?.length ?? 0) >= event.needed_employees;
+
+  const [onlyMyRoleEvents, setOnlyMyRoleEvents] = useState(false);
+
+  const visibleEvents = useMemo(() => {
+    if (!onlyMyRoleEvents || !currentEmployee) return events;
+    return events.filter(isEligibleForEvent);
+  }, [events, onlyMyRoleEvents, currentEmployee, isEligibleForEvent]);
+
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDate) return visibleEvents;
+    return visibleEvents.filter((event) => event.event_date === selectedDate);
+  }, [visibleEvents, selectedDate]);
+
+  const displayedEvents = viewMode === 'calendar' && selectedDate ? selectedDayEvents : visibleEvents;
+
+  const handleMonthChange = (year: number, month: number) => {
+    setViewYear(year);
+    setViewMonth(month);
+  };
+
   const handleToggleSignup = async (event: WorkEvent) => {
     if (!currentEmployee) return;
+    const signedUp = isSignedUp(event.id);
+    if (!signedUp && (!isEligibleForEvent(event) || isEventFull(event))) return;
     try {
       setBusyEventId(event.id);
-      if (isSignedUp(event.id)) {
+      if (signedUp) {
         await eventSignupsAPI.cancel(event.id, currentEmployee.id);
       } else {
         await eventSignupsAPI.signUp(event.id, currentEmployee.id);
@@ -114,7 +152,6 @@ export const WorkEventsTab: React.FC = () => {
     }
   };
 
-  // ----- מחיקת אירוע (אדמין) -----
   const handleDeleteEvent = async (event: WorkEvent) => {
     if (!window.confirm(`למחוק את האירוע "${event.event_name}" (${formatShortDate(event.event_date)})? ההרשמות אליו יימחקו גם כן.`)) {
       return;
@@ -131,10 +168,9 @@ export const WorkEventsTab: React.FC = () => {
     }
   };
 
-  // ----- מחיקת כל האירועים (אדמין) -----
   const handleDeleteAll = async () => {
     if (!events.length) return;
-    if (!window.confirm(`למחוק את כל ${events.length} האירועים? כל ההרשמות אליהם יימחקו גם כן. פעולה זו אינה הפיכה.`)) {
+    if (!window.confirm(`למחוק את כל ${events.length} האירועים בחודש זה? כל ההרשמות אליהם יימחקו גם כן. פעולה זו אינה הפיכה.`)) {
       return;
     }
     try {
@@ -149,28 +185,34 @@ export const WorkEventsTab: React.FC = () => {
     }
   };
 
-  // ----- העלאת קובץ xlsx (אדמין) -----
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ''; // מאפשר לבחור שוב את אותו קובץ
+    e.target.value = '';
     if (!file) return;
 
     try {
       const result = await parseWorkEventsXlsx(file);
-      if (result.fileErrors.length) {
+      if (result.fileErrors.length && !result.rows.length) {
         alert(result.fileErrors.join('\n'));
         return;
+      }
+      if (result.fileErrors.length) {
+        alert(`חלק מהגיליונות דולגו:\n${result.fileErrors.join('\n')}`);
       }
 
       const validEvents = result.rows
         .filter((row) => row.event)
-        .map((row) => ({ event_date: row.event!.event_date, event_name: row.event!.event_name }));
+        .map((row) => ({
+          event_date: row.event!.event_date,
+          event_name: row.event!.event_name,
+          source: row.event!.source,
+        }));
       const existingKeys = await workEventsAPI.findExisting(validEvents);
 
       setPreview(
         result.rows.map((row) => ({
           ...row,
-          existsInDb: row.event ? existingKeys.has(`${row.event.event_date}|${row.event.event_name}`) : false,
+          existsInDb: row.event ? existingKeys.has(eventIdentityKey(row.event)) : false,
         }))
       );
       setPreviewFileName(file.name);
@@ -210,7 +252,6 @@ export const WorkEventsTab: React.FC = () => {
     setDuplicatesInFile(0);
   };
 
-  // ----- תגיות ורכיבי עזר לתצוגה -----
   const previewStatusBadge = (row: PreviewRow) => {
     if (row.errors.length) {
       return (
@@ -242,6 +283,22 @@ export const WorkEventsTab: React.FC = () => {
       <span className="text-gray-400 dark:text-gray-500">---</span>
     );
 
+  const sourceBadge = (source: WorkEvent['source']) => {
+    const key = source ?? 'valley';
+    if (key === 'uptown') {
+      return (
+        <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded border border-[#d4af37] bg-gradient-to-br from-gray-900 to-gray-800 text-amber-50">
+          {EVENT_SOURCE_LABEL.uptown}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded border border-gray-400 bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-500">
+        {EVENT_SOURCE_LABEL.valley}
+      </span>
+    );
+  };
+
   const subVenueBadges = (subVenues: string[]) => (
     <div className="flex flex-wrap gap-1.5">
       {subVenues.map((venue) => (
@@ -256,31 +313,77 @@ export const WorkEventsTab: React.FC = () => {
     </div>
   );
 
-  const signupCountBadge = (count: number) => (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
-        count
-          ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200'
-          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-      }`}
-    >
-      <Users className="w-3.5 h-3.5" />
-      {count} נרשמו
-    </span>
-  );
+  const signupCountBadge = (count: number, needed?: number | null) => {
+    const isFull = needed != null && count >= needed;
+    const label =
+      needed != null
+        ? isFull
+          ? `צוות מלא ${count}/${needed}`
+          : count
+            ? `מאויש חלקית ${count}/${needed}`
+            : `טרם אויש 0/${needed}`
+        : `${count} נרשמו`;
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
+          isFull
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200'
+            : count
+              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200'
+              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+        }`}
+      >
+        <Users className="w-3.5 h-3.5" />
+        {label}
+      </span>
+    );
+  };
+
+  /** תג אזהרה למשמרת שמתחילה לפני 19:30 */
+  const earlyStartBadge = (startTime: string | null) =>
+    isEarlyStart(startTime) ? (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full bg-orange-500 text-white dark:bg-orange-600 shadow-sm">
+        <Clock className="w-3.5 h-3.5" />
+        הגעה מוקדמת
+      </span>
+    ) : null;
 
   const signupButton = (event: WorkEvent, options?: { fullWidth?: boolean }) => {
     if (!currentEmployee) return null;
     const signedUp = isSignedUp(event.id);
     const busy = busyEventId === event.id;
+    const widthClass = options?.fullWidth ? 'w-full' : '';
+
+    // עובד שלא רשום ולא מתאים בתפקידו - הכפתור מוחלף בהסבר
+    if (!signedUp && !isEligibleForEvent(event)) {
+      return (
+        <span
+          className={`inline-flex items-center justify-center px-3.5 py-2 text-xs font-medium rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700 ${widthClass}`}
+        >
+          מיועד ל: {EVENT_CATEGORY_ALLOWED_LABEL[classifyEventForRoles(event)]}
+        </span>
+      );
+    }
+
+    // המכסה התמלאה - הרשמה חסומה (ביטול עדיין אפשרי למי שרשום)
+    if (!signedUp && isEventFull(event)) {
+      return (
+        <button
+          type="button"
+          disabled
+          className={`px-3.5 py-2 text-sm font-medium rounded-lg bg-gray-300 text-gray-600 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed ${widthClass}`}
+        >
+          צוות מלא
+        </button>
+      );
+    }
+
     return (
       <button
         type="button"
         onClick={() => handleToggleSignup(event)}
         disabled={busy}
-        className={`px-3.5 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 ${
-          options?.fullWidth ? 'w-full' : ''
-        } ${
+        className={`px-3.5 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 ${widthClass} ${
           signedUp
             ? 'bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/30'
             : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white'
@@ -307,57 +410,169 @@ export const WorkEventsTab: React.FC = () => {
     );
   };
 
-  // הערה: App.css מגדיר רקע גלובלי לבן ל-table/th/tr:hover, לכן חובה
-  // רקע מפורש (כולל dark:) על כל th/td כדי שמצב כהה יעבוד כאן.
+  const eventCard = (event: WorkEvent) => {
+    const eventSignups = signupsByEvent.get(event.id) ?? [];
+    const signedUp = isSignedUp(event.id);
+    const subVenues = splitSubVenues(event.sub_venues);
+    const startTime = formatTime(event.start_time);
+    const visual = resolveEventVisual(event);
+    const isUptown = visual.kind === 'uptown';
+
+    return (
+      <div
+        key={event.id}
+        className={`rounded-xl border-2 shadow-sm overflow-hidden ${visual.card} ${
+          signedUp && !isUptown ? 'ring-1 ring-green-400/70' : ''
+        }`}
+      >
+        <div className={`p-4 ${isUptown ? '' : 'bg-white dark:bg-gray-900'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {sourceBadge(event.source)}
+                {visual.kind === 'sweet' || visual.kind === 'joy' || visual.kind === 'maintenance' ? (
+                  <span className={`inline-flex px-2 py-0.5 text-[10px] font-semibold rounded border ${visual.chip}`}>
+                    {visual.label}
+                  </span>
+                ) : null}
+              </div>
+              <h3 className={`font-bold leading-snug ${isUptown ? 'text-amber-50' : 'text-gray-900 dark:text-white'}`}>
+                {event.event_name}
+              </h3>
+              <p className={`mt-0.5 text-sm ${isUptown ? 'text-amber-100/70' : 'text-gray-500 dark:text-gray-400'}`}>
+                {formatWeekday(event.event_date)}, {formatShortDate(event.event_date)}
+              </p>
+            </div>
+            {eventTypeBadge(event.event_type)}
+          </div>
+
+          <div className={`mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm ${isUptown ? 'text-amber-50/90' : 'text-gray-700 dark:text-gray-300'}`}>
+            {startTime && (
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Clock className={`w-4 h-4 ${isUptown ? 'text-amber-200/70' : 'text-gray-400 dark:text-gray-500'}`} />
+                {startTime}
+              </span>
+            )}
+            {signupCountBadge(eventSignups.length, event.needed_employees)}
+            {earlyStartBadge(event.start_time)}
+            {!isAdmin && signedUp && (
+              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                אתה רשום
+              </span>
+            )}
+          </div>
+
+          {subVenues.length > 0 && <div className="mt-3">{subVenueBadges(subVenues)}</div>}
+
+          {eventSignups.length > 0 && (
+            <p className={`mt-3 text-xs ${isUptown ? 'text-amber-100/60' : 'text-gray-500 dark:text-gray-400'}`}>
+              נרשמו: {signupNames(eventSignups)}
+            </p>
+          )}
+        </div>
+
+        {(currentEmployee || isAdmin) && (
+          <div className={`px-4 py-3 border-t flex items-center gap-2 ${
+            isUptown
+              ? 'border-[#d4af37]/40 bg-black/20'
+              : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50'
+          }`}>
+            <div className="flex-1">{signupButton(event, { fullWidth: true })}</div>
+            {deleteButton(event)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const thClass = 'px-4 py-3 text-right text-xs font-semibold tracking-wide text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800';
   const tdClass = 'px-4 py-4 text-right text-sm text-gray-800 dark:text-gray-200 align-middle bg-white dark:bg-gray-900 group-hover:bg-blue-50/60 dark:group-hover:bg-gray-800/70 transition-colors border-b border-gray-100 dark:border-gray-800';
 
   return (
     <div className="p-4 sm:p-6">
-      {/* כותרת + כפתור העלאה */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">אירועים קרובים</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">אירועים</h2>
           {!loading && (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {events.length ? `${events.length} אירועים פתוחים להרשמה` : 'אין אירועים פתוחים כרגע'}
+              {events.length ? `${events.length} אירועים בחודש זה` : 'אין אירועים בחודש זה'}
             </p>
           )}
         </div>
 
-        {isAdmin && !preview && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleFileSelected}
-            />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+              onClick={() => setViewMode('calendar')}
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === 'calendar'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
             >
-              <Upload className="w-4 h-4" />
-              העלאת קובץ אירועים (xlsx)
+              <CalendarDays className="w-4 h-4" />
+              יומן
             </button>
-            {events.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              רשימה
+            </button>
+          </div>
+
+          {isAdmin && !preview && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileSelected}
+              />
               <button
                 type="button"
-                onClick={handleDeleteAll}
-                disabled={deletingAll}
-                className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                onClick={() => setShowAddForm((prev) => !prev)}
+                className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
-                {deletingAll ? 'מוחק...' : 'מחק את כל האירועים'}
+                <Plus className="w-4 h-4" />
+                הוספת משמרת
               </button>
-            )}
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                העלאת קובץ אירועים (xlsx)
+              </button>
+              {events.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAll}
+                  disabled={deletingAll}
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deletingAll ? 'מוחק...' : 'מחק אירועי החודש'}
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* תצוגה מקדימה לפני ייבוא */}
+      {isAdmin && showAddForm && !preview && (
+        <WorkEventForm onCreated={loadData} onClose={() => setShowAddForm(false)} />
+      )}
+
       {isAdmin && preview && (
         <div className="mb-8 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-xl shadow-sm overflow-hidden">
           <div className="px-4 sm:px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
@@ -376,24 +591,30 @@ export const WorkEventsTab: React.FC = () => {
             <table className="w-full mt-0 shadow-none">
               <thead>
                 <tr>
+                  <th className={thClass}>גיליון</th>
+                  <th className={thClass}>מקור</th>
                   <th className={thClass}>שורה</th>
                   <th className={thClass}>תאריך</th>
                   <th className={thClass}>שם האירוע</th>
                   <th className={thClass}>סוג</th>
                   <th className={thClass}>תתי מתחמים</th>
                   <th className={thClass}>שעת התחלה</th>
+                  <th className={thClass}>כמות עובדים</th>
                   <th className={thClass}>סטטוס</th>
                 </tr>
               </thead>
               <tbody>
                 {preview.map((row) => (
-                  <tr key={row.rowNumber} className={`group ${row.errors.length ? 'opacity-60' : ''}`}>
+                  <tr key={`${row.sheetName}-${row.rowNumber}`} className={`group ${row.errors.length ? 'opacity-60' : ''}`}>
+                    <td className={tdClass}>{row.sheetName}</td>
+                    <td className={tdClass}>{sourceBadge(row.source)}</td>
                     <td className={tdClass}>{row.rowNumber}</td>
                     <td className={`${tdClass} whitespace-nowrap`}>{row.event ? formatShortDate(row.event.event_date) : '---'}</td>
                     <td className={`${tdClass} font-medium`}>{row.event?.event_name ?? '---'}</td>
                     <td className={tdClass}>{row.event?.event_type ?? '---'}</td>
                     <td className={tdClass}>{row.event?.sub_venues ?? '---'}</td>
                     <td className={tdClass}>{row.event ? formatTime(row.event.start_time) ?? '---' : '---'}</td>
+                    <td className={tdClass}>{row.event?.needed_employees ?? '---'}</td>
                     <td className={tdClass}>{previewStatusBadge(row)}</td>
                   </tr>
                 ))}
@@ -422,191 +643,209 @@ export const WorkEventsTab: React.FC = () => {
         </div>
       )}
 
-      {/* הודעה לעובד שאין לו רשומת עובד */}
       {!isAdmin && !loading && !currentEmployee && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-sm">
           לא נמצאה רשומת עובד המשויכת למשתמש שלך, לכן לא ניתן להירשם לאירועים. פנה למנהל המערכת.
         </div>
       )}
 
-      {/* מצבי טעינה וריק */}
       {loading && (
         <div className="p-10 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-xl text-center text-gray-600 dark:text-gray-300">
           טוען אירועים...
         </div>
       )}
 
-      {!loading && events.length === 0 && (
+      {/* סינון משמרות רלוונטיות לתפקיד העובד */}
+      {!loading && !isAdmin && currentEmployee && (
+        <label className="mb-4 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={onlyMyRoleEvents}
+            onChange={(e) => setOnlyMyRoleEvents(e.target.checked)}
+            className="w-4 h-4 text-blue-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+          />
+          הצג רק משמרות שמתאימות לתפקיד שלי
+          {currentEmployee.job_title && (
+            <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-200">
+              {currentEmployee.job_title}
+            </span>
+          )}
+        </label>
+      )}
+
+      {!loading && viewMode === 'calendar' && (
+        <div className="space-y-4">
+          <WorkEventsCalendar
+            events={visibleEvents}
+            year={viewYear}
+            month={viewMonth}
+            selectedDate={selectedDate}
+            onMonthChange={handleMonthChange}
+            onSelectDate={setSelectedDate}
+            signedUpEventIds={signedUpEventIds}
+          />
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              {selectedDate
+                ? `אירועים ב-${formatShortDate(selectedDate)}`
+                : 'אירועי החודש'}
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(null)}
+                  className="ms-2 text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                >
+                  הצג הכל
+                </button>
+              )}
+            </h3>
+
+            {displayedEvents.length === 0 ? (
+              <div className="p-8 border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded-xl text-center text-gray-600 dark:text-gray-300">
+                אין אירועים בתאריך שנבחר
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">{displayedEvents.map(eventCard)}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!loading && viewMode === 'list' && visibleEvents.length === 0 && (
         <div className="p-12 border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 rounded-xl text-center">
           <CalendarDays className="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500" />
-          <p className="mt-3 font-medium text-gray-700 dark:text-gray-300">אין אירועים קרובים להצגה</p>
+          <p className="mt-3 font-medium text-gray-700 dark:text-gray-300">אין אירועים בחודש זה</p>
           {isAdmin && (
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              העלה קובץ xlsx כדי להוסיף אירועים חדשים
+              העלה קובץ xlsx עם גיליון VALLEY וגיליון UPTOWN
             </p>
           )}
         </div>
       )}
 
-      {/* תצוגת כרטיסים - מובייל */}
-      {!loading && events.length > 0 && (
-        <div className="md:hidden space-y-3">
-          {events.map((event) => {
-            const eventSignups = signupsByEvent.get(event.id) ?? [];
-            const signedUp = isSignedUp(event.id);
-            const subVenues = splitSubVenues(event.sub_venues);
-            const startTime = formatTime(event.start_time);
+      {!loading && viewMode === 'list' && visibleEvents.length > 0 && (
+        <>
+          <div className="md:hidden space-y-3">{visibleEvents.map(eventCard)}</div>
 
-            return (
-              <div
-                key={event.id}
-                className={`rounded-xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden ${
-                  signedUp
-                    ? 'border-green-300 dark:border-green-800'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-gray-900 dark:text-white leading-snug">
-                        {event.event_name}
-                      </h3>
-                      <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                        {formatWeekday(event.event_date)}, {formatShortDate(event.event_date)}
-                      </p>
-                    </div>
-                    {eventTypeBadge(event.event_type)}
-                  </div>
+          <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full mt-0 shadow-none">
+                <thead>
+                  <tr>
+                    <th className={thClass}>תאריך</th>
+                    <th className={thClass}>מקור</th>
+                    <th className={thClass}>שם האירוע</th>
+                    <th className={thClass}>סוג אירוע</th>
+                    <th className={thClass}>תתי מתחמים</th>
+                    <th className={thClass}>שעת התחלה</th>
+                    <th className={thClass}>נרשמים</th>
+                    <th className={thClass}>{isAdmin ? 'פעולות' : 'הרשמה'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleEvents.map((event) => {
+                    const eventSignups = signupsByEvent.get(event.id) ?? [];
+                    const signedUp = isSignedUp(event.id);
+                    const subVenues = splitSubVenues(event.sub_venues);
+                    const startTime = formatTime(event.start_time);
+                    const visual = resolveEventVisual(event);
 
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
-                    {startTime && (
-                      <span className="inline-flex items-center gap-1.5 font-medium">
-                        <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                        {startTime}
-                      </span>
-                    )}
-                    {signupCountBadge(eventSignups.length)}
-                    {!isAdmin && signedUp && (
-                      <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
-                        אתה רשום
-                      </span>
-                    )}
-                  </div>
+                    return (
+                      <tr key={event.id} className="group">
+                        <td className={`${tdClass} whitespace-nowrap`}>
+                          <div className="font-semibold text-gray-900 dark:text-white">
+                            {formatWeekday(event.event_date)}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatShortDate(event.event_date)}
+                          </div>
+                        </td>
 
-                  {subVenues.length > 0 && <div className="mt-3">{subVenueBadges(subVenues)}</div>}
+                        <td className={tdClass}>
+                          <div className="flex flex-col gap-1">
+                            {sourceBadge(event.source)}
+                            {(visual.kind === 'sweet' || visual.kind === 'joy' || visual.kind === 'maintenance') && (
+                              <span className={`inline-flex w-fit px-2 py-0.5 text-[10px] font-semibold rounded border ${visual.chip}`}>
+                                {visual.label}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-                  {isAdmin && eventSignups.length > 0 && (
-                    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                      נרשמו: {signupNames(eventSignups)}
-                    </p>
-                  )}
-                </div>
-
-                {(currentEmployee || isAdmin) && (
-                  <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center gap-2">
-                    <div className="flex-1">{signupButton(event, { fullWidth: true })}</div>
-                    {deleteButton(event)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* טבלת האירועים - דסקטופ */}
-      {!loading && events.length > 0 && (
-        <div className="hidden md:block border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full mt-0 shadow-none">
-              <thead>
-                <tr>
-                  <th className={thClass}>תאריך</th>
-                  <th className={thClass}>שם האירוע</th>
-                  <th className={thClass}>סוג אירוע</th>
-                  <th className={thClass}>תתי מתחמים</th>
-                  <th className={thClass}>שעת התחלה</th>
-                  <th className={thClass}>נרשמים</th>
-                  <th className={thClass}>{isAdmin ? 'פעולות' : 'הרשמה'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => {
-                  const eventSignups = signupsByEvent.get(event.id) ?? [];
-                  const signedUp = isSignedUp(event.id);
-                  const subVenues = splitSubVenues(event.sub_venues);
-                  const startTime = formatTime(event.start_time);
-
-                  return (
-                    <tr key={event.id} className="group">
-                      {/* תאריך: יום בשבוע מעל התאריך */}
-                      <td className={`${tdClass} whitespace-nowrap`}>
-                        <div className="font-semibold text-gray-900 dark:text-white">
-                          {formatWeekday(event.event_date)}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatShortDate(event.event_date)}
-                        </div>
-                      </td>
-
-                      <td className={`${tdClass} font-semibold text-gray-900 dark:text-white`}>
-                        {event.event_name}
-                      </td>
-
-                      <td className={tdClass}>{eventTypeBadge(event.event_type)}</td>
-
-                      <td className={tdClass}>
-                        {subVenues.length ? (
-                          subVenueBadges(subVenues)
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">---</span>
-                        )}
-                      </td>
-
-                      <td className={`${tdClass} whitespace-nowrap`}>
-                        {startTime ? (
-                          <span className="inline-flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
-                            <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                            {startTime}
+                        <td className={`${tdClass} font-semibold text-gray-900 dark:text-white`}>
+                          <span className={`inline-block border-s-4 ps-2 ${
+                            visual.kind === 'sweet'
+                              ? 'border-pink-400'
+                              : visual.kind === 'joy'
+                                ? 'border-teal-400'
+                                : visual.kind === 'uptown'
+                                  ? 'border-[#d4af37]'
+                                  : visual.kind === 'maintenance'
+                                    ? 'border-green-500'
+                                    : 'border-gray-400'
+                          }`}>
+                            {event.event_name}
                           </span>
-                        ) : (
-                          <span className="text-gray-400 dark:text-gray-500">---</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className={tdClass}>
-                        <div className="flex flex-col items-start gap-1.5">
-                          {signupCountBadge(eventSignups.length)}
-                          {isAdmin && eventSignups.length > 0 && (
-                            <span
-                              className="text-xs text-gray-500 dark:text-gray-400 max-w-[16rem] truncate"
-                              title={signupNames(eventSignups)}
-                            >
-                              {signupNames(eventSignups)}
-                            </span>
-                          )}
-                          {!isAdmin && signedUp && (
-                            <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
-                              אתה רשום
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        <td className={tdClass}>{eventTypeBadge(event.event_type)}</td>
 
-                      <td className={`${tdClass} whitespace-nowrap`}>
-                        <div className="flex items-center gap-2">
-                          {signupButton(event)}
-                          {deleteButton(event)}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td className={tdClass}>
+                          {subVenues.length ? (
+                            subVenueBadges(subVenues)
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500">---</span>
+                          )}
+                        </td>
+
+                        <td className={`${tdClass} whitespace-nowrap`}>
+                          {startTime ? (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="inline-flex items-center gap-1.5 font-medium text-gray-900 dark:text-white">
+                                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                {startTime}
+                              </span>
+                              {earlyStartBadge(event.start_time)}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500">---</span>
+                          )}
+                        </td>
+
+                        <td className={tdClass}>
+                          <div className="flex flex-col items-start gap-1.5">
+                            {signupCountBadge(eventSignups.length, event.needed_employees)}
+                            {eventSignups.length > 0 && (
+                              <span
+                                className="text-xs text-gray-500 dark:text-gray-400 max-w-[16rem] truncate"
+                                title={signupNames(eventSignups)}
+                              >
+                                {signupNames(eventSignups)}
+                              </span>
+                            )}
+                            {!isAdmin && signedUp && (
+                              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                                אתה רשום
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className={`${tdClass} whitespace-nowrap`}>
+                          <div className="flex items-center gap-2">
+                            {signupButton(event)}
+                            {deleteButton(event)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

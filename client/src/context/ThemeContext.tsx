@@ -14,27 +14,24 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const useTheme = () => useContext(ThemeContext);
 
+const getSystemTheme = (): Theme =>
+  window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+const readStoredTheme = (): Theme | null => {
+  const saved = localStorage.getItem('theme');
+  return saved === 'light' || saved === 'dark' ? saved : null;
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    // בדיקה אם יש העדפה שמורה ב-localStorage
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    return savedTheme || 'light';
-  });
+  const [theme, setTheme] = useState<Theme>(() => readStoredTheme() ?? getSystemTheme());
 
   useEffect(() => {
-    // שמירת העדפה ב-localStorage
     localStorage.setItem('theme', theme);
-    
-    // עדכון ה-class של ה-HTML element
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (
@@ -43,4 +40,3 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     </ThemeContext.Provider>
   );
 };
-
